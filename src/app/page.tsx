@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Library, Filter, Star } from "lucide-react";
+import { Library, Filter, Star, TrendingUp } from "lucide-react";
 import SearchBox from "@/components/SearchBox";
 import SectorHeatmap from "@/components/SectorHeatmap";
 import MarketOverview from "@/components/MarketOverview";
@@ -11,34 +11,27 @@ import TrendNews from "@/components/TrendNews";
 
 export default function Home() {
   return (
-    <div className="space-y-6">
-      <section className="space-y-4">
+    <div className="space-y-4 sm:space-y-5">
+      {/* ── Hero ── */}
+      <section className="space-y-3.5">
         <PortfolioHero />
         <div>
           <SearchBox autoFocus />
           <div className="mt-2.5 flex flex-wrap gap-2 text-xs">
-            <QuickLink href="/stocks" icon={<Library className="w-3.5 h-3.5" />}>
-              全銘柄
-            </QuickLink>
-            <QuickLink href="/screener" icon={<Filter className="w-3.5 h-3.5" />}>
-              条件検索
-            </QuickLink>
-            <QuickLink href="/watchlist" icon={<Star className="w-3.5 h-3.5" />}>
-              ウォッチリスト
-            </QuickLink>
+            <QuickLink href="/stocks"    icon={<Library   className="w-3.5 h-3.5" />} color="from-blue-500 to-cyan-500">全銘柄</QuickLink>
+            <QuickLink href="/screener"  icon={<Filter    className="w-3.5 h-3.5" />} color="from-orange-500 to-amber-500">スクリーナー</QuickLink>
+            <QuickLink href="/watchlist" icon={<Star      className="w-3.5 h-3.5" />} color="from-pink-500 to-rose-500">ウォッチリスト</QuickLink>
+            <QuickLink href="/sector/information-technology" icon={<TrendingUp className="w-3.5 h-3.5" />} color="from-violet-500 to-purple-500">セクター</QuickLink>
           </div>
         </div>
       </section>
 
+      {/* ── Market Overview ── */}
       <section>
-        <h2 className="text-base font-bold tracking-tight mb-2.5 flex items-center gap-1.5">
-          <span>🌐</span>
-          <span>マーケット指数</span>
-        </h2>
         <MarketOverview />
       </section>
 
-      {/* Top movers + Trend news side-by-side on desktop */}
+      {/* ── Top movers + Trend news ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <TopMovers />
         <TrendNews />
@@ -46,7 +39,7 @@ export default function Home() {
 
       <RecentViewed />
 
-      {/* Sector heatmap + Investment themes side-by-side on desktop */}
+      {/* ── Sector heatmap + Themes ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <SectorHeatmap />
         <InvestmentThemes />
@@ -58,16 +51,18 @@ export default function Home() {
 function QuickLink({
   href,
   icon,
+  color,
   children,
 }: {
   href: string;
   icon: React.ReactNode;
+  color: string;
   children: React.ReactNode;
 }) {
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-blue-300 dark:hover:border-blue-700 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shadow-sm"
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r ${color} text-white text-xs font-semibold shadow-sm hover:shadow-md hover:scale-105 transition-all duration-150`}
     >
       {icon}
       {children}

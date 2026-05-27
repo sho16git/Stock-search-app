@@ -281,20 +281,20 @@ export default function AnalystRecommendations({ symbol }: { symbol: string }) {
       {/* Recent upgrade/downgrade history */}
       {data.history.length > 0 && (
         <div>
-          <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-2">
+          <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-3">
             アナリスト最新アクション
           </h3>
-          <div className="overflow-x-auto -mx-2">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto -mx-6 px-6">
+            <table className="w-full text-sm min-w-[480px]">
               <thead>
-                <tr className="text-left text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-800">
-                  <th className="py-2 px-2 font-medium">日付</th>
-                  <th className="py-2 px-2 font-medium">証券会社</th>
-                  <th className="py-2 px-2 font-medium">レーティング</th>
-                  <th className="py-2 px-2 font-medium text-right">目標株価</th>
+                <tr className="text-left text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30">
+                  <th className="py-2.5 px-3 font-medium whitespace-nowrap">日付</th>
+                  <th className="py-2.5 px-3 font-medium whitespace-nowrap">証券会社</th>
+                  <th className="py-2.5 px-3 font-medium whitespace-nowrap">レーティング</th>
+                  <th className="py-2.5 px-3 font-medium whitespace-nowrap text-right">目標株価</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                 {data.history.slice(0, 10).map((h, i) => {
                   const isRaise = h.priceTargetAction === "Raises";
                   const isLower = h.priceTargetAction === "Lowers";
@@ -311,9 +311,9 @@ export default function AnalystRecommendations({ symbol }: { symbol: string }) {
                   return (
                     <tr
                       key={i}
-                      className="border-b border-slate-100 dark:border-slate-800/60 last:border-0"
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors"
                     >
-                      <td className="py-2 px-2 text-xs text-slate-500 whitespace-nowrap">
+                      <td className="py-2.5 px-3 text-xs text-slate-400 whitespace-nowrap font-mono">
                         {h.date
                           ? new Date(h.date).toLocaleDateString("ja-JP", {
                               year: "2-digit",
@@ -322,24 +322,24 @@ export default function AnalystRecommendations({ symbol }: { symbol: string }) {
                             })
                           : "—"}
                       </td>
-                      <td className="py-2 px-2 font-medium text-sm truncate max-w-[200px]">
+                      <td className="py-2.5 px-3 font-medium text-sm whitespace-nowrap max-w-[160px] truncate">
                         {h.firm}
                       </td>
-                      <td className="py-2 px-2">
+                      <td className="py-2.5 px-3">
                         <span
-                          className={`inline-block px-2 py-0.5 rounded-md text-xs font-medium ${gradeColor(h.toGrade)}`}
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap ${gradeColor(h.toGrade)}`}
                         >
                           {translateGrade(h.toGrade)}
                         </span>
                       </td>
-                      <td className={`py-2 px-2 text-right font-mono text-sm ${targetColor}`}>
+                      <td className={`py-2.5 px-3 text-right font-mono text-sm whitespace-nowrap ${targetColor}`}>
                         {h.currentPriceTarget ? (
-                          <span className="inline-flex items-center gap-1">
-                            <TargetIcon className="w-3 h-3" />
+                          <span className="inline-flex items-center justify-end gap-1">
+                            <TargetIcon className="w-3 h-3 shrink-0" />
                             {formatNumber(h.currentPriceTarget)}
                           </span>
                         ) : (
-                          "—"
+                          <span className="text-slate-400">—</span>
                         )}
                       </td>
                     </tr>

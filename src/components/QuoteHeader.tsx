@@ -30,10 +30,23 @@ type Quote = {
   regularMarketTime?: string | number | Date;
 };
 
+/** JPY換算表示用フォーマット */
+function fmtJpy(v: number): string {
+  if (v >= 100_000_000) {
+    return `¥${(v / 100_000_000).toFixed(2)}億`;
+  }
+  if (v >= 10_000) {
+    return `¥${(v / 10_000).toFixed(1)}万`;
+  }
+  return `¥${Math.round(v).toLocaleString("ja-JP")}`;
+}
+
 export default function QuoteHeader({ symbol }: { symbol: string }) {
-  const [quote, setQuote] = useState<Quote | null>(null);
+  const [quote, setQuote]     = useState<Quote | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError]     = useState<string | null>(null);
+  const [jpyRate, setJpyRate] = useState<number | null>(null);
+  const [showJpy, setShowJpy] = useState(false);
 
   const load = () => {
     fetch(`/api/quote?symbol=${encodeURIComponent(symbol)}`)
@@ -50,11 +63,24 @@ export default function QuoteHeader({ symbol }: { symbol: string }) {
     setLoading(true);
     setError(null);
     setQuote(null);
+    setShowJpy(false);
     load();
     const id = setInterval(load, 60_000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol]);
+
+  // USD銘柄のときだけ USD/JPY レートを取得
+  useEffect(() => {
+    if (quote?.currency !== "USD") return;
+    fetch("/api/quote?symbol=JPY%3DX")
+      .then((r) => r.json())
+      .then((j) => {
+        const rate = j.quote?.regularMarketPrice as number | undefined;
+        if (rate) setJpyRate(rate);
+      })
+      .catch(() => {});
+  }, [quote?.currency]);
 
   const jpName = getJpName(symbol);
   const name =
@@ -64,11 +90,26 @@ export default function QuoteHeader({ symbol }: { symbol: string }) {
     quote?.shortName ??
     quote?.displayName ??
     symbol;
-  const price = quote?.regularMarketPrice;
-  const change = quote?.regularMarketChange;
+
+  const price     = quote?.regularMarketPrice;
+  const change    = quote?.regularMarketChange;
   const changePct = quote?.regularMarketChangePercent;
-  const up = (change ?? 0) >= 0;
-  const Arrow = up ? TrendingUp : TrendingDown;
+  const up        = (change ?? 0) >= 0;
+  const Arrow     = up ? TrendingUp : TrendingDown;
+
+  const isUsd     = quote?.currency === "USD";
+  const canToggle = isUsd && jpyRate != null;
+
+  // 表示用の価格・通貨
+  const dispPrice    = canToggle && showJpy && price != null ? price * jpyRate! : price;
+  const dispCurrency = canToggle && showJpy ? "JPY" : quote?.currency;
+
+  // stat 値のフォーマット (JPYモード時は円換算)
+  const fmtStat = (v: number | undefined) => {
+    if (v == null) return "—";
+    if (canToggle && showJpy) return fmtJpy(v * jpyRate!);
+    return formatNumber(v);
+  };
 
   return (
     <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
@@ -122,41 +163,77 @@ export default function QuoteHeader({ symbol }: { symbol: string }) {
           )}
           {error && <div className="text-sm text-rose-500">{error}</div>}
           {!loading && !error && quote && (
-            <div className="flex flex-wrap items-end gap-4">
-              <div className="font-mono font-bold tracking-tight tabular-nums">
-                <span className="text-4xl md:text-5xl">
-                  {formatNumber(price)}
-                </span>
-                <span className="ml-2 text-base text-slate-500 font-medium">
-                  {quote.currency}
-                </span>
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-end gap-3">
+                {/* メイン価格 */}
+                <div className="font-mono font-bold tracking-tight tabular-nums">
+                  <span className="text-4xl md:text-5xl">
+                    {canToggle && showJpy && dispPrice != null
+                      ? fmtJpy(dispPrice)
+                      : formatNumber(dispPrice)}
+                  </span>
+                  {!(canToggle && showJpy) && (
+                    <span className="ml-2 text-base text-slate-500 font-medium">
+                      {dispCurrency}
+                    </span>
+                  )}
+                </div>
+
+                {/* 騰落 */}
+                <div
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono font-semibold tabular-nums ${
+                    up
+                      ? "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300"
+                      : "bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300"
+                  }`}
+                >
+                  <Arrow className="w-4 h-4" />
+                  {canToggle && showJpy && change != null
+                    ? fmtJpy(Math.abs(change) * jpyRate!)
+                    : formatNumber(Math.abs(change ?? 0))}{" "}
+                  ({formatNumber(Math.abs(changePct ?? 0))}%)
+                </div>
+
+                {/* USD ⇄ JPY トグル */}
+                {canToggle && (
+                  <button
+                    onClick={() => setShowJpy((v) => !v)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border transition-all shadow-sm ${
+                      showJpy
+                        ? "bg-gradient-to-r from-red-500 to-rose-500 text-white border-red-400 shadow-red-200 dark:shadow-red-900/30"
+                        : "bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:border-red-400 hover:text-red-500"
+                    }`}
+                  >
+                    <span>{showJpy ? "🇯🇵" : "🇺🇸"}</span>
+                    <span>{showJpy ? "円表示中" : "円換算"}</span>
+                    <span className="opacity-60">⇄</span>
+                  </button>
+                )}
               </div>
-              <div
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg font-mono font-semibold tabular-nums ${
-                  up
-                    ? "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300"
-                    : "bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300"
-                }`}
-              >
-                <Arrow className="w-4 h-4" />
-                {formatNumber(Math.abs(change ?? 0))} (
-                {formatNumber(Math.abs(changePct ?? 0))}%)
-              </div>
+
+              {/* JPY換算レート表示 */}
+              {canToggle && (
+                <div className="text-xs text-slate-400 font-mono">
+                  {showJpy
+                    ? `1 USD = ¥${jpyRate!.toFixed(2)} · 元値 ${formatNumber(price)} USD`
+                    : `≈ ${price != null ? fmtJpy(price * jpyRate!) : "—"} （1USD=¥${jpyRate!.toFixed(2)}）`}
+                </div>
+              )}
             </div>
           )}
         </div>
 
         {!loading && !error && quote && (
           <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mt-5 text-sm">
-            <Stat label="前日終値" value={formatNumber(quote.regularMarketPreviousClose)} />
-            <Stat label="高値" value={formatNumber(quote.regularMarketDayHigh)} />
-            <Stat label="安値" value={formatNumber(quote.regularMarketDayLow)} />
+            <Stat label={`前日終値${canToggle && showJpy ? " (円)" : ""}`} value={fmtStat(quote.regularMarketPreviousClose)} />
+            <Stat label={`高値${canToggle && showJpy ? " (円)" : ""}`}     value={fmtStat(quote.regularMarketDayHigh)} />
+            <Stat label={`安値${canToggle && showJpy ? " (円)" : ""}`}     value={fmtStat(quote.regularMarketDayLow)} />
             <Stat
               label="出来高"
               value={(quote.regularMarketVolume ?? 0).toLocaleString("ja-JP")}
             />
-            <Stat label="52週高値" value={formatNumber(quote.fiftyTwoWeekHigh)} />
-            <Stat label="52週安値" value={formatNumber(quote.fiftyTwoWeekLow)} />
+            <Stat label={`52週高値${canToggle && showJpy ? " (円)" : ""}`} value={fmtStat(quote.fiftyTwoWeekHigh)} />
+            <Stat label={`52週安値${canToggle && showJpy ? " (円)" : ""}`} value={fmtStat(quote.fiftyTwoWeekLow)} />
           </div>
         )}
       </div>

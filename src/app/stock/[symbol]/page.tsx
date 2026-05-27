@@ -12,6 +12,8 @@ import HoldersCard from "@/components/HoldersCard";
 import NewsCard from "@/components/NewsCard";
 import PeerStocks from "@/components/PeerStocks";
 import RecentViewedTracker from "@/components/RecentViewedTracker";
+import BuySellSentiment from "@/components/BuySellSentiment";
+import AIAnalysis from "@/components/AIAnalysis";
 
 export default async function StockPage({
   params,
@@ -22,7 +24,7 @@ export default async function StockPage({
   const symbol = decodeURIComponent(raw);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3.5 sm:space-y-4">
       <RecentViewedTracker symbol={symbol} />
       <div className="flex items-center gap-3">
         <Link
@@ -38,6 +40,8 @@ export default async function StockPage({
       </div>
 
       <QuoteHeader symbol={symbol} />
+      <BuySellSentiment symbol={symbol} />
+      <AIAnalysis symbol={symbol} />
       <PriceChart symbol={symbol} />
       <AnalystRecommendations symbol={symbol} />
       <EarningsCard symbol={symbol} />
