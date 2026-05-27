@@ -352,7 +352,6 @@ export const STOCKS_CATALOG: CatalogStock[] = [
   { symbol: "3407.T", market: "JP", name: "旭化成", aliases: ["Asahi Kasei"], sector: "materials" },
   { symbol: "4901.T", market: "JP", name: "富士フイルムホールディングス", aliases: ["Fujifilm", "富士フイルム"], sector: "materials" },
   { symbol: "5201.T", market: "JP", name: "AGC", aliases: ["旭硝子"], sector: "materials" },
-  { symbol: "4452.T", market: "JP", name: "花王", aliases: ["Kao"], sector: "consumer-staples" },
   { symbol: "5411.T", market: "JP", name: "JFEホールディングス", aliases: ["JFE"], sector: "materials" },
   { symbol: "5802.T", market: "JP", name: "住友電気工業", aliases: ["Sumitomo Electric"], sector: "industrials" },
 
