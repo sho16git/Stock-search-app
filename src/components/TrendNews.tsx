@@ -1,0 +1,189 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Newspaper, RefreshCw, BookOpen, ChevronUp } from "lucide-react";
+import ArticleBody from "./ArticleBody";
+
+type News = {
+  uuid: string;
+  title: string;
+  titleJa: string | null;
+  publisher: string | null;
+  link: string | null;
+  region: "US" | "JP";
+  publishedAt: string | null;
+  thumbnail: string | null;
+};
+
+function relativeTime(iso: string | null): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  const diff = Date.now() - d.getTime();
+  const min = Math.floor(diff / 60_000);
+  if (min < 1) return "今";
+  if (min < 60) return `${min}分前`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}時間前`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}日前`;
+  return d.toLocaleDateString("ja-JP", {
+    year: "2-digit",
+    month: "2-digit",
+    day: "2-digit",
+  });
+}
+
+export default function TrendNews() {
+  const [items, setItems] = useState<News[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const load = () => {
+    setLoading(true);
+    fetch("/api/trend-news")
+      .then((r) => r.json())
+      .then((j) => setItems(j.items ?? null))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const toggle = (uuid: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(uuid)) next.delete(uuid);
+      else next.add(uuid);
+      return next;
+    });
+  };
+
+  return (
+    <section>
+      <div className="flex items-end justify-between mb-3">
+        <div>
+          <h2 className="text-base font-bold tracking-tight flex items-center gap-1.5">
+            <Newspaper className="w-4 h-4 text-blue-500" />
+            トレンドニュース
+          </h2>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            日米市場のヘッドライン (日本語訳)
+          </p>
+        </div>
+        <button
+          onClick={load}
+          disabled={loading}
+          className="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+          更新
+        </button>
+      </div>
+
+      {loading && !items ? (
+        <div className="space-y-2">
+          {Array(4)
+            .fill(null)
+            .map((_, i) => (
+              <div
+                key={i}
+                className="h-20 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 animate-pulse"
+              />
+            ))}
+        </div>
+      ) : !items || items.length === 0 ? (
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 text-center text-sm text-slate-500">
+          ニュースが取得できませんでした
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {items.slice(0, 6).map((n) => {
+            const title = n.titleJa ?? n.title;
+            const isExpanded = expanded.has(n.uuid);
+            return (
+              <div
+                key={n.uuid}
+                className={`p-3 rounded-xl border bg-white dark:bg-slate-900 transition-all ${
+                  isExpanded
+                    ? "border-blue-300 dark:border-blue-700 shadow-md"
+                    : "border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700"
+                }`}
+              >
+                <button
+                  onClick={() => n.link && toggle(n.uuid)}
+                  disabled={!n.link}
+                  className="flex gap-3 text-left w-full group disabled:cursor-default"
+                >
+                  {n.thumbnail && (
+                    <div className="shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={n.thumbnail}
+                        alt=""
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                          n.region === "JP"
+                            ? "bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
+                            : "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
+                        }`}
+                      >
+                        {n.region === "JP" ? "🇯🇵 JP" : "🇺🇸 US"}
+                      </span>
+                      {n.titleJa && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
+                          翻訳
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm font-medium leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 line-clamp-2">
+                      {title}
+                    </div>
+                    <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500">
+                      <span className="font-medium truncate">
+                        {n.publisher ?? "—"}
+                      </span>
+                      <span>·</span>
+                      <span>{relativeTime(n.publishedAt)}</span>
+                    </div>
+                  </div>
+                </button>
+                {n.link && (
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    <button
+                      onClick={() => toggle(n.uuid)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                    >
+                      {isExpanded ? (
+                        <>
+                          <ChevronUp className="w-3 h-3" />
+                          閉じる
+                        </>
+                      ) : (
+                        <>
+                          <BookOpen className="w-3 h-3" />
+                          記事を読む
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+                {isExpanded && n.link && <ArticleBody link={n.link} />}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}

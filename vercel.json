@@ -1,0 +1,20 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "src/app/api/article/route.ts": { "maxDuration": 60 },
+    "src/app/api/news/route.ts": { "maxDuration": 30 },
+    "src/app/api/profile/route.ts": { "maxDuration": 30 },
+    "src/app/api/trend-news/route.ts": { "maxDuration": 30 },
+    "src/app/api/screener/route.ts": { "maxDuration": 30 },
+    "src/app/api/sector-ranking/route.ts": { "maxDuration": 30 },
+    "src/app/api/movers-jp/route.ts": { "maxDuration": 30 }
+  },
+  "headers": [
+    {
+      "source": "/manifest.webmanifest",
+      "headers": [
+        { "key": "Content-Type", "value": "application/manifest+json" }
+      ]
+    }
+  ]
+}
