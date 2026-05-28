@@ -224,17 +224,40 @@ export default function QuoteHeader({ symbol }: { symbol: string }) {
         </div>
 
         {!loading && !error && quote && (
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mt-5 text-sm">
-            <Stat label={`前日終値${canToggle && showJpy ? " (円)" : ""}`} value={fmtStat(quote.regularMarketPreviousClose)} />
-            <Stat label={`高値${canToggle && showJpy ? " (円)" : ""}`}     value={fmtStat(quote.regularMarketDayHigh)} />
-            <Stat label={`安値${canToggle && showJpy ? " (円)" : ""}`}     value={fmtStat(quote.regularMarketDayLow)} />
-            <Stat
-              label="出来高"
-              value={(quote.regularMarketVolume ?? 0).toLocaleString("ja-JP")}
-            />
-            <Stat label={`52週高値${canToggle && showJpy ? " (円)" : ""}`} value={fmtStat(quote.fiftyTwoWeekHigh)} />
-            <Stat label={`52週安値${canToggle && showJpy ? " (円)" : ""}`} value={fmtStat(quote.fiftyTwoWeekLow)} />
-          </div>
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-2 mt-5 text-sm">
+              <Stat label={`前日終値${canToggle && showJpy ? " (円)" : ""}`} value={fmtStat(quote.regularMarketPreviousClose)} />
+              <Stat label={`高値${canToggle && showJpy ? " (円)" : ""}`}     value={fmtStat(quote.regularMarketDayHigh)} />
+              <Stat label={`安値${canToggle && showJpy ? " (円)" : ""}`}     value={fmtStat(quote.regularMarketDayLow)} />
+              <Stat
+                label="出来高"
+                value={(quote.regularMarketVolume ?? 0).toLocaleString("ja-JP")}
+              />
+              <Stat label={`52週高値${canToggle && showJpy ? " (円)" : ""}`} value={fmtStat(quote.fiftyTwoWeekHigh)} />
+              <Stat label={`52週安値${canToggle && showJpy ? " (円)" : ""}`} value={fmtStat(quote.fiftyTwoWeekLow)} />
+            </div>
+
+            {/* 購入金額シミュレーション */}
+            <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/60">
+              <div className="text-[10px] uppercase tracking-wider text-slate-400 mb-1.5">購入金額シミュレーション（税引前概算）</div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {[1, 100, 500, 1000].map(shares => {
+                  const amt = price != null ? price * shares : null;
+                  const dispAmt = (canToggle && showJpy && amt != null) ? fmtJpy(amt * jpyRate!) : (amt != null ? formatNumber(amt) : "—");
+                  const isHighlight = shares === 100;
+                  return (
+                    <div key={shares} className={`px-2.5 py-1.5 rounded-lg border text-center ${isHighlight ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800" : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700"}`}>
+                      <div className="text-[10px] text-slate-500">{shares.toLocaleString("ja-JP")}株</div>
+                      <div className={`font-mono font-bold text-sm tabular-nums ${isHighlight ? "text-blue-700 dark:text-blue-300" : "text-slate-800 dark:text-slate-200"}`}>
+                        {dispAmt}
+                      </div>
+                      {!(canToggle && showJpy) && <div className="text-[9px] text-slate-400">{quote.currency}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

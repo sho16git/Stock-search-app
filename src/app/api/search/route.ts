@@ -51,13 +51,39 @@ export async function GET(req: NextRequest) {
   if (JP_TEXT.test(q)) {
     const jpResults = searchJpStocks(q, 10);
     const usResults = searchUsStocks(q, 6);
-    // Merge: JP first, then US (deduplicated)
-    const seen = new Set(jpResults.map((r) => r.symbol));
-    const usExtras = usResults.filter((r) => !seen.has(r.symbol));
+    const seen = new Set([...jpResults, ...usResults].map(r => r.symbol));
+
+    // Try Yahoo Finance as fallback for better coverage
+    let yahooExtra: Result[] = [];
+    if (jpResults.length + usResults.length < 8) {
+      try {
+        const yData = await yahooFinance.search(q, { quotesCount: 6, newsCount: 0 }).catch(() => ({ quotes: [] as unknown[] }));
+        yahooExtra = (yData.quotes ?? [])
+          .filter((it): it is typeof it & { symbol: string } =>
+            typeof it === "object" && it !== null && "symbol" in it && !seen.has((it as { symbol: string }).symbol)
+          )
+          .map((it) => {
+            const o = it as Record<string, unknown>;
+            const sym = String(o.symbol ?? "");
+            seen.add(sym);
+            return {
+              symbol: sym,
+              shortname: typeof o.shortname === "string" ? o.shortname : undefined,
+              longname: typeof o.longname === "string" ? o.longname : undefined,
+              exchange: typeof o.exchange === "string" ? o.exchange : undefined,
+              quoteType: typeof o.quoteType === "string" ? o.quoteType : undefined,
+              typeDisp: typeof o.typeDisp === "string" ? o.typeDisp : undefined,
+            };
+          });
+      } catch { /* ignore */ }
+    }
+
     const merged = [
       ...jpResults.map(jpStockToResult),
-      ...usExtras.map(usStockToResult),
+      ...usResults.map(usStockToResult),
+      ...yahooExtra,
     ].slice(0, 14);
+
     return NextResponse.json({
       results: merged,
       source: "local",

@@ -7,14 +7,20 @@ export const dynamic = "force-dynamic";
 type Interval = "1m" | "5m" | "15m" | "30m" | "60m" | "1h" | "1d" | "1wk" | "1mo";
 
 const RANGES: Record<string, { period: number; interval: Interval; intraday?: boolean }> = {
-  "1d":  { period: 2,        interval: "5m",  intraday: true  },
-  "5d":  { period: 5,        interval: "30m", intraday: true  },
-  "1mo": { period: 30,       interval: "1d"  },
-  "3mo": { period: 90,       interval: "1d"  },
-  "6mo": { period: 180,      interval: "1d"  },
-  "1y":  { period: 365,      interval: "1d"  },
-  "5y":  { period: 365 * 5,  interval: "1wk" },
-  "10y": { period: 365 * 10, interval: "1mo" },
+  "1min": { period: 2,        interval: "1m",  intraday: true  }, // 1-minute candles
+  "5min": { period: 2,        interval: "5m",  intraday: true  }, // 5-minute candles
+  "30min":{ period: 5,        interval: "30m", intraday: true  }, // 30-minute candles
+  "1h":   { period: 30,       interval: "60m", intraday: true  }, // 1-hour candles
+  // legacy aliases (keep for MiniChart backward compat)
+  "1d":   { period: 2,        interval: "5m",  intraday: true  },
+  "5d":   { period: 5,        interval: "30m", intraday: true  },
+  // daily+
+  "1mo":  { period: 30,       interval: "1d"  },
+  "3mo":  { period: 90,       interval: "1d"  },
+  "6mo":  { period: 180,      interval: "1d"  },
+  "1y":   { period: 365,      interval: "1d"  },
+  "5y":   { period: 365 * 5,  interval: "1wk" },
+  "10y":  { period: 365 * 10, interval: "1mo" },
 };
 
 export async function GET(req: NextRequest) {

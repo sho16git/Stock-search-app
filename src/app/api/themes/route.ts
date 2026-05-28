@@ -85,7 +85,97 @@ const JP_THEMES: Array<{
     description: "任天堂・ソニー等のゲーム・エンタメ企業",
     symbols: ["7974.T", "6758.T", "9697.T", "7832.T", "9766.T", "9684.T"],
   },
+  {
+    id: "jp-pharma-health",
+    label: "製薬・ヘルスケア",
+    emoji: "💊",
+    description: "日本の大手製薬・医療機器メーカー",
+    symbols: ["4519.T", "4568.T", "4502.T", "4543.T", "7741.T", "6869.T"],
+  },
+  {
+    id: "jp-finance-bank",
+    label: "銀行・金融",
+    emoji: "🏦",
+    description: "メガバンク・保険・証券大手",
+    symbols: ["8306.T", "8316.T", "8411.T", "8766.T", "8591.T", "8697.T"],
+  },
+  {
+    id: "jp-trading-stable",
+    label: "通信・インフラ",
+    emoji: "📡",
+    description: "NTT・KDDI等の安定配当通信株",
+    symbols: ["9432.T", "9433.T", "9434.T", "9984.T", "4689.T", "9613.T"],
+  },
 ];
+
+/* ─── US カスタムテーマ (ハードコード銘柄リスト) ─── */
+const US_CUSTOM_THEMES: Array<{
+  id: string;
+  label: string;
+  emoji: string;
+  description: string;
+  symbols: string[];
+}> = [
+  {
+    id: "us-mega-tech",
+    label: "メガテック",
+    emoji: "💻",
+    description: "FAANG+ 超大型テック株",
+    symbols: ["AAPL", "MSFT", "NVDA", "GOOGL", "META", "AMZN"],
+  },
+  {
+    id: "us-dividend",
+    label: "高配当株",
+    emoji: "💰",
+    description: "安定した高配当の優良株",
+    symbols: ["JNJ", "KO", "PG", "VZ", "T", "XOM"],
+  },
+  {
+    id: "us-ev-clean",
+    label: "EV・クリーンエネルギー",
+    emoji: "⚡",
+    description: "電気自動車・再生エネルギー関連株",
+    symbols: ["TSLA", "RIVN", "NEE", "ENPH", "PLUG", "SEDG"],
+  },
+  {
+    id: "us-ai-cloud",
+    label: "AI・クラウド",
+    emoji: "🤖",
+    description: "AI・クラウド最前線の成長株",
+    symbols: ["NVDA", "MSFT", "PLTR", "SNOW", "DDOG", "NET"],
+  },
+];
+
+/* ─── US カスタムテーマ クォート取得 ─── */
+async function fetchUsCustomQuotes(symbols: string[]) {
+  return Promise.all(
+    symbols.map(async (symbol) => {
+      try {
+        const q = await (yahooFinance as any).quote(symbol);
+        const o = q as Record<string, unknown>;
+        return {
+          symbol,
+          shortName: (o.shortName as string | undefined) ?? null,
+          longName: (o.longName as string | undefined) ?? null,
+          nameJa: null as string | null,
+          price: (o.regularMarketPrice as number | undefined) ?? null,
+          changePercent: (o.regularMarketChangePercent as number | undefined) ?? null,
+          currency: (o.currency as string | undefined) ?? "USD",
+        };
+      } catch {
+        return {
+          symbol,
+          shortName: null,
+          longName: null,
+          nameJa: null,
+          price: null,
+          changePercent: null,
+          currency: "USD",
+        };
+      }
+    }),
+  );
+}
 
 /* ─── 日本株クォート取得 ─── */
 async function fetchJpQuotes(symbols: string[]) {
@@ -137,41 +227,54 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ themes: results });
     }
 
-    /* ─ 米国株テーマを返す (既存) ─ */
-    const results = await Promise.all(
-      US_THEMES.map(async (theme) => {
-        try {
-          const data = await yahooFinance.screener({
-            scrIds: theme.scrId,
-            count: 6,
-          });
-          const base = (data.quotes ?? []).slice(0, 6).map((q) => {
-            const o = q as unknown as Record<string, unknown>;
-            return {
-              symbol: String(o.symbol ?? ""),
-              shortName:
-                (o.shortName as string | undefined) ??
-                (o.longName as string | undefined) ??
-                null,
-              longName: (o.longName as string | undefined) ?? null,
-              price: (o.regularMarketPrice as number | undefined) ?? null,
-              changePercent:
-                (o.regularMarketChangePercent as number | undefined) ?? null,
-              currency: (o.currency as string | undefined) ?? null,
-            };
-          });
+    /* ─ 米国株テーマを返す (スクリーナー + カスタム) ─ */
+    const [screenerResults, customResults] = await Promise.all([
+      Promise.all(
+        US_THEMES.map(async (theme) => {
+          try {
+            const data = await yahooFinance.screener({
+              scrIds: theme.scrId,
+              count: 6,
+            });
+            const base = (data.quotes ?? []).slice(0, 6).map((q) => {
+              const o = q as unknown as Record<string, unknown>;
+              return {
+                symbol: String(o.symbol ?? ""),
+                shortName:
+                  (o.shortName as string | undefined) ??
+                  (o.longName as string | undefined) ??
+                  null,
+                longName: (o.longName as string | undefined) ?? null,
+                price: (o.regularMarketPrice as number | undefined) ?? null,
+                changePercent:
+                  (o.regularMarketChangePercent as number | undefined) ?? null,
+                currency: (o.currency as string | undefined) ?? null,
+              };
+            });
+            const namesJa = await Promise.all(
+              base.map((b) =>
+                getCompanyNameJa(b.symbol, b.longName ?? b.shortName),
+              ),
+            );
+            const quotes = base.map((b, i) => ({ ...b, nameJa: namesJa[i] }));
+            return { ...theme, quotes };
+          } catch {
+            return { ...theme, quotes: [] };
+          }
+        }),
+      ),
+      Promise.all(
+        US_CUSTOM_THEMES.map(async (theme) => {
+          const base = await fetchUsCustomQuotes(theme.symbols);
           const namesJa = await Promise.all(
-            base.map((b) =>
-              getCompanyNameJa(b.symbol, b.longName ?? b.shortName),
-            ),
+            base.map((b) => getCompanyNameJa(b.symbol, b.longName ?? b.shortName)),
           );
           const quotes = base.map((b, i) => ({ ...b, nameJa: namesJa[i] }));
-          return { ...theme, quotes };
-        } catch {
-          return { ...theme, quotes: [] };
-        }
-      }),
-    );
+          return { id: theme.id, label: theme.label, emoji: theme.emoji, description: theme.description, quotes };
+        }),
+      ),
+    ]);
+    const results = [...screenerResults, ...customResults];
     return NextResponse.json({ themes: results });
   } catch (err) {
     console.error("themes error", err);

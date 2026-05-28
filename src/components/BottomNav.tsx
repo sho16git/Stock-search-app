@@ -8,6 +8,7 @@ const ITEMS = [
   { href: "/portfolio", emoji: "💼", label: "保有",      color: "from-emerald-500 to-teal-500"   },
   { href: "/screener",  emoji: "🎯", label: "検索",      color: "from-orange-500 to-amber-500"   },
   { href: "/sectors",   emoji: "📊", label: "セクター",  color: "from-violet-500 to-purple-500"  },
+  { href: "/learn",     emoji: "📚", label: "学習",      color: "from-green-500 to-emerald-500"  },
   { href: "/fx",        emoji: "💱", label: "FX",        color: "from-cyan-500 to-sky-500"       },
   { href: "/watchlist", emoji: "⭐", label: "ウォッチ",  color: "from-pink-500 to-rose-500"      },
 ];
