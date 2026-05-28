@@ -34,13 +34,17 @@ function DividendCell({
   dividendRate,
   currency,
   highlight,
+  jpyRate,
 }: {
   shares: number;
   dividendRate: number;
   currency: string | null;
   highlight?: boolean;
+  jpyRate?: number | null;
 }) {
-  const amount = dividendRate * shares;
+  const amount    = dividendRate * shares;
+  const jpyAmount = jpyRate ? amount * jpyRate : null;
+
   return (
     <div
       className={`p-3 rounded-xl border ${
@@ -49,13 +53,18 @@ function DividendCell({
           : "bg-slate-50 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800/60"
       }`}
     >
-      <div className="text-[10px] uppercase tracking-wider text-slate-500">
+      <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-0.5">
         {shares.toLocaleString("ja-JP")} 株
       </div>
-      <div className="font-mono font-bold text-base mt-0.5 tabular-nums">
+      <div className="font-mono font-bold text-base tabular-nums">
         {formatNumber(amount)}
+        <span className="text-[10px] font-normal text-slate-400 ml-1">{currency ?? ""}</span>
       </div>
-      <div className="text-[10px] text-slate-500">{currency ?? ""}</div>
+      {jpyAmount != null && (
+        <div className="text-[11px] font-mono text-rose-600 dark:text-rose-400 font-semibold mt-0.5">
+          ≈ ¥{Math.round(jpyAmount).toLocaleString("ja-JP")}
+        </div>
+      )}
     </div>
   );
 }
@@ -79,16 +88,15 @@ function daysUntil(iso: string | null): number | null {
 }
 
 export default function EarningsCard({ symbol }: { symbol: string }) {
-  const [data, setData] = useState<Data | null>(null);
+  const [data, setData]       = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
+  const [jpyRate, setJpyRate] = useState<number | null>(null);
 
   useEffect(() => {
     const ctrl = new AbortController();
     setLoading(true);
     setData(null);
-    fetch(`/api/events?symbol=${encodeURIComponent(symbol)}`, {
-      signal: ctrl.signal,
-    })
+    fetch(`/api/events?symbol=${encodeURIComponent(symbol)}`, { signal: ctrl.signal })
       .then((r) => r.json())
       .then((j) => {
         if (!j.error) setData(j);
@@ -97,6 +105,18 @@ export default function EarningsCard({ symbol }: { symbol: string }) {
       .finally(() => setLoading(false));
     return () => ctrl.abort();
   }, [symbol]);
+
+  // USD銘柄のときのみ為替レートを取得
+  useEffect(() => {
+    if (data?.currency !== "USD") return;
+    fetch("/api/quote?symbol=JPY%3DX")
+      .then(r => r.json())
+      .then(j => {
+        const rate = j.quote?.regularMarketPrice as number | undefined;
+        if (rate) setJpyRate(rate);
+      })
+      .catch(() => {});
+  }, [data?.currency]);
 
   if (loading) {
     return (
@@ -203,32 +223,42 @@ export default function EarningsCard({ symbol }: { symbol: string }) {
 
       {data.dividendRate !== null && (
         <div>
-          <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-2">
+          <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
             予想配当金額 (年間 · 税引前)
+            {jpyRate && data.currency === "USD" && (
+              <span className="text-[10px] normal-case text-rose-500 font-normal bg-rose-50 dark:bg-rose-950/30 px-1.5 py-0.5 rounded-full">
+                🇯🇵 円換算付き (1USD=¥{jpyRate.toFixed(2)})
+              </span>
+            )}
           </h3>
           <div className="grid grid-cols-3 gap-2">
-            <DividendCell
-              shares={1}
-              dividendRate={data.dividendRate}
-              currency={data.currency}
-            />
-            <DividendCell
-              shares={100}
-              dividendRate={data.dividendRate}
-              currency={data.currency}
-              highlight
-            />
-            <DividendCell
-              shares={1000}
-              dividendRate={data.dividendRate}
-              currency={data.currency}
-            />
+            <DividendCell shares={1}    dividendRate={data.dividendRate} currency={data.currency} jpyRate={jpyRate} />
+            <DividendCell shares={100}  dividendRate={data.dividendRate} currency={data.currency} jpyRate={jpyRate} highlight />
+            <DividendCell shares={1000} dividendRate={data.dividendRate} currency={data.currency} jpyRate={jpyRate} />
           </div>
+
+          {/* 米株追加情報 */}
+          {data.currency === "USD" && data.fiveYearAvgDividendYield != null && (
+            <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+              <span>5年平均利回り:</span>
+              <span className="font-mono font-semibold text-amber-600 dark:text-amber-400">
+                {formatPercent(data.fiveYearAvgDividendYield)}
+              </span>
+              {data.dividendYield != null && (
+                <>
+                  <span className="text-slate-300 dark:text-slate-600">vs</span>
+                  <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
+                    現在 {formatPercent(data.dividendYield)}
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+
           <p className="text-[10px] text-slate-400 mt-2">
-            ※ 直近予想配当 ({formatNumber(data.dividendRate)} {data.currency})
-            に基づく試算。実際の配当は変動する可能性があります。
-            {data.currency === "JPY" &&
-              " 日本株は100株単位 (単元株) での購入が一般的です。"}
+            ※ 直近予想配当 ({formatNumber(data.dividendRate)} {data.currency}) に基づく試算。実際の配当は変動する可能性があります。
+            {data.currency === "JPY" && " 日本株は100株単位 (単元株) での購入が一般的です。"}
+            {data.currency === "USD" && jpyRate && " 円換算は取得時点の為替レートによります。"}
           </p>
         </div>
       )}

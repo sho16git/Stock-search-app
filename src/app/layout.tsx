@@ -111,6 +111,7 @@ export default function RootLayout({
               <NavLink href="/portfolio" emoji="💼" label="保有"         color="from-emerald-500 to-teal-500"  />
               <NavLink href="/screener"  emoji="🎯" label="検索"         color="from-orange-500 to-amber-500"  />
               <NavLink href="/stocks"    emoji="📚" label="全銘柄"       color="from-blue-500 to-cyan-500"     />
+              <NavLink href="/sectors"   emoji="📊" label="セクター"     color="from-violet-500 to-purple-500" />
               <NavLink href="/fx"        emoji="💱" label="FX"           color="from-cyan-500 to-sky-500"      />
               <NavLink href="/crypto"    emoji="₿"  label="仮想通貨"     color="from-orange-500 to-amber-500"  />
               <NavLink href="/watchlist" emoji="⭐" label="ウォッチ"     color="from-pink-500 to-rose-500"     />

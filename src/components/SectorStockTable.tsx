@@ -21,14 +21,17 @@ type SortKey = "symbol" | "price" | "change" | "changePercent";
 type SortDir = "asc" | "desc";
 
 const INITIAL_LIMIT = 15;
+const COMPACT_LIMIT = 8;
 const PAGE_SIZE = 25;
 
 export default function SectorStockTable({
   stocks,
+  compact = false,
 }: {
   stocks: CatalogStock[];
+  compact?: boolean;
 }) {
-  const [visible, setVisible] = useState(INITIAL_LIMIT);
+  const [visible, setVisible] = useState(compact ? COMPACT_LIMIT : INITIAL_LIMIT);
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
   const [loading, setLoading] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("symbol");
@@ -166,12 +169,12 @@ export default function SectorStockTable({
                   key={s.symbol}
                   className="border-b border-slate-100 dark:border-slate-800/60 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
                 >
-                  <td className="py-3 px-4">
+                  <td className={compact ? "py-2 px-3" : "py-3 px-4"}>
                     <Link
                       href={`/stock/${encodeURIComponent(s.symbol)}`}
                       className="block group"
                     >
-                      <div className="font-mono font-semibold text-blue-600 dark:text-blue-400 group-hover:underline">
+                      <div className={`font-mono font-semibold text-blue-600 dark:text-blue-400 group-hover:underline ${compact ? "text-xs" : ""}`}>
                         {s.symbol}
                       </div>
                       <div className="text-xs text-slate-500 truncate max-w-[240px]">
@@ -179,7 +182,7 @@ export default function SectorStockTable({
                       </div>
                     </Link>
                   </td>
-                  <td className="py-3 px-4 text-right font-mono tabular-nums">
+                  <td className={`${compact ? "py-2 px-3" : "py-3 px-4"} text-right font-mono tabular-nums ${compact ? "text-xs" : ""}`}>
                     {q ? (
                       <>
                         {formatNumber(q.regularMarketPrice)}{" "}
@@ -192,7 +195,7 @@ export default function SectorStockTable({
                     )}
                   </td>
                   <td
-                    className={`py-3 px-4 text-right font-mono tabular-nums ${
+                    className={`${compact ? "py-2 px-3 text-xs" : "py-3 px-4"} text-right font-mono tabular-nums ${
                       q
                         ? up
                           ? "text-emerald-600 dark:text-emerald-400"
@@ -203,7 +206,7 @@ export default function SectorStockTable({
                     {q ? `${up ? "+" : ""}${formatNumber(change)}` : "—"}
                   </td>
                   <td
-                    className={`py-3 px-4 text-right font-mono tabular-nums font-semibold ${
+                    className={`${compact ? "py-2 px-3 text-xs" : "py-3 px-4"} text-right font-mono tabular-nums font-semibold ${
                       q
                         ? up
                           ? "text-emerald-600 dark:text-emerald-400"

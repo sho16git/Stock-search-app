@@ -14,6 +14,7 @@ import PeerStocks from "@/components/PeerStocks";
 import RecentViewedTracker from "@/components/RecentViewedTracker";
 import BuySellSentiment from "@/components/BuySellSentiment";
 import AIAnalysis from "@/components/AIAnalysis";
+import StockGeopoliticalNews from "@/components/StockGeopoliticalNews";
 
 export default async function StockPage({
   params,
@@ -49,6 +50,7 @@ export default async function StockPage({
       <FundamentalsTable symbol={symbol} />
       <HoldersCard symbol={symbol} />
       <NewsCard symbol={symbol} />
+      <StockGeopoliticalNews symbol={symbol} />
       <PeerStocks symbol={symbol} />
       <CompanyProfile symbol={symbol} />
     </div>

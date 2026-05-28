@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Newspaper, BookOpen, ChevronUp } from "lucide-react";
 import ArticleBody from "./ArticleBody";
 
@@ -130,6 +131,20 @@ export default function NewsCard({ symbol }: { symbol: string }) {
                     <span>·</span>
                     <span>{relativeTime(n.publishedAt)}</span>
                   </div>
+                  {n.relatedTickers.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {n.relatedTickers.filter(t => t !== symbol).slice(0, 6).map((ticker) => (
+                        <Link
+                          key={ticker}
+                          href={`/stock/${encodeURIComponent(ticker)}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-blue-50 dark:hover:bg-blue-950/60 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200 dark:border-slate-700 transition-colors"
+                        >
+                          {ticker}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                   {n.link && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       <button

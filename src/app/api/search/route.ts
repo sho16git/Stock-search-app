@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import yahooFinance from "@/lib/yfinance";
-import { searchJpStocks, type JpStock } from "@/lib/jp-stocks";
+import { searchJpStocks, searchUsStocks, type JpStock } from "@/lib/jp-stocks";
+import { getUsKatakana } from "@/lib/us-katakana";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,17 +29,37 @@ function jpStockToResult(s: JpStock): Result {
   };
 }
 
+function usStockToResult(s: JpStock): Result {
+  const katakana = getUsKatakana(s.symbol);
+  return {
+    symbol: s.symbol,
+    longname: katakana ?? s.name,
+    jpName: katakana ?? undefined,
+    exchange: "NYSE",
+    quoteType: "EQUITY",
+    typeDisp: "Equity",
+  };
+}
+
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q")?.trim();
   if (!q) {
     return NextResponse.json({ results: [] });
   }
 
-  // Japanese query → search local index only (Yahoo rejects JP text)
+  // Japanese query → search local JP index + US katakana (Yahoo rejects JP text)
   if (JP_TEXT.test(q)) {
-    const local = searchJpStocks(q, 12);
+    const jpResults = searchJpStocks(q, 10);
+    const usResults = searchUsStocks(q, 6);
+    // Merge: JP first, then US (deduplicated)
+    const seen = new Set(jpResults.map((r) => r.symbol));
+    const usExtras = usResults.filter((r) => !seen.has(r.symbol));
+    const merged = [
+      ...jpResults.map(jpStockToResult),
+      ...usExtras.map(usStockToResult),
+    ].slice(0, 14);
     return NextResponse.json({
-      results: local.map(jpStockToResult),
+      results: merged,
       source: "local",
     });
   }

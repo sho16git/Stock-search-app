@@ -8,6 +8,7 @@ import RecentViewed from "@/components/RecentViewed";
 import InvestmentThemes from "@/components/InvestmentThemes";
 import PortfolioHero from "@/components/PortfolioHero";
 import TrendNews from "@/components/TrendNews";
+import GeopoliticalNews from "@/components/GeopoliticalNews";
 
 export default function Home() {
   return (
@@ -21,7 +22,7 @@ export default function Home() {
             <QuickLink href="/stocks"    icon={<Library   className="w-3.5 h-3.5" />} color="from-blue-500 to-cyan-500">全銘柄</QuickLink>
             <QuickLink href="/screener"  icon={<Filter    className="w-3.5 h-3.5" />} color="from-orange-500 to-amber-500">スクリーナー</QuickLink>
             <QuickLink href="/watchlist" icon={<Star      className="w-3.5 h-3.5" />} color="from-pink-500 to-rose-500">ウォッチリスト</QuickLink>
-            <QuickLink href="/sector/information-technology" icon={<TrendingUp className="w-3.5 h-3.5" />} color="from-violet-500 to-purple-500">セクター</QuickLink>
+            <QuickLink href="/sectors" icon={<TrendingUp className="w-3.5 h-3.5" />} color="from-violet-500 to-purple-500">セクター</QuickLink>
           </div>
         </div>
       </section>
@@ -44,6 +45,9 @@ export default function Home() {
         <SectorHeatmap />
         <InvestmentThemes />
       </div>
+
+      {/* ── Geopolitical / Macro News ── */}
+      <GeopoliticalNews />
     </div>
   );
 }

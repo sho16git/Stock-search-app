@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import yahooFinance from "@/lib/yfinance";
 import { getCompanyNameJa } from "@/lib/translate-name";
 
@@ -6,7 +6,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 300;
 
-const THEMES: Array<{
+/* ─── US テーマ (Yahoo Finance スクリーナー) ─── */
+const US_THEMES: Array<{
   id: string;
   scrId:
     | "undervalued_large_caps"
@@ -48,10 +49,97 @@ const THEMES: Array<{
   },
 ];
 
-export async function GET() {
+/* ─── 日本株テーマ (キュレーション) ─── */
+const JP_THEMES: Array<{
+  id: string;
+  label: string;
+  emoji: string;
+  description: string;
+  symbols: string[];
+}> = [
+  {
+    id: "jp-semiconductor",
+    label: "AI・半導体",
+    emoji: "🔬",
+    description: "日本の半導体・電子部品メーカー",
+    symbols: ["8035.T", "6920.T", "6857.T", "6861.T", "6723.T", "6963.T"],
+  },
+  {
+    id: "jp-high-dividend",
+    label: "高配当・商社",
+    emoji: "💰",
+    description: "安定した高配当を誇る大手商社・金融株",
+    symbols: ["8058.T", "8031.T", "8316.T", "8306.T", "9432.T", "8591.T"],
+  },
+  {
+    id: "jp-automotive",
+    label: "自動車・製造業",
+    emoji: "🚗",
+    description: "トヨタ等の自動車・重工業・ロボット大手",
+    symbols: ["7203.T", "7267.T", "7011.T", "6301.T", "6954.T", "6367.T"],
+  },
+  {
+    id: "jp-game-entertainment",
+    label: "ゲーム・エンタメ",
+    emoji: "🎮",
+    description: "任天堂・ソニー等のゲーム・エンタメ企業",
+    symbols: ["7974.T", "6758.T", "9697.T", "7832.T", "9766.T", "9684.T"],
+  },
+];
+
+/* ─── 日本株クォート取得 ─── */
+async function fetchJpQuotes(symbols: string[]) {
+  return Promise.all(
+    symbols.map(async (symbol) => {
+      try {
+        const q = await (yahooFinance as any).quote(symbol);
+        const o = q as Record<string, unknown>;
+        return {
+          symbol,
+          shortName: (o.shortName as string | undefined) ?? null,
+          longName: (o.longName as string | undefined) ?? null,
+          nameJa: null as string | null,
+          price: (o.regularMarketPrice as number | undefined) ?? null,
+          changePercent: (o.regularMarketChangePercent as number | undefined) ?? null,
+          currency: (o.currency as string | undefined) ?? null,
+        };
+      } catch {
+        return {
+          symbol,
+          shortName: null,
+          longName: null,
+          nameJa: null,
+          price: null,
+          changePercent: null,
+          currency: "JPY",
+        };
+      }
+    }),
+  );
+}
+
+export async function GET(req: NextRequest) {
+  const market = req.nextUrl.searchParams.get("market") ?? "US";
+
   try {
+    if (market === "JP") {
+      /* ─ 日本株テーマを返す ─ */
+      const results = await Promise.all(
+        JP_THEMES.map(async (theme) => {
+          const base = await fetchJpQuotes(theme.symbols);
+          const namesJa = await Promise.all(
+            base.map((b) => getCompanyNameJa(b.symbol, b.longName ?? b.shortName)),
+          );
+          const quotes = base.map((b, i) => ({ ...b, nameJa: namesJa[i] }));
+          return { id: theme.id, label: theme.label, emoji: theme.emoji, description: theme.description, quotes };
+        }),
+      );
+      return NextResponse.json({ themes: results });
+    }
+
+    /* ─ 米国株テーマを返す (既存) ─ */
     const results = await Promise.all(
-      THEMES.map(async (theme) => {
+      US_THEMES.map(async (theme) => {
         try {
           const data = await yahooFinance.screener({
             scrIds: theme.scrId,

@@ -3,13 +3,15 @@
 import { useEffect, useState } from "react";
 
 type Analysis = {
-  summary:        string;
-  bullPoints:     string[];
-  bearPoints:     string[];
-  riskLevel:      "low" | "medium" | "high";
-  recommendation: string;
-  oneliner:       string;
-  source:         "claude" | "rule-based";
+  summary:            string;
+  bullPoints:         string[];
+  bearPoints:         string[];
+  riskLevel:          "low" | "medium" | "high";
+  recommendation:     string;
+  oneliner:           string;
+  valuationComment?:  string;
+  technicalComment?:  string;
+  source:             "claude" | "rule-based";
 };
 
 const REC_STYLE: Record<string, { bg: string; text: string; border: string }> = {
@@ -104,13 +106,16 @@ export default function AIAnalysis({ symbol }: { symbol: string }) {
 
           {data && !loading && (
             <div className="px-4 py-4 space-y-4">
-              {/* One-liner badge + risk */}
+              {/* One-liner + risk badge */}
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`text-sm font-black px-4 py-1.5 rounded-full text-white bg-gradient-to-r ${style!.bg} shadow-md`}>
                   {data.oneliner}
                 </span>
                 <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${RISK_BADGE[data.riskLevel]}`}>
                   {RISK_LABEL[data.riskLevel]}
+                </span>
+                <span className="text-[10px] text-slate-400 ml-auto">
+                  {data.source === "claude" ? "🤖 Claude AI" : "📊 定量分析"}
                 </span>
               </div>
 
@@ -119,31 +124,51 @@ export default function AIAnalysis({ symbol }: { symbol: string }) {
                 {data.summary}
               </p>
 
-              {/* Bull / Bear */}
+              {/* Bull / Bear — 最大5項目 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
-                    <span>🟢</span> 強み・ポジティブ
+                  <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1 mb-1">
+                    🟢 強み・ポジティブ要因
                   </div>
                   {data.bullPoints.map((p, i) => (
-                    <div key={i} className="text-xs text-slate-700 dark:text-slate-300 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg px-3 py-2 border border-emerald-100 dark:border-emerald-900/30">
-                      ✓ {p}
+                    <div key={i} className="text-xs text-slate-700 dark:text-slate-300 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg px-3 py-2 border border-emerald-100 dark:border-emerald-900/30 flex gap-2">
+                      <span className="text-emerald-500 shrink-0 font-bold">✓</span>
+                      <span>{p}</span>
                     </div>
                   ))}
                 </div>
                 <div className="space-y-1.5">
-                  <div className="text-xs font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1">
-                    <span>🔴</span> リスク・懸念点
+                  <div className="text-xs font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1 mb-1">
+                    🔴 リスク・懸念点
                   </div>
                   {data.bearPoints.map((p, i) => (
-                    <div key={i} className="text-xs text-slate-700 dark:text-slate-300 bg-rose-50 dark:bg-rose-950/20 rounded-lg px-3 py-2 border border-rose-100 dark:border-rose-900/30">
-                      ⚠ {p}
+                    <div key={i} className="text-xs text-slate-700 dark:text-slate-300 bg-rose-50 dark:bg-rose-950/20 rounded-lg px-3 py-2 border border-rose-100 dark:border-rose-900/30 flex gap-2">
+                      <span className="text-rose-500 shrink-0 font-bold">⚠</span>
+                      <span>{p}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="text-[10px] text-slate-400 text-right pt-1">
+              {/* バリュエーション & テクニカル */}
+              {(data.valuationComment || data.technicalComment) && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {data.valuationComment && (
+                    <div className="rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 px-3 py-2.5">
+                      <div className="text-[10px] font-bold text-blue-600 dark:text-blue-400 mb-1">📊 バリュエーション</div>
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">{data.valuationComment}</p>
+                    </div>
+                  )}
+                  {data.technicalComment && (
+                    <div className="rounded-xl bg-violet-50 dark:bg-violet-950/20 border border-violet-100 dark:border-violet-900/30 px-3 py-2.5">
+                      <div className="text-[10px] font-bold text-violet-600 dark:text-violet-400 mb-1">📈 テクニカル</div>
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">{data.technicalComment}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="text-[10px] text-slate-400 text-right pt-1 border-t border-slate-100 dark:border-slate-800">
                 ※ 投資判断は自己責任でお願いします。本分析は参考情報です。
               </div>
             </div>
