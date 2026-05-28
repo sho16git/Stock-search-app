@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ComposedChart, Line, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, CartesianGrid, ReferenceLine, Customized,
+  ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from "recharts";
 import { LayoutGrid, BarChart2, Settings } from "lucide-react";
 
@@ -96,46 +96,135 @@ function savePanelKeys(keys: RangeKey[]) {
   } catch { /* ignore */ }
 }
 
-/* ─── Candlestick Layer ─── */
-function CandlestickLayer(props: Record<string, unknown>) {
-  const xAxisMap = props.xAxisMap as Record<number, { scale: ((v: unknown) => number) & { bandwidth?: () => number } }> | undefined;
-  const yAxisMap = props.yAxisMap as Record<number, { scale: (v: number) => number }> | undefined;
-  const chartData = props.data as Point[] | undefined;
+/* ─── Candlestick Canvas (pure SVG, no recharts internals) ─── */
+function CandlestickCanvas({ data, width, height, currency, fmt }: {
+  data: Point[];
+  width: number;
+  height: number;
+  currency?: string | null;
+  fmt: (v: number) => string;
+}) {
+  if (width <= 0 || data.length === 0) return null;
 
-  const xAxis = xAxisMap?.[0];
-  const yAxis = yAxisMap?.[0];
-  if (!xAxis?.scale || !yAxis?.scale || !chartData?.length) return null;
+  const margin = { top: 8, right: 16, left: 72, bottom: 28 };
+  const plotW = Math.max(width - margin.left - margin.right, 1);
+  const plotH = Math.max(height - margin.top - margin.bottom, 1);
 
-  const xScale = xAxis.scale;
-  const yScale = yAxis.scale;
-  const bw = typeof xScale.bandwidth === "function" ? xScale.bandwidth() : 8;
-  const bodyW = Math.max(bw * 0.65, 2);
+  // Domain
+  const allVals: number[] = [];
+  for (const d of data) {
+    allVals.push(d.close);
+    if (d.high != null) allVals.push(d.high);
+    if (d.low != null)  allVals.push(d.low);
+  }
+  const domMin = Math.min(...allVals);
+  const domMax = Math.max(...allVals);
+  const pad    = (domMax - domMin) * 0.1 || domMax * 0.02;
+  const vMin   = domMin - pad;
+  const vMax   = domMax + pad;
+  const vRange = vMax - vMin || 1;
+
+  const xOf  = (i: number) => margin.left + (i + 0.5) * (plotW / data.length);
+  const yOf  = (v: number) => margin.top + plotH - ((v - vMin) / vRange) * plotH;
+  const cndW = Math.max((plotW / data.length) * 0.7, 2);
+
+  // Y-axis ticks (5 evenly spaced)
+  const Y_TICKS = 5;
+  const yTicks = Array.from({ length: Y_TICKS }, (_, i) =>
+    vMin + (i / (Y_TICKS - 1)) * vRange
+  );
+
+  // X-axis ticks (evenly spaced, ~1 per 70px)
+  const xTickCount = Math.max(2, Math.min(Math.floor(plotW / 70), data.length));
+  const xTickIdxs  = Array.from({ length: xTickCount }, (_, i) =>
+    Math.round((i / (xTickCount - 1)) * (data.length - 1))
+  );
+
+  // Tooltip state — handled externally, skip for simplicity
 
   return (
-    <g>
-      {chartData.map((d, i) => {
-        if (d.open == null || d.high == null || d.low == null) return null;
-        const cx  = (xScale(d.date) ?? 0) + bw / 2;
-        const yH  = yScale(d.high);
-        const yL  = yScale(d.low);
-        const yO  = yScale(d.open);
-        const yC  = yScale(d.close);
+    <svg width={width} height={height} style={{ overflow: "visible" }}>
+      {/* grid lines */}
+      {yTicks.map((v, i) => {
+        const y = yOf(v);
+        return (
+          <line key={i}
+            x1={margin.left} y1={y} x2={margin.left + plotW} y2={y}
+            stroke="#e5e7eb" strokeDasharray="3 3" strokeWidth={1} opacity={0.6}
+          />
+        );
+      })}
+
+      {/* Y-axis labels */}
+      {yTicks.map((v, i) => (
+        <text key={i}
+          x={margin.left - 5} y={yOf(v)}
+          textAnchor="end" dominantBaseline="middle"
+          fontSize={11} fill="#94a3b8"
+        >
+          {fmt(v)}
+        </text>
+      ))}
+
+      {/* X-axis labels */}
+      {xTickIdxs.map(idx => {
+        if (idx >= data.length) return null;
+        const d = new Date(data[idx].date);
+        const label = `${d.getMonth() + 1}/${d.getDate()}`;
+        return (
+          <text key={idx}
+            x={xOf(idx)} y={margin.top + plotH + 16}
+            textAnchor="middle" fontSize={11} fill="#94a3b8"
+          >
+            {label}
+          </text>
+        );
+      })}
+
+      {/* Start-price reference line */}
+      {data.length > 0 && (() => {
+        const y = yOf(data[0].close);
+        return (
+          <>
+            <line
+              x1={margin.left} y1={y} x2={margin.left + plotW} y2={y}
+              stroke="#94a3b8" strokeDasharray="4 3" strokeWidth={1}
+            />
+            <text x={margin.left + plotW - 2} y={y - 3} textAnchor="end" fontSize={9} fill="#94a3b8">
+              始値
+            </text>
+          </>
+        );
+      })()}
+
+      {/* Candlesticks */}
+      {data.map((d, i) => {
+        const cx = xOf(i);
+        if (d.open == null || d.high == null || d.low == null) {
+          return <circle key={i} cx={cx} cy={yOf(d.close)} r={1} fill="#94a3b8" />;
+        }
+        const yH   = yOf(d.high);
+        const yL   = yOf(d.low);
+        const yO   = yOf(d.open);
+        const yC   = yOf(d.close);
         const isUp = d.close >= d.open;
         const col  = isUp ? "#10b981" : "#ef4444";
         const bTop = Math.min(yO, yC);
         const bH   = Math.max(Math.abs(yC - yO), 1);
         return (
           <g key={i}>
-            <line x1={cx} y1={yH} x2={cx} y2={yL} stroke={col} strokeWidth={1.5} />
+            {/* Wick */}
+            <line x1={cx} y1={yH} x2={cx} y2={yL} stroke={col} strokeWidth={1} />
+            {/* Body */}
             <rect
-              x={cx - bodyW / 2} y={bTop} width={bodyW} height={bH}
+              x={cx - cndW / 2} y={bTop} width={cndW} height={bH}
               fill={isUp ? col : "transparent"}
-              stroke={col} strokeWidth={1.5}
+              stroke={col} strokeWidth={1}
             />
           </g>
         );
       })}
-    </g>
+    </svg>
   );
 }
 
@@ -238,10 +327,23 @@ export default function PriceChart({ symbol, currency }: { symbol: string; curre
   const [enabledSma,     setEnabledSma]    = useState<Set<SmaId>>(new Set(["sma50", "sma200"]));
   const [panelKeys,      setPanelKeys]     = useState<RangeKey[]>(DEFAULT_PANEL_KEYS);
   const [showPanelPicker,setShowPanelPicker] = useState(false);
+  const [canvasWidth,    setCanvasWidth]   = useState(0);
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   // Load panel keys from localStorage on mount
   useEffect(() => {
     setPanelKeys(loadPanelKeys());
+  }, []);
+
+  // Track container width for CandlestickCanvas
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const obs = new ResizeObserver(entries => {
+      setCanvasWidth(entries[0]?.contentRect.width ?? 0);
+    });
+    obs.observe(canvasRef.current);
+    setCanvasWidth(canvasRef.current.offsetWidth);
+    return () => obs.disconnect();
   }, []);
 
   const isIntraday = INTRADAY_RANGES.includes(range);
@@ -470,7 +572,7 @@ export default function PriceChart({ symbol, currency }: { symbol: string; curre
         </div>
       ) : (
         /* ── 単一チャート ── */
-        <div className="h-72">
+        <div className="h-72" ref={canvasRef}>
           {loading && (
             <div className="skeleton h-full w-full rounded-xl" />
           )}
@@ -479,7 +581,11 @@ export default function PriceChart({ symbol, currency }: { symbol: string; curre
               データがありません
             </div>
           )}
-          {!loading && data.length > 0 && (
+          {!loading && data.length > 0 && chartType === "candle" ? (
+            /* ── ローソク足: pure SVG (recharts v3 Customized API非互換のため) ── */
+            <CandlestickCanvas data={data} width={canvasWidth} height={288} currency={currency} fmt={fmt} />
+          ) : !loading && data.length > 0 ? (
+            /* ── 折れ線チャート (recharts) ── */
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.3} />
@@ -514,36 +620,22 @@ export default function PriceChart({ symbol, currency }: { symbol: string; curre
                     fontSize: 12,
                   }}
                 />
-
-                {chartType === "line" ? (
-                  <>
-                    <Line
-                      type="monotone" dataKey="close" name="終値"
-                      stroke={lineColor} strokeWidth={2}
-                      dot={false} isAnimationActive={false}
+                <Line
+                  type="monotone" dataKey="close" name="終値"
+                  stroke={lineColor} strokeWidth={2}
+                  dot={false} isAnimationActive={false}
+                />
+                {!isIntraday && SMA_OPTIONS.map(s =>
+                  enabledSma.has(s.id) ? (
+                    <Line key={s.id} type="monotone" dataKey={s.id} name={s.label}
+                      stroke={s.color} strokeWidth={1.5} strokeDasharray="4 2"
+                      dot={false} isAnimationActive={false} connectNulls
                     />
-                    {!isIntraday && SMA_OPTIONS.map(s =>
-                      enabledSma.has(s.id) ? (
-                        <Line key={s.id} type="monotone" dataKey={s.id} name={s.label}
-                          stroke={s.color} strokeWidth={1.5} strokeDasharray="4 2"
-                          dot={false} isAnimationActive={false} connectNulls
-                        />
-                      ) : null,
-                    )}
-                  </>
-                ) : (
-                  <>
-                    {/* Invisible line to establish Y scale */}
-                    <Line
-                      type="monotone" dataKey="close"
-                      stroke="transparent" dot={false} isAnimationActive={false}
-                    />
-                    <Customized component={CandlestickLayer} />
-                  </>
+                  ) : null,
                 )}
               </ComposedChart>
             </ResponsiveContainer>
-          )}
+          ) : null}
         </div>
       )}
 
