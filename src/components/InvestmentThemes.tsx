@@ -25,7 +25,7 @@ type Theme = {
 };
 
 type Market = "US" | "JP";
-type SortMode = "default" | "gainers" | "losers";
+type StockSort = "gainers" | "losers";
 
 const MARKET_TABS: { key: Market; flag: string; label: string }[] = [
   { key: "US", flag: "🇺🇸", label: "米国株" },
@@ -43,48 +43,32 @@ function Skeleton() {
 }
 
 export default function InvestmentThemes() {
-  const [market, setMarket] = useState<Market>("US");
-  const [themes, setThemes]   = useState<Record<Market, Theme[] | null>>({ US: null, JP: null });
-  const [loading, setLoading] = useState(false);
-  const [sort, setSort]       = useState<SortMode>("default");
+  const [market, setMarket]       = useState<Market>("US");
+  const [themes, setThemes]       = useState<Record<Market, Theme[] | null>>({ US: null, JP: null });
+  const [loading, setLoading]     = useState(false);
+  const [stockSort, setStockSort] = useState<StockSort>("gainers");
 
   useEffect(() => {
-    // Only fetch if not already cached
     if (themes[market] !== null) return;
     setLoading(true);
     fetch(`/api/themes?market=${market}`)
       .then((r) => r.json())
-      .then((j) =>
-        setThemes((prev) => ({ ...prev, [market]: j.themes ?? [] })),
-      )
-      .catch(() =>
-        setThemes((prev) => ({ ...prev, [market]: [] })),
-      )
+      .then((j) => setThemes((prev) => ({ ...prev, [market]: j.themes ?? [] })))
+      .catch(() => setThemes((prev) => ({ ...prev, [market]: [] })))
       .finally(() => setLoading(false));
   }, [market]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const rawThemes = themes[market];
 
-  // Compute avg changePercent per theme
-  function themeAvg(theme: Theme): number {
-    if (!theme.quotes.length) return 0;
-    return theme.quotes.reduce((s, q) => s + (q.changePercent ?? 0), 0) / theme.quotes.length;
-  }
-
-  // Sort themes by average changePercent
-  const current = rawThemes === null ? null : (() => {
-    const themed = rawThemes.map(t => ({
-      ...t,
-      // Always sort stocks within each theme by changePercent (desc)
-      quotes: [...t.quotes].sort((a, b) => (b.changePercent ?? -Infinity) - (a.changePercent ?? -Infinity)),
-    }));
-    if (sort === "default") return themed;
-    return [...themed].sort((a, b) => {
-      const avgA = themeAvg(a);
-      const avgB = themeAvg(b);
-      return sort === "gainers" ? avgB - avgA : avgA - avgB;
-    });
-  })();
+  // Sort stocks within each theme by changePercent
+  const current = rawThemes === null ? null : rawThemes.map(t => ({
+    ...t,
+    quotes: [...t.quotes].sort((a, b) =>
+      stockSort === "gainers"
+        ? (b.changePercent ?? -Infinity) - (a.changePercent ?? -Infinity)
+        : (a.changePercent ?? Infinity)  - (b.changePercent ?? Infinity)
+    ),
+  }));
 
   return (
     <section>
@@ -96,18 +80,31 @@ export default function InvestmentThemes() {
         </h2>
 
         <div className="flex items-center gap-1.5">
-          {/* Sort buttons */}
-          <div className="flex items-center gap-0.5">
-            {(["default", "gainers", "losers"] as SortMode[]).map(mode => (
-              <button key={mode} onClick={() => setSort(mode)}
-                className={`px-2 py-1 rounded text-[10px] font-medium transition-all ${sort === mode ? "bg-slate-200 dark:bg-slate-700 text-slate-900 dark:text-white" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"}`}
-              >
-                {mode === "default" ? "デフォ" : mode === "gainers" ? "▲上昇" : "▼下落"}
-              </button>
-            ))}
+          {/* Stock sort toggle */}
+          <div className="flex p-0.5 bg-slate-100 dark:bg-slate-800/60 rounded-lg gap-0.5">
+            <button
+              onClick={() => setStockSort("gainers")}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                stockSort === "gainers"
+                  ? "bg-emerald-500 text-white shadow-sm"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
+            >
+              ▲ 上昇
+            </button>
+            <button
+              onClick={() => setStockSort("losers")}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                stockSort === "losers"
+                  ? "bg-rose-500 text-white shadow-sm"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+              }`}
+            >
+              ▼ 下落
+            </button>
           </div>
 
-          {/* 🇯🇵 / 🇺🇸 Toggle */}
+          {/* 🇺🇸 / 🇯🇵 Toggle */}
           <div className="flex p-0.5 bg-slate-100 dark:bg-slate-800/60 rounded-lg gap-0.5">
             {MARKET_TABS.map((tab) => (
               <button
@@ -136,9 +133,15 @@ export default function InvestmentThemes() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-2">
-          {current.map((theme, themeIdx) => {
-            const avg = themeAvg(theme);
+          {current.map((theme) => {
+            const avg = theme.quotes.length
+              ? theme.quotes.reduce((s, q) => s + (q.changePercent ?? 0), 0) / theme.quotes.length
+              : 0;
             const avgUp = avg >= 0;
+            const RANK_LABELS = stockSort === "gainers"
+              ? ["🥇", "🥈", "🥉", "4", "5"]
+              : ["💀", "📉", "⚠️", "4", "5"];
+
             return (
               <div
                 key={theme.id}
@@ -146,18 +149,12 @@ export default function InvestmentThemes() {
               >
                 {/* Theme header */}
                 <div className="flex items-center gap-2 mb-2">
-                  {/* Rank badge (only in gainers/losers sort) */}
-                  {sort !== "default" && (
-                    <span className="shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold flex items-center justify-center">
-                      {themeIdx + 1}
-                    </span>
-                  )}
                   <span className="text-base">{theme.emoji}</span>
                   <span className="font-semibold text-sm">{theme.label}</span>
                   <span className="text-[10px] text-slate-400 truncate flex-1">
                     · {theme.description}
                   </span>
-                  {/* Theme avg performance */}
+                  {/* Theme avg */}
                   {theme.quotes.length > 0 && (
                     <span className={`shrink-0 text-[11px] font-mono font-bold px-1.5 py-0.5 rounded-lg ${
                       avgUp
@@ -168,25 +165,21 @@ export default function InvestmentThemes() {
                     </span>
                   )}
                 </div>
-                {/* Stock list with rank numbers */}
+
+                {/* Stock list */}
                 <ul className="space-y-0.5">
-                  {theme.quotes.slice(0, 5).map((s, rankIdx) => {
+                  {theme.quotes.slice(0, 5).map((s, idx) => {
                     const up = (s.changePercent ?? 0) >= 0;
-                    const name =
-                      getJpName(s.symbol) ??
-                      s.nameJa ??
-                      s.longName ??
-                      s.shortName;
-                    const rankLabel = ["🥇", "🥈", "🥉", "4", "5"][rankIdx] ?? String(rankIdx + 1);
-                    const isEmoji = rankIdx < 3;
+                    const name = getJpName(s.symbol) ?? s.nameJa ?? s.longName ?? s.shortName;
+                    const rankLabel = RANK_LABELS[idx] ?? String(idx + 1);
+                    const isEmoji = idx < 3;
                     return (
                       <li key={s.symbol}>
                         <Link
                           href={`/stock/${encodeURIComponent(s.symbol)}`}
-                          className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group"
+                          className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors"
                         >
-                          {/* Rank */}
-                          <span className={`shrink-0 w-5 text-center ${
+                          <span className={`shrink-0 w-5 text-center leading-none ${
                             isEmoji ? "text-sm" : "text-[10px] font-bold text-slate-400"
                           }`}>
                             {rankLabel}
@@ -195,24 +188,16 @@ export default function InvestmentThemes() {
                             <span className="font-mono font-semibold text-sm text-blue-600 dark:text-blue-400 shrink-0">
                               {s.symbol}
                             </span>
-                            <span className="text-xs text-slate-500 truncate">
-                              {name}
-                            </span>
+                            <span className="text-xs text-slate-500 truncate">{name}</span>
                           </div>
                           <div className="text-right shrink-0">
-                            <div className="font-mono text-xs tabular-nums">
+                            <div className="font-mono text-xs tabular-nums text-slate-700 dark:text-slate-300">
                               {formatNumber(s.price)}{" "}
-                              <span className="text-[10px] text-slate-400">
-                                {s.currency}
-                              </span>
+                              <span className="text-[10px] text-slate-400">{s.currency}</span>
                             </div>
-                            <div
-                              className={`text-[10px] font-mono font-semibold ${
-                                up
-                                  ? "text-emerald-600 dark:text-emerald-400"
-                                  : "text-rose-600 dark:text-rose-400"
-                              }`}
-                            >
+                            <div className={`text-[10px] font-mono font-bold ${
+                              up ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                            }`}>
                               {s.changePercent !== null
                                 ? `${up ? "+" : ""}${s.changePercent.toFixed(2)}%`
                                 : "—"}
