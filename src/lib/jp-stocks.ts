@@ -1,11 +1,28 @@
 import { STOCKS_CATALOG, type CatalogStock } from "./stocks-catalog";
 import { getUsKatakana } from "./us-katakana";
+import { TSE_NAMES } from "./tse-names";
 
 export type JpStock = CatalogStock;
+
+/** Lightweight result for supplemental TSE name matches */
+export type TseNameMatch = { symbol: string; name: string };
 
 const JP_STOCKS_LIST = STOCKS_CATALOG.filter((s) => s.market === "JP");
 const US_STOCKS_LIST = STOCKS_CATALOG.filter((s) => s.market === "US");
 const SYMBOL_INDEX = new Map(STOCKS_CATALOG.map((s) => [s.symbol, s]));
+
+/** Symbols already in the curated catalog — we won't duplicate them from TSE_NAMES */
+const CATALOG_JP_SYMBOLS = new Set(JP_STOCKS_LIST.map((s) => s.symbol));
+
+/** Deduplicated supplemental TSE list (entries not in curated catalog) */
+const TSE_SUPPLEMENT: TseNameMatch[] = [];
+const _seenTse = new Set<string>();
+for (const [symbol, name] of TSE_NAMES) {
+  if (!_seenTse.has(symbol) && !CATALOG_JP_SYMBOLS.has(symbol)) {
+    _seenTse.add(symbol);
+    TSE_SUPPLEMENT.push({ symbol, name });
+  }
+}
 
 export function findJpStockBySymbol(symbol: string): JpStock | undefined {
   const s = SYMBOL_INDEX.get(symbol);
@@ -37,11 +54,11 @@ function hiraganaToKatakana(s: string): string {
   );
 }
 
-function normalize(s: string): string {
+export function normalize(s: string): string {
   let out = s.toLowerCase().trim();
   out = hiraganaToKatakana(out);
   out = out.replace(/[ぁ-ゖァ-ヺ]/g, (ch) => KANA_SMALL_TO_LARGE[ch] ?? ch);
-  out = out.replace(/[・\s\-_･.]/g, "");
+  out = out.replace(/[・\s\-_･.（）()【】「」]/g, "");
   return out;
 }
 
@@ -56,14 +73,39 @@ export function searchJpStocks(query: string, limit = 12): JpStock[] {
     const haystacks = [s.name, s.symbol, ...(s.aliases ?? [])].map(normalize);
     let rank: 0 | 1 | 2 | 3 = 0;
     for (const h of haystacks) {
-      if (h === q) {
-        rank = 3;
-        break;
-      } else if (h.startsWith(q)) {
-        rank = Math.max(rank, 2) as 2 | 3;
-      } else if (h.includes(q)) {
-        rank = Math.max(rank, 1) as 1 | 2 | 3;
-      }
+      if (h === q) { rank = 3; break; }
+      else if (h.startsWith(q)) rank = Math.max(rank, 2) as 2 | 3;
+      else if (h.includes(q))   rank = Math.max(rank, 1) as 1 | 2 | 3;
+    }
+    if (rank === 3) exact.push(s);
+    else if (rank === 2) startsWith.push(s);
+    else if (rank === 1) contains.push(s);
+  }
+
+  return [...exact, ...startsWith, ...contains].slice(0, limit);
+}
+
+/**
+ * Search the supplemental TSE catalog (companies not in the curated catalog).
+ * Returns lightweight { symbol, name } objects.
+ */
+export function searchTseNames(query: string, limit = 10): TseNameMatch[] {
+  const q = normalize(query);
+  if (!q) return [];
+  const exact: TseNameMatch[] = [];
+  const startsWith: TseNameMatch[] = [];
+  const contains: TseNameMatch[] = [];
+
+  for (const s of TSE_SUPPLEMENT) {
+    const hn = normalize(s.name);
+    const hs = normalize(s.symbol);
+    // skip dummy/廃止 entries with （）in normalized name
+    if (hn.includes("廃止") || hn.includes("重複")) continue;
+    let rank: 0 | 1 | 2 | 3 = 0;
+    for (const h of [hn, hs]) {
+      if (h === q) { rank = 3; break; }
+      else if (h.startsWith(q)) rank = Math.max(rank, 2) as 2 | 3;
+      else if (h.includes(q))   rank = Math.max(rank, 1) as 1 | 2 | 3;
     }
     if (rank === 3) exact.push(s);
     else if (rank === 2) startsWith.push(s);
@@ -75,7 +117,6 @@ export function searchJpStocks(query: string, limit = 12): JpStock[] {
 
 /**
  * Search US stocks by katakana name, English name, or ticker symbol.
- * Used when a Japanese query (containing katakana/kanji) needs to match US stocks.
  */
 export function searchUsStocks(query: string, limit = 8): JpStock[] {
   const q = normalize(query);
@@ -87,22 +128,16 @@ export function searchUsStocks(query: string, limit = 8): JpStock[] {
   for (const s of US_STOCKS_LIST) {
     const katakana = getUsKatakana(s.symbol);
     const haystacks = [
-      s.name,
-      s.symbol,
+      s.name, s.symbol,
       ...(katakana ? [katakana] : []),
       ...(s.aliases ?? []),
     ].map(normalize);
 
     let rank: 0 | 1 | 2 | 3 = 0;
     for (const h of haystacks) {
-      if (h === q) {
-        rank = 3;
-        break;
-      } else if (h.startsWith(q)) {
-        rank = Math.max(rank, 2) as 2 | 3;
-      } else if (h.includes(q)) {
-        rank = Math.max(rank, 1) as 1 | 2 | 3;
-      }
+      if (h === q) { rank = 3; break; }
+      else if (h.startsWith(q)) rank = Math.max(rank, 2) as 2 | 3;
+      else if (h.includes(q))   rank = Math.max(rank, 1) as 1 | 2 | 3;
     }
     if (rank === 3) exact.push(s);
     else if (rank === 2) startsWith.push(s);

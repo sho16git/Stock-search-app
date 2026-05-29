@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Newspaper, RefreshCw, BookOpen, ChevronUp } from "lucide-react";
 import ArticleBody from "./ArticleBody";
 
@@ -13,6 +14,7 @@ type News = {
   region: "US" | "JP";
   publishedAt: string | null;
   thumbnail: string | null;
+  relatedTickers?: string[];
 };
 
 function relativeTime(iso: string | null): string {
@@ -158,24 +160,41 @@ export default function TrendNews() {
                     </div>
                   </div>
                 </button>
-                {n.link && (
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    <button
-                      onClick={() => toggle(n.uuid)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-                    >
-                      {isExpanded ? (
-                        <>
-                          <ChevronUp className="w-3 h-3" />
-                          閉じる
-                        </>
-                      ) : (
-                        <>
-                          <BookOpen className="w-3 h-3" />
-                          記事を読む
-                        </>
-                      )}
-                    </button>
+                {(n.link || (n.relatedTickers && n.relatedTickers.length > 0)) && (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                    {n.link && (
+                      <button
+                        onClick={() => toggle(n.uuid)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                      >
+                        {isExpanded ? (
+                          <>
+                            <ChevronUp className="w-3 h-3" />
+                            閉じる
+                          </>
+                        ) : (
+                          <>
+                            <BookOpen className="w-3 h-3" />
+                            記事を読む
+                          </>
+                        )}
+                      </button>
+                    )}
+                    {/* Related ticker chips */}
+                    {n.relatedTickers && n.relatedTickers.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {n.relatedTickers.map((ticker) => (
+                          <Link
+                            key={ticker}
+                            href={`/stock/${encodeURIComponent(ticker)}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-violet-100 hover:text-violet-700 dark:hover:bg-violet-900/40 dark:hover:text-violet-300 border border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-600 transition-colors"
+                          >
+                            {ticker}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
                 {isExpanded && n.link && <ArticleBody link={n.link} />}

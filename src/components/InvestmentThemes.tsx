@@ -65,16 +65,23 @@ export default function InvestmentThemes() {
 
   const rawThemes = themes[market];
 
+  // Compute avg changePercent per theme
+  function themeAvg(theme: Theme): number {
+    if (!theme.quotes.length) return 0;
+    return theme.quotes.reduce((s, q) => s + (q.changePercent ?? 0), 0) / theme.quotes.length;
+  }
+
   // Sort themes by average changePercent
   const current = rawThemes === null ? null : (() => {
-    if (sort === "default") return rawThemes;
-    return [...rawThemes].sort((a, b) => {
-      const avgA = a.quotes.length
-        ? a.quotes.reduce((s, q) => s + (q.changePercent ?? 0), 0) / a.quotes.length
-        : 0;
-      const avgB = b.quotes.length
-        ? b.quotes.reduce((s, q) => s + (q.changePercent ?? 0), 0) / b.quotes.length
-        : 0;
+    const themed = rawThemes.map(t => ({
+      ...t,
+      // Always sort stocks within each theme by changePercent (desc)
+      quotes: [...t.quotes].sort((a, b) => (b.changePercent ?? -Infinity) - (a.changePercent ?? -Infinity)),
+    }));
+    if (sort === "default") return themed;
+    return [...themed].sort((a, b) => {
+      const avgA = themeAvg(a);
+      const avgB = themeAvg(b);
       return sort === "gainers" ? avgB - avgA : avgA - avgB;
     });
   })();
@@ -129,66 +136,96 @@ export default function InvestmentThemes() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-2">
-          {current.map((theme) => (
-            <div
-              key={theme.id}
-              className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-sm"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-base">{theme.emoji}</span>
-                <span className="font-semibold text-sm">{theme.label}</span>
-                <span className="text-[10px] text-slate-400">
-                  · {theme.description}
-                </span>
-              </div>
-              <ul className="space-y-0.5">
-                {theme.quotes.slice(0, 5).map((s) => {
-                  const up = (s.changePercent ?? 0) >= 0;
-                  const name =
-                    getJpName(s.symbol) ??
-                    s.nameJa ??
-                    s.longName ??
-                    s.shortName;
-                  return (
-                    <li key={s.symbol}>
-                      <Link
-                        href={`/stock/${encodeURIComponent(s.symbol)}`}
-                        className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group"
-                      >
-                        <div className="min-w-0 flex-1 flex items-center gap-2">
-                          <span className="font-mono font-semibold text-sm text-blue-600 dark:text-blue-400 shrink-0">
-                            {s.symbol}
+          {current.map((theme, themeIdx) => {
+            const avg = themeAvg(theme);
+            const avgUp = avg >= 0;
+            return (
+              <div
+                key={theme.id}
+                className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-sm"
+              >
+                {/* Theme header */}
+                <div className="flex items-center gap-2 mb-2">
+                  {/* Rank badge (only in gainers/losers sort) */}
+                  {sort !== "default" && (
+                    <span className="shrink-0 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold flex items-center justify-center">
+                      {themeIdx + 1}
+                    </span>
+                  )}
+                  <span className="text-base">{theme.emoji}</span>
+                  <span className="font-semibold text-sm">{theme.label}</span>
+                  <span className="text-[10px] text-slate-400 truncate flex-1">
+                    · {theme.description}
+                  </span>
+                  {/* Theme avg performance */}
+                  {theme.quotes.length > 0 && (
+                    <span className={`shrink-0 text-[11px] font-mono font-bold px-1.5 py-0.5 rounded-lg ${
+                      avgUp
+                        ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
+                        : "bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400"
+                    }`}>
+                      {avgUp ? "+" : ""}{avg.toFixed(2)}%
+                    </span>
+                  )}
+                </div>
+                {/* Stock list with rank numbers */}
+                <ul className="space-y-0.5">
+                  {theme.quotes.slice(0, 5).map((s, rankIdx) => {
+                    const up = (s.changePercent ?? 0) >= 0;
+                    const name =
+                      getJpName(s.symbol) ??
+                      s.nameJa ??
+                      s.longName ??
+                      s.shortName;
+                    const rankLabel = ["🥇", "🥈", "🥉", "4", "5"][rankIdx] ?? String(rankIdx + 1);
+                    const isEmoji = rankIdx < 3;
+                    return (
+                      <li key={s.symbol}>
+                        <Link
+                          href={`/stock/${encodeURIComponent(s.symbol)}`}
+                          className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors group"
+                        >
+                          {/* Rank */}
+                          <span className={`shrink-0 w-5 text-center ${
+                            isEmoji ? "text-sm" : "text-[10px] font-bold text-slate-400"
+                          }`}>
+                            {rankLabel}
                           </span>
-                          <span className="text-xs text-slate-500 truncate">
-                            {name}
-                          </span>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <div className="font-mono text-xs tabular-nums">
-                            {formatNumber(s.price)}{" "}
-                            <span className="text-[10px] text-slate-400">
-                              {s.currency}
+                          <div className="min-w-0 flex-1 flex items-center gap-2">
+                            <span className="font-mono font-semibold text-sm text-blue-600 dark:text-blue-400 shrink-0">
+                              {s.symbol}
+                            </span>
+                            <span className="text-xs text-slate-500 truncate">
+                              {name}
                             </span>
                           </div>
-                          <div
-                            className={`text-[10px] font-mono font-semibold ${
-                              up
-                                ? "text-emerald-600 dark:text-emerald-400"
-                                : "text-rose-600 dark:text-rose-400"
-                            }`}
-                          >
-                            {s.changePercent !== null
-                              ? `${up ? "+" : ""}${s.changePercent.toFixed(2)}%`
-                              : "—"}
+                          <div className="text-right shrink-0">
+                            <div className="font-mono text-xs tabular-nums">
+                              {formatNumber(s.price)}{" "}
+                              <span className="text-[10px] text-slate-400">
+                                {s.currency}
+                              </span>
+                            </div>
+                            <div
+                              className={`text-[10px] font-mono font-semibold ${
+                                up
+                                  ? "text-emerald-600 dark:text-emerald-400"
+                                  : "text-rose-600 dark:text-rose-400"
+                              }`}
+                            >
+                              {s.changePercent !== null
+                                ? `${up ? "+" : ""}${s.changePercent.toFixed(2)}%`
+                                : "—"}
+                            </div>
                           </div>
-                        </div>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })}
         </div>
       )}
     </section>

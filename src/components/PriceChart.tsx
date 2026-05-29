@@ -97,16 +97,19 @@ function savePanelKeys(keys: RangeKey[]) {
 }
 
 /* ─── Candlestick Canvas (pure SVG, no recharts internals) ─── */
-function CandlestickCanvas({ data, width, height, currency, fmt }: {
+function CandlestickCanvas({ data, width, height, currency, fmt, compact }: {
   data: Point[];
   width: number;
   height: number;
   currency?: string | null;
   fmt: (v: number) => string;
+  compact?: boolean;
 }) {
   if (width <= 0 || data.length === 0) return null;
 
-  const margin = { top: 8, right: 16, left: 72, bottom: 28 };
+  const margin = compact
+    ? { top: 4, right: 4, left: 44, bottom: 18 }
+    : { top: 8, right: 16, left: 72, bottom: 28 };
   const plotW = Math.max(width - margin.left - margin.right, 1);
   const plotH = Math.max(height - margin.top - margin.bottom, 1);
 
@@ -160,7 +163,7 @@ function CandlestickCanvas({ data, width, height, currency, fmt }: {
         <text key={i}
           x={margin.left - 5} y={yOf(v)}
           textAnchor="end" dominantBaseline="middle"
-          fontSize={11} fill="#94a3b8"
+          fontSize={compact ? 9 : 11} fill="#94a3b8"
         >
           {fmt(v)}
         </text>
@@ -173,8 +176,8 @@ function CandlestickCanvas({ data, width, height, currency, fmt }: {
         const label = `${d.getMonth() + 1}/${d.getDate()}`;
         return (
           <text key={idx}
-            x={xOf(idx)} y={margin.top + plotH + 16}
-            textAnchor="middle" fontSize={11} fill="#94a3b8"
+            x={xOf(idx)} y={margin.top + plotH + (compact ? 12 : 16)}
+            textAnchor="middle" fontSize={compact ? 9 : 11} fill="#94a3b8"
           >
             {label}
           </text>
@@ -190,9 +193,11 @@ function CandlestickCanvas({ data, width, height, currency, fmt }: {
               x1={margin.left} y1={y} x2={margin.left + plotW} y2={y}
               stroke="#94a3b8" strokeDasharray="4 3" strokeWidth={1}
             />
-            <text x={margin.left + plotW - 2} y={y - 3} textAnchor="end" fontSize={9} fill="#94a3b8">
-              始値
-            </text>
+            {!compact && (
+              <text x={margin.left + plotW - 2} y={y - 3} textAnchor="end" fontSize={9} fill="#94a3b8">
+                始値
+              </text>
+            )}
           </>
         );
       })()}
@@ -232,8 +237,11 @@ function CandlestickCanvas({ data, width, height, currency, fmt }: {
 function MiniChart({ symbol, range, label, currency }: {
   symbol: string; range: RangeKey; label: string; currency?: string | null;
 }) {
-  const [raw, setRaw]         = useState<{ date: string; close: number }[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [raw, setRaw]               = useState<Point[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [chartType, setChartType]   = useState<ChartType>("line");
+  const [canvasWidth, setCanvasWidth] = useState(0);
+  const canvasRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -247,7 +255,26 @@ function MiniChart({ symbol, range, label, currency }: {
     return () => ctrl.abort();
   }, [symbol, range]);
 
+  // Track container width for CandlestickCanvas
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    const obs = new ResizeObserver(entries => {
+      setCanvasWidth(entries[0]?.contentRect.width ?? 0);
+    });
+    obs.observe(canvasRef.current);
+    setCanvasWidth(canvasRef.current.offsetWidth);
+    return () => obs.disconnect();
+  }, []);
+
   const isIntraday = INTRADAY_RANGES.includes(range);
+  const hasOHLC = raw.some(d => d.open != null && d.high != null && d.low != null);
+  const showCandleToggle = !isIntraday && hasOHLC;
+
+  // Reset to line when switching to intraday range
+  useEffect(() => {
+    if (isIntraday) setChartType("line");
+  }, [isIntraday]);
+
   const fmt = (v: number) => v.toLocaleString("ja-JP", { maximumFractionDigits: 2 });
 
   const first = raw[0]?.close ?? 0;
@@ -268,18 +295,47 @@ function MiniChart({ symbol, range, label, currency }: {
       {/* Header */}
       <div className="px-3 py-2 flex items-center justify-between border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
         <span className="text-[11px] font-bold text-slate-600 dark:text-slate-400">{label} ({rangeLabel})</span>
-        {raw.length > 1 && (
-          <span className={`text-[11px] font-mono font-bold ${up ? "text-emerald-600" : "text-rose-600"}`}>
-            {up ? "▲" : "▼"} {Math.abs(pct).toFixed(2)}%
-          </span>
-        )}
+        <div className="flex items-center gap-1.5">
+          {/* Line/Candle toggle (only when OHLC data available and not intraday) */}
+          {showCandleToggle && (
+            <div className="flex gap-0.5 p-0.5 bg-slate-200/60 dark:bg-slate-700/60 rounded-md">
+              <button
+                onClick={() => setChartType("line")}
+                className={`px-1.5 py-0.5 text-[9px] rounded transition-all font-medium ${
+                  chartType === "line"
+                    ? "bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                折線
+              </button>
+              <button
+                onClick={() => setChartType("candle")}
+                className={`px-1.5 py-0.5 text-[9px] rounded transition-all font-medium ${
+                  chartType === "candle"
+                    ? "bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-sm"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                }`}
+              >
+                蝋燭
+              </button>
+            </div>
+          )}
+          {raw.length > 1 && (
+            <span className={`text-[11px] font-mono font-bold ${up ? "text-emerald-600" : "text-rose-600"}`}>
+              {up ? "▲" : "▼"} {Math.abs(pct).toFixed(2)}%
+            </span>
+          )}
+        </div>
       </div>
       {/* Chart */}
-      <div className="h-32 flex-1">
+      <div className="h-32 flex-1" ref={canvasRef}>
         {loading ? (
           <div className="skeleton h-full w-full" />
         ) : raw.length === 0 ? (
           <div className="flex items-center justify-center h-full text-xs text-slate-400">データなし</div>
+        ) : chartType === "candle" ? (
+          <CandlestickCanvas data={raw} width={canvasWidth} height={128} currency={currency} fmt={fmt} compact />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={raw} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>

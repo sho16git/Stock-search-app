@@ -44,6 +44,11 @@ export async function GET() {
                     | { resolutions?: Array<{ url?: string }> }
                     | undefined
                 )?.resolutions?.[0]?.url ?? null) ?? null,
+              relatedTickers: Array.isArray(o.relatedTickers)
+                ? (o.relatedTickers as unknown[])
+                    .filter((t): t is string => typeof t === "string")
+                    .slice(0, 6)
+                : [],
             };
           });
         } catch {
