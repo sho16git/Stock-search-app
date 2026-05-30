@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import SearchBox from "@/components/SearchBox";
 import QuoteHeader from "@/components/QuoteHeader";
-import PriceChart from "@/components/PriceChart";
+import StockChart from "@/components/StockChart";
 import FundamentalsTable from "@/components/FundamentalsTable";
 import AnalystRecommendations from "@/components/AnalystRecommendations";
 import EarningsCard from "@/components/EarningsCard";
@@ -40,9 +40,9 @@ export default async function StockPage({
       </div>
 
       <QuoteHeader symbol={symbol} />
+      <StockChart symbol={symbol} />
       <BuySellSentiment symbol={symbol} />
       <AIAnalysis symbol={symbol} />
-      <PriceChart symbol={symbol} />
       <AnalystRecommendations symbol={symbol} />
       <EarningsCard symbol={symbol} />
       <YutaiCard symbol={symbol} />

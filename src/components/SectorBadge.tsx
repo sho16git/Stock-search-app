@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { getSector } from "@/lib/gics";
 import { translateCountry, translateIndustry } from "@/lib/i18n";
 
@@ -39,13 +38,10 @@ export default function SectorBadge({ symbol }: { symbol: string }) {
   return (
     <div className="flex flex-wrap items-center gap-2 mt-2">
       {gics ? (
-        <Link
-          href={`/sector/${gics.id}`}
-          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-        >
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium">
           <span>{gics.emoji}</span>
           <span>{gics.nameJa}</span>
-        </Link>
+        </span>
       ) : profile.sector ? (
         <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs">
           {profile.sector}

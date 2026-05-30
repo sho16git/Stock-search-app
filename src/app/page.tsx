@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Library, Filter, Star, TrendingUp } from "lucide-react";
+import { Library, Filter, Star } from "lucide-react";
 import SearchBox from "@/components/SearchBox";
 import SectorHeatmap from "@/components/SectorHeatmap";
 import MarketOverview from "@/components/MarketOverview";
@@ -18,10 +18,9 @@ export default function Home() {
         <div>
           <SearchBox autoFocus />
           <div className="mt-2.5 flex flex-wrap gap-2 text-xs">
-            <QuickLink href="/stocks"    icon={<Library   className="w-3.5 h-3.5" />} color="from-blue-500 to-cyan-500">全銘柄</QuickLink>
-            <QuickLink href="/screener"  icon={<Filter    className="w-3.5 h-3.5" />} color="from-orange-500 to-amber-500">スクリーナー</QuickLink>
-            <QuickLink href="/watchlist" icon={<Star      className="w-3.5 h-3.5" />} color="from-pink-500 to-rose-500">ウォッチリスト</QuickLink>
-            <QuickLink href="/sectors" icon={<TrendingUp className="w-3.5 h-3.5" />} color="from-violet-500 to-purple-500">セクター</QuickLink>
+            <QuickLink href="/stocks"    icon={<Library className="w-3.5 h-3.5" />} color="from-blue-500 to-cyan-500">全銘柄</QuickLink>
+            <QuickLink href="/screener"  icon={<Filter  className="w-3.5 h-3.5" />} color="from-orange-500 to-amber-500">スクリーナー</QuickLink>
+            <QuickLink href="/watchlist" icon={<Star    className="w-3.5 h-3.5" />} color="from-pink-500 to-rose-500">ウォッチリスト</QuickLink>
           </div>
         </div>
       </section>

@@ -1,14 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import {
   TrendingUp, TrendingDown, Users, MapPin, Globe,
   Briefcase, ChevronDown, ChevronUp, Building2,
 } from "lucide-react";
-import {
-  ComposedChart, Line, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, ReferenceLine,
-} from "recharts";
 import { formatNumber, formatLargeNumber } from "@/lib/format";
 import { getJpName } from "@/lib/jp-stocks";
 import {
@@ -37,17 +33,6 @@ type Profile = {
   longBusinessSummary?: string | null; longBusinessSummaryJa?: string | null;
 };
 
-type ChartPoint = { date: string; close: number };
-type ChartRange = "1d" | "1wk" | "1mo" | "3mo" | "1y";
-
-const CHART_RANGES: { key: ChartRange; label: string; apiRange: string }[] = [
-  { key: "1d",  label: "1日",  apiRange: "5min" },
-  { key: "1wk", label: "1週",  apiRange: "1h"   },
-  { key: "1mo", label: "1月",  apiRange: "1mo"  },
-  { key: "3mo", label: "3月",  apiRange: "3mo"  },
-  { key: "1y",  label: "1年",  apiRange: "1y"   },
-];
-
 /* ─── Helpers ─── */
 function fmtJpy(v: number): string {
   if (v >= 100_000_000) return `¥${(v / 100_000_000).toFixed(2)}億`;
@@ -57,135 +42,6 @@ function fmtJpy(v: number): string {
 
 function hostname(url: string) {
   try { return new URL(url).hostname.replace("www.", ""); } catch { return url; }
-}
-
-/* ─── Inline Spark Chart ─── */
-function InlineChart({ symbol, currency, up }: { symbol: string; currency?: string; up: boolean }) {
-  const [range, setRange] = useState<ChartRange>("1y");
-  const [data, setData]   = useState<ChartPoint[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const r = CHART_RANGES.find(r => r.key === range)!;
-    const ctrl = new AbortController();
-    setLoading(true);
-    fetch(`/api/chart?symbol=${encodeURIComponent(symbol)}&range=${r.apiRange}`, { signal: ctrl.signal })
-      .then(res => res.json())
-      .then(j => setData((j.data ?? []) as ChartPoint[]))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-    return () => ctrl.abort();
-  }, [symbol, range]);
-
-  const first = data[0]?.close ?? 0;
-  const last  = data[data.length - 1]?.close ?? 0;
-  const lineColor = (last >= first) ? "#10b981" : "#ef4444";
-
-  const allVals = data.map(d => d.close).filter(Boolean);
-  const min = allVals.length ? Math.min(...allVals) : 0;
-  const max = allVals.length ? Math.max(...allVals) : 0;
-  const pad = (max - min) * 0.12 || max * 0.02;
-
-  const fmt = (v: number) => v.toLocaleString("ja-JP", { maximumFractionDigits: 2 });
-
-  const pct = first ? ((last - first) / first) * 100 : 0;
-  const isUp = pct >= 0;
-
-  function fmtLabel(dateStr: string): string {
-    const d = new Date(dateStr);
-    if (range === "1d") {
-      return `${d.getHours().toString().padStart(2,"0")}:${d.getMinutes().toString().padStart(2,"0")}`;
-    }
-    if (range === "1wk") {
-      return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:00`;
-    }
-    if (range === "1y") return `${d.getMonth()+1}/${d.getDate()}`;
-    return `${d.getMonth()+1}/${d.getDate()}`;
-  }
-
-  return (
-    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/60">
-      {/* Range selector + pct badge */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg">
-          {CHART_RANGES.map(r => (
-            <button
-              key={r.key}
-              onClick={() => setRange(r.key)}
-              className={`px-2.5 py-1 text-[11px] rounded-md font-semibold transition-all ${
-                range === r.key
-                  ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white"
-                  : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
-              }`}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
-        {!loading && data.length > 0 && (
-          <span className={`text-xs font-mono font-bold ${isUp ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-            {isUp ? "▲" : "▼"} {Math.abs(pct).toFixed(2)}%
-          </span>
-        )}
-      </div>
-
-      {/* Chart area — touch-pan-y: 縦スクロールはページに委譲し、横スワイプはチャートのツールチップに使用 */}
-      <div className="h-44 w-full touch-pan-y select-none">
-        {loading ? (
-          <div className="h-full w-full rounded-xl bg-slate-100 dark:bg-slate-800/60 animate-pulse" />
-        ) : data.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-xs text-slate-400">データなし</div>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={data} margin={{ top: 6, right: 4, left: 0, bottom: 0 }}>
-              <XAxis
-                dataKey="date"
-                tickFormatter={fmtLabel}
-                tick={{ fontSize: 10, fill: "#94a3b8" }}
-                minTickGap={range === "1d" ? 60 : 40}
-                interval="preserveStartEnd"
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                domain={[min - pad, max + pad]}
-                tick={{ fontSize: 10, fill: "#94a3b8" }}
-                tickFormatter={fmt}
-                width={58}
-                axisLine={false}
-                tickLine={false}
-              />
-              {first > 0 && (
-                <ReferenceLine
-                  y={first}
-                  stroke="#94a3b8"
-                  strokeDasharray="4 3"
-                  strokeWidth={1}
-                />
-              )}
-              <Tooltip
-                formatter={(v) => [`${fmt(Number(v))} ${currency ?? ""}`, "終値"]}
-                labelFormatter={(label) => fmtLabel(String(label))}
-                contentStyle={{
-                  fontSize: 11, borderRadius: 8,
-                  border: "1px solid #e2e8f0",
-                  background: "rgba(255,255,255,0.97)",
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="close"
-                stroke={lineColor}
-                strokeWidth={2}
-                dot={false}
-                isAnimationActive={false}
-              />
-            </ComposedChart>
-          </ResponsiveContainer>
-        )}
-      </div>
-    </div>
-  );
 }
 
 /* ─── Main Component ─── */
@@ -399,9 +255,6 @@ export default function QuoteHeader({ symbol }: { symbol: string }) {
                 })}
               </div>
             </div>
-
-            {/* ── インラインチャート ── */}
-            <InlineChart symbol={symbol} currency={quote.currency} up={up} />
 
             {/* ── 企業情報 ── */}
             {hasProfile && (
