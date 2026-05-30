@@ -10,6 +10,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const JP_TEXT = /[぀-ヿ㐀-鿿]/;
+/** 4-digit bare TSE code (e.g. "7203") */
+const BARE_TSE_CODE = /^\d{4}$/;
+/** Already has .T suffix */
+const TSE_SYMBOL = /^\d{4}\.T$/i;
 
 type Result = {
   symbol: string;
@@ -55,63 +59,103 @@ function usStockToResult(s: JpStock): Result {
   };
 }
 
+/** Fetch Yahoo Finance search results, returning [] on error */
+async function yahooSearch(q: string, count = 12): Promise<Result[]> {
+  try {
+    const yData = await yahooFinance
+      .search(q, { quotesCount: count, newsCount: 0 })
+      .catch(() => ({ quotes: [] as unknown[] }));
+    return (yData.quotes ?? [])
+      .filter((it): it is typeof it & { symbol: string } =>
+        typeof it === "object" && it !== null && "symbol" in it &&
+        !!(it as { symbol: string }).symbol
+      )
+      .map((it) => {
+        const o = it as Record<string, unknown>;
+        return {
+          symbol: String(o.symbol),
+          shortname: typeof o.shortname === "string" ? o.shortname : undefined,
+          longname: typeof o.longname === "string" ? o.longname : undefined,
+          exchange: typeof o.exchange === "string" ? o.exchange : undefined,
+          quoteType: typeof o.quoteType === "string" ? o.quoteType : undefined,
+          typeDisp: typeof o.typeDisp === "string" ? o.typeDisp : undefined,
+        };
+      });
+  } catch {
+    return [];
+  }
+}
+
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q")?.trim();
   if (!q) {
     return NextResponse.json({ results: [] });
   }
 
-  // Japanese query → search local JP index + TSE supplement + US katakana
-  if (JP_TEXT.test(q)) {
-    const jpResults  = searchJpStocks(q, 10);
-    const tseResults = searchTseNames(q, 8);
-    const usResults  = searchUsStocks(q, 5);
-
-    const seen = new Set([
-      ...jpResults.map(r => r.symbol),
-      ...tseResults.map(r => r.symbol),
-      ...usResults.map(r => r.symbol),
+  // ── Bare 4-digit TSE code (e.g. "7581") ──────────────────────────────────
+  if (BARE_TSE_CODE.test(q) || TSE_SYMBOL.test(q.toUpperCase())) {
+    const sym = BARE_TSE_CODE.test(q) ? `${q}.T` : q.toUpperCase();
+    const [localJp, localTse, yahooResults] = await Promise.all([
+      Promise.resolve(searchJpStocks(sym, 3)),
+      Promise.resolve(searchTseNames(sym, 3)),
+      yahooSearch(sym, 6),
     ]);
 
-    // Yahoo Finance fallback only when local coverage is thin
-    let yahooExtra: Result[] = [];
-    if (jpResults.length + tseResults.length + usResults.length < 6) {
-      try {
-        const yData = await yahooFinance
-          .search(q, { quotesCount: 6, newsCount: 0 })
-          .catch(() => ({ quotes: [] as unknown[] }));
-        yahooExtra = (yData.quotes ?? [])
-          .filter((it): it is typeof it & { symbol: string } =>
-            typeof it === "object" && it !== null && "symbol" in it &&
-            !seen.has((it as { symbol: string }).symbol)
-          )
-          .map((it) => {
-            const o = it as Record<string, unknown>;
-            const sym = String(o.symbol ?? "");
-            seen.add(sym);
-            return {
-              symbol: sym,
-              shortname: typeof o.shortname === "string" ? o.shortname : undefined,
-              longname: typeof o.longname === "string" ? o.longname : undefined,
-              exchange: typeof o.exchange === "string" ? o.exchange : undefined,
-              quoteType: typeof o.quoteType === "string" ? o.quoteType : undefined,
-              typeDisp: typeof o.typeDisp === "string" ? o.typeDisp : undefined,
-            };
-          });
-      } catch { /* ignore */ }
+    const seen = new Set<string>();
+    const merged: Result[] = [];
+    for (const r of [
+      ...localJp.map(jpStockToResult),
+      ...localTse.map(tseNameToResult),
+      ...yahooResults,
+    ]) {
+      if (!seen.has(r.symbol)) { seen.add(r.symbol); merged.push(r); }
     }
 
-    const merged = [
+    // If nothing found, also try the bare number (some non-JP stocks start with digits)
+    if (merged.length === 0 && BARE_TSE_CODE.test(q)) {
+      const bare = await yahooSearch(q, 6);
+      for (const r of bare) {
+        if (!seen.has(r.symbol)) { seen.add(r.symbol); merged.push(r); }
+      }
+    }
+
+    return NextResponse.json({ results: merged.slice(0, 16), source: "tse-code" });
+  }
+
+  // ── Japanese text query ───────────────────────────────────────────────────
+  if (JP_TEXT.test(q)) {
+    // Always run local + Yahoo in parallel for maximum coverage
+    const [jpResults, tseResults, usResults, yahooResults] = await Promise.all([
+      Promise.resolve(searchJpStocks(q, 10)),
+      Promise.resolve(searchTseNames(q, 8)),
+      Promise.resolve(searchUsStocks(q, 5)),
+      yahooSearch(q, 10),
+    ]);
+
+    // Build merged list — local results take priority (have better JP names)
+    const seen = new Set<string>();
+    const merged: Result[] = [];
+
+    for (const r of [
       ...jpResults.map(jpStockToResult),
       ...tseResults.map(tseNameToResult),
       ...usResults.map(usStockToResult),
-      ...yahooExtra,
-    ].slice(0, 16);
+    ]) {
+      if (!seen.has(r.symbol)) { seen.add(r.symbol); merged.push(r); }
+    }
 
-    return NextResponse.json({ results: merged, source: "local" });
+    // Append Yahoo results not already covered by local catalog
+    for (const r of yahooResults) {
+      if (!seen.has(r.symbol)) {
+        seen.add(r.symbol);
+        merged.push(r);
+      }
+    }
+
+    return NextResponse.json({ results: merged.slice(0, 16), source: "local+yahoo" });
   }
 
-  // Non-Japanese query: Yahoo Finance (covers all NYSE/NASDAQ/TSE by code) + local supplement
+  // ── Non-Japanese query (symbol / English name) ────────────────────────────
   try {
     const [yahooData, localJp, localTse] = await Promise.all([
       yahooFinance

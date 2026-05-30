@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { GICS_SECTORS, type GicsSectorId } from "@/lib/gics";
-import { getStocksBySector } from "@/lib/stocks-catalog";
+import { getStocksBySectorAll } from "@/lib/stocks-catalog";
 import SectorStockTable from "@/components/SectorStockTable";
 
 export default async function SectorPage({
@@ -14,7 +14,7 @@ export default async function SectorPage({
   const sector = GICS_SECTORS.find((s) => s.id === id);
   if (!sector) notFound();
 
-  const stocks = getStocksBySector(sector.id as GicsSectorId);
+  const stocks = getStocksBySectorAll(sector.id as GicsSectorId);
   const jpStocks = stocks.filter((s) => s.market === "JP");
   const usStocks = stocks.filter((s) => s.market === "US");
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { GICS_SECTORS, type GicsSectorId, getSector } from "@/lib/gics";
 
 type SectorRank = {
@@ -15,25 +15,24 @@ type SectorRank = {
   topLoser: { symbol: string; name: string; pct: number } | null;
 };
 
-function bgFromPct(pct: number | null): string {
-  if (pct === null || Number.isNaN(pct)) {
-    return "bg-slate-100 dark:bg-slate-800/60";
-  }
-  const intensity = Math.min(Math.abs(pct) / 3, 1); // 0..1, saturates at 3%
-  if (pct > 0.05) {
-    if (intensity > 0.66)
-      return "bg-emerald-500/90 text-white dark:bg-emerald-500/80";
-    if (intensity > 0.33)
-      return "bg-emerald-400/80 text-white dark:bg-emerald-500/60";
-    return "bg-emerald-200/70 text-emerald-900 dark:bg-emerald-700/40 dark:text-emerald-100";
-  } else if (pct < -0.05) {
-    if (intensity > 0.66)
-      return "bg-rose-500/90 text-white dark:bg-rose-500/80";
-    if (intensity > 0.33)
-      return "bg-rose-400/80 text-white dark:bg-rose-500/60";
-    return "bg-rose-200/70 text-rose-900 dark:bg-rose-700/40 dark:text-rose-100";
-  }
-  return "bg-slate-100 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300";
+function pctColor(pct: number | null) {
+  if (pct === null) return { text: "text-slate-400", bg: "bg-slate-100 dark:bg-slate-800" };
+  if (pct > 1)  return { text: "text-emerald-700 dark:text-emerald-300", bg: "bg-emerald-100 dark:bg-emerald-900/40" };
+  if (pct > 0)  return { text: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-50 dark:bg-emerald-900/20" };
+  if (pct < -1) return { text: "text-rose-700 dark:text-rose-300", bg: "bg-rose-100 dark:bg-rose-900/40" };
+  if (pct < 0)  return { text: "text-rose-600 dark:text-rose-400", bg: "bg-rose-50 dark:bg-rose-900/20" };
+  return { text: "text-slate-600 dark:text-slate-400", bg: "bg-slate-50 dark:bg-slate-800/40" };
+}
+
+function PctBadge({ pct }: { pct: number | null }) {
+  const { text, bg } = pctColor(pct);
+  const Icon = pct == null ? Minus : pct >= 0 ? TrendingUp : TrendingDown;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg font-mono font-bold text-sm tabular-nums ${text} ${bg}`}>
+      <Icon className="w-3.5 h-3.5 shrink-0" />
+      {pct != null ? `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%` : "—"}
+    </span>
+  );
 }
 
 export default function SectorHeatmap() {
@@ -59,32 +58,34 @@ export default function SectorHeatmap() {
     return () => clearInterval(id);
   }, []);
 
-  // Always render in catalog order with placeholders when loading
-  const sectorsToShow =
+  const sectorsToShow: SectorRank[] =
     ranks ??
-    GICS_SECTORS.map(
-      (s): SectorRank => ({
-        id: s.id,
-        changePercent: null,
-        count: 0,
-        gainers: 0,
-        losers: 0,
-        topGainer: null,
-        topLoser: null,
-      }),
-    );
+    GICS_SECTORS.map((s) => ({
+      id: s.id,
+      changePercent: null,
+      count: 0,
+      gainers: 0,
+      losers: 0,
+      topGainer: null,
+      topLoser: null,
+    }));
+
+  // max abs % for bar scaling
+  const maxAbs = Math.max(
+    0.5,
+    ...sectorsToShow.map((r) => Math.abs(r.changePercent ?? 0)),
+  );
 
   return (
-    <div>
-      <div className="flex items-end justify-between mb-3">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800/60">
         <div>
           <h2 className="text-base font-bold tracking-tight flex items-center gap-1.5">
             <span>🔥</span>
             <span>セクター騰落率</span>
           </h2>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            セクター全銘柄の平均変動率
-          </p>
+          <p className="text-[11px] text-slate-500 mt-0.5">全銘柄の平均変動率・リアルタイム</p>
         </div>
         <button
           onClick={load}
@@ -96,53 +97,94 @@ export default function SectorHeatmap() {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-        {sectorsToShow.map((rank) => {
+      {/* Ranking list */}
+      <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+        {sectorsToShow.map((rank, idx) => {
           const s = getSector(rank.id);
           if (!s) return null;
           const pct = rank.changePercent;
-          const cls = bgFromPct(pct);
+          const { text } = pctColor(pct);
+          const barWidth = pct != null ? Math.min(100, (Math.abs(pct) / maxAbs) * 100) : 0;
+          const isUp = (pct ?? 0) >= 0;
           const gainerPct = rank.count > 0 ? (rank.gainers / rank.count) * 100 : 0;
+
           return (
             <Link
               key={rank.id}
               href={`/sector/${rank.id}`}
-              className={`rounded-xl p-3 ${cls} transition-all hover:scale-[1.02] hover:shadow-md cursor-pointer border border-black/5 dark:border-white/5`}
+              className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group"
             >
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-lg">{s.emoji}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="font-bold text-sm leading-tight truncate">{s.nameJa}</div>
-                  <div className="font-mono text-lg font-black tabular-nums leading-tight">
-                    {pct != null ? `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%` : "—"}
+              {/* Rank */}
+              <div className="w-5 shrink-0 text-center">
+                <span className={`text-xs font-bold tabular-nums ${idx < 3 ? "text-amber-500" : "text-slate-400"}`}>
+                  {idx + 1}
+                </span>
+              </div>
+
+              {/* Emoji + Name */}
+              <div className="flex items-center gap-2 w-36 shrink-0">
+                <span className="text-xl">{s.emoji}</span>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    {s.nameJa}
                   </div>
+                  <div className="text-[10px] text-slate-400 truncate">{rank.count > 0 ? `${rank.count}銘柄` : "—"}</div>
                 </div>
               </div>
-              {/* Gainer/Loser bar */}
-              {rank.count > 0 && (
-                <>
-                  <div className="flex h-1.5 rounded-full overflow-hidden bg-black/10 mt-1">
-                    <div className="bg-emerald-400/70" style={{ width: `${gainerPct}%` }} />
-                    <div className="bg-rose-400/70 flex-1" />
-                  </div>
-                  <div className="flex justify-between text-[9px] mt-0.5 opacity-75">
-                    <span>▲{rank.gainers}</span>
-                    <span>{rank.count}銘柄</span>
-                    <span>▼{rank.losers}</span>
-                  </div>
-                </>
-              )}
-              {rank.topGainer && (
-                <div className="text-[10px] mt-1 opacity-80 truncate">
-                  ▲ {rank.topGainer.symbol} +{rank.topGainer.pct.toFixed(1)}%
+
+              {/* Bar */}
+              <div className="flex-1 min-w-0 hidden sm:block">
+                <div className="relative h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  {pct != null && (
+                    <div
+                      className={`absolute top-0 h-full rounded-full transition-all duration-500 ${isUp ? "left-1/2 bg-emerald-400/70" : "right-1/2 bg-rose-400/70"}`}
+                      style={{ width: `${barWidth / 2}%` }}
+                    />
+                  )}
                 </div>
-              )}
+                {/* Gainer/loser micro bar */}
+                {rank.count > 0 && (
+                  <div className="flex h-1 rounded-full overflow-hidden mt-1 bg-slate-100 dark:bg-slate-800">
+                    <div className="bg-emerald-400/60 transition-all" style={{ width: `${gainerPct}%` }} />
+                    <div className="bg-rose-400/60 flex-1" />
+                  </div>
+                )}
+              </div>
+
+              {/* % change badge */}
+              <div className="shrink-0">
+                <PctBadge pct={pct} />
+              </div>
+
+              {/* Top gainer */}
+              <div className="hidden lg:block shrink-0 w-36 text-right">
+                {rank.topGainer ? (
+                  <div className="text-xs">
+                    <span className="text-emerald-600 dark:text-emerald-400 font-mono font-semibold">
+                      ▲ +{rank.topGainer.pct.toFixed(1)}%
+                    </span>
+                    <span className="text-slate-400 ml-1">{rank.topGainer.symbol}</span>
+                  </div>
+                ) : (
+                  <span className="text-xs text-slate-300">—</span>
+                )}
+                {rank.topLoser && (
+                  <div className="text-xs mt-0.5">
+                    <span className="text-rose-600 dark:text-rose-400 font-mono font-semibold">
+                      ▼ {rank.topLoser.pct.toFixed(1)}%
+                    </span>
+                    <span className="text-slate-400 ml-1">{rank.topLoser.symbol}</span>
+                  </div>
+                )}
+              </div>
             </Link>
           );
         })}
       </div>
+
+      {/* Footer */}
       {asOf && (
-        <div className="text-[10px] text-slate-400 mt-2 text-right">
+        <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-800/60 text-[10px] text-slate-400 text-right">
           {new Date(asOf).toLocaleString("ja-JP")} 時点
         </div>
       )}

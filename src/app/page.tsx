@@ -7,8 +7,7 @@ import TopMovers from "@/components/TopMovers";
 import RecentViewed from "@/components/RecentViewed";
 import InvestmentThemes from "@/components/InvestmentThemes";
 import PortfolioHero from "@/components/PortfolioHero";
-import TrendNews from "@/components/TrendNews";
-import GeopoliticalNews from "@/components/GeopoliticalNews";
+import NewsPanel from "@/components/NewsPanel";
 
 export default function Home() {
   return (
@@ -32,10 +31,10 @@ export default function Home() {
         <MarketOverview />
       </section>
 
-      {/* ── Top movers + Trend news ── */}
+      {/* ── Top movers + News panel ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <TopMovers />
-        <TrendNews />
+        <NewsPanel />
       </div>
 
       <RecentViewed />
@@ -46,8 +45,6 @@ export default function Home() {
         <InvestmentThemes />
       </div>
 
-      {/* ── Geopolitical / Macro News ── */}
-      <GeopoliticalNews />
     </div>
   );
 }

@@ -14,14 +14,47 @@ const SYMBOL_INDEX = new Map(STOCKS_CATALOG.map((s) => [s.symbol, s]));
 /** Symbols already in the curated catalog — we won't duplicate them from TSE_NAMES */
 const CATALOG_JP_SYMBOLS = new Set(JP_STOCKS_LIST.map((s) => s.symbol));
 
-/** Deduplicated supplemental TSE list (entries not in curated catalog) */
+/**
+ * Supplemental TSE list (entries not in curated catalog).
+ * Multiple entries per symbol are allowed (for brand-name aliases);
+ * dedup key is symbol+name so the same entry isn't added twice.
+ */
 const TSE_SUPPLEMENT: TseNameMatch[] = [];
-const _seenTse = new Set<string>();
+const _seenTseKeys = new Set<string>();
 for (const [symbol, name] of TSE_NAMES) {
-  if (!_seenTse.has(symbol) && !CATALOG_JP_SYMBOLS.has(symbol)) {
-    _seenTse.add(symbol);
+  if (CATALOG_JP_SYMBOLS.has(symbol)) continue; // already in curated catalog
+  const key = `${symbol}:::${name}`;
+  if (!_seenTseKeys.has(key)) {
+    _seenTseKeys.add(key);
     TSE_SUPPLEMENT.push({ symbol, name });
   }
+}
+
+/** Unique symbol set for TSE supplement (primary name only, no aliases) */
+const TSE_SUPPLEMENT_PRIMARY = new Map<string, string>();
+for (const { symbol, name } of TSE_SUPPLEMENT) {
+  if (!TSE_SUPPLEMENT_PRIMARY.has(symbol) && !name.includes("廃止") && !name.includes("重複")) {
+    TSE_SUPPLEMENT_PRIMARY.set(symbol, name);
+  }
+}
+
+/**
+ * Full JP stock browse list: curated catalog JP stocks +
+ * supplemental TSE stocks (no aliases, no deleted/duplicate entries).
+ * Used by the browse page to populate the complete JP universe.
+ */
+export function getFullJpBrowseList(): { symbol: string; name: string; sector?: string }[] {
+  const out: { symbol: string; name: string; sector?: string }[] = [];
+  // Curated catalog first (have sector info)
+  for (const s of JP_STOCKS_LIST) {
+    if (s.type === "etf") continue; // ETFs handled separately
+    out.push({ symbol: s.symbol, name: s.name, sector: s.sector });
+  }
+  // TSE supplement (no sector info, no aliases, no defunct entries)
+  for (const [symbol, name] of TSE_SUPPLEMENT_PRIMARY) {
+    out.push({ symbol, name });
+  }
+  return out;
 }
 
 export function findJpStockBySymbol(symbol: string): JpStock | undefined {

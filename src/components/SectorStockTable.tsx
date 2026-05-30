@@ -5,7 +5,8 @@ import Link from "next/link";
 import { ChevronDown, ChevronUp, ArrowUpDown } from "lucide-react";
 import { formatNumber } from "@/lib/format";
 import { getJpName } from "@/lib/jp-stocks";
-import type { CatalogStock } from "@/lib/stocks-catalog";
+// Minimal stock shape accepted by this table (a subset of CatalogStock)
+type StockEntry = { symbol: string; name: string; market: string };
 
 type Quote = {
   regularMarketPrice?: number;
@@ -28,7 +29,7 @@ export default function SectorStockTable({
   stocks,
   compact = false,
 }: {
-  stocks: CatalogStock[];
+  stocks: StockEntry[];
   compact?: boolean;
 }) {
   const [visible, setVisible] = useState(compact ? COMPACT_LIMIT : INITIAL_LIMIT);

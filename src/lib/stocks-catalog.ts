@@ -526,3 +526,38 @@ export function getAllStocks(includeEtf = false): CatalogStock[] {
 export function getJpStocks(): CatalogStock[] {
   return STOCKS_CATALOG.filter((s) => s.market === "JP");
 }
+
+/**
+ * Returns all stocks for a sector, including supplement stocks from
+ * US_STOCKS_SUPPLEMENT that have sector data in US_SECTOR_MAP.
+ * Deduplicates by symbol (curated catalog takes precedence).
+ */
+export function getStocksBySectorAll(
+  sector: GicsSectorId,
+): { symbol: string; name: string; market: "JP" | "US" }[] {
+  // Lazy import to avoid circular deps
+  const { US_STOCKS_SUPPLEMENT } = require("./us-stocks-list") as {
+    US_STOCKS_SUPPLEMENT: [string, string][];
+  };
+  const { US_SECTOR_MAP } = require("./us-sector-supplement") as {
+    US_SECTOR_MAP: Record<string, GicsSectorId>;
+  };
+
+  // Start with curated catalog (non-ETF)
+  const curated = STOCKS_CATALOG.filter(
+    (s) => s.sector === sector && s.type !== "etf",
+  ).map((s) => ({ symbol: s.symbol, name: s.name, market: s.market as "JP" | "US" }));
+
+  const seen = new Set(curated.map((s) => s.symbol));
+
+  // Add supplement stocks that match this sector and aren't already curated
+  for (const [sym, name] of US_STOCKS_SUPPLEMENT) {
+    if (seen.has(sym)) continue;
+    if ((US_SECTOR_MAP[sym] as GicsSectorId) !== sector) continue;
+    if (name.includes("廃止") || name.includes("delisted")) continue;
+    seen.add(sym);
+    curated.push({ symbol: sym, name, market: "US" });
+  }
+
+  return curated;
+}

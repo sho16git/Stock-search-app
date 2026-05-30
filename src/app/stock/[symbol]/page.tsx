@@ -7,7 +7,6 @@ import FundamentalsTable from "@/components/FundamentalsTable";
 import AnalystRecommendations from "@/components/AnalystRecommendations";
 import EarningsCard from "@/components/EarningsCard";
 import YutaiCard from "@/components/YutaiCard";
-import CompanyProfile from "@/components/CompanyProfile";
 import HoldersCard from "@/components/HoldersCard";
 import NewsCard from "@/components/NewsCard";
 import PeerStocks from "@/components/PeerStocks";
@@ -52,7 +51,6 @@ export default async function StockPage({
       <NewsCard symbol={symbol} />
       <StockGeopoliticalNews symbol={symbol} />
       <PeerStocks symbol={symbol} />
-      <CompanyProfile symbol={symbol} />
     </div>
   );
 }

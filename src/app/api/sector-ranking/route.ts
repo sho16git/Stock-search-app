@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import yahooFinance from "@/lib/yfinance";
 import { GICS_SECTORS, type GicsSectorId } from "@/lib/gics";
-import { getStocksBySector } from "@/lib/stocks-catalog";
+import { getStocksBySectorAll } from "@/lib/stocks-catalog";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ export async function GET() {
     const tasks = GICS_SECTORS.map(async (sector) => {
       // Use every stock in the catalog for this sector — Yahoo's batch quote
       // endpoint handles 50+ symbols per call in a single round-trip.
-      const stocks = getStocksBySector(sector.id);
+      const stocks = getStocksBySectorAll(sector.id);
       if (stocks.length === 0) {
         return {
           id: sector.id,
@@ -50,7 +50,7 @@ export async function GET() {
           ?.regularMarketChangePercent;
         const sym = (q as { symbol?: string })?.symbol;
         if (typeof pct !== "number" || !sym) continue;
-        const stock = stocks.find((s) => s.symbol === sym);
+        const stock = stocks.find((s: { symbol: string; name: string }) => s.symbol === sym);
         const name = stock?.name ?? sym;
         sum += pct;
         n += 1;

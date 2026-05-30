@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import yahooFinance from "@/lib/yfinance";
 import { getAllStocks } from "@/lib/stocks-catalog";
-import { GICS_SECTORS } from "@/lib/gics";
+import { GICS_SECTORS, type GicsSectorId } from "@/lib/gics";
 import { getCompanyNameJa } from "@/lib/translate-name";
+import { US_STOCKS_SUPPLEMENT } from "@/lib/us-stocks-list";
+import { US_SECTOR_MAP } from "@/lib/us-sector-supplement";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// Cache batch quotes for the catalog briefly so successive screener calls
-// don't re-hit Yahoo for the same ~250 quotes.
+// Cache batch quotes — 5 min TTL to keep screener fast for repeat queries
 let cachedQuotes: { at: number; map: Map<string, RawQuote> } | null = null;
-const CACHE_TTL_MS = 60_000;
+const CACHE_TTL_MS = 5 * 60_000;
 
 type RawQuote = {
   symbol: string;
@@ -26,16 +27,43 @@ type RawQuote = {
   currency?: string;
 };
 
+/** Build the full screener universe: curated catalog + US supplement (no ETF dupes) */
+function getScreenerUniverse(): { symbol: string; name: string; market: "JP" | "US"; sector: GicsSectorId | null; type: string }[] {
+  const curated = getAllStocks(true).map((s) => ({
+    symbol: s.symbol,
+    name: s.name,
+    market: s.market as "JP" | "US",
+    sector: s.sector as GicsSectorId,
+    type: s.type ?? "stock",
+  }));
+  const seen = new Set(curated.map((s) => s.symbol));
+
+  // Add supplement US stocks (exclude ETFs & 廃止)
+  for (const [sym, name] of US_STOCKS_SUPPLEMENT) {
+    if (seen.has(sym)) continue;
+    if (name.includes("廃止") || name.includes("delisted")) continue;
+    seen.add(sym);
+    curated.push({
+      symbol: sym,
+      name,
+      market: "US",
+      sector: (US_SECTOR_MAP[sym] as GicsSectorId) ?? null,
+      type: "stock",
+    });
+  }
+  return curated;
+}
+
 async function loadQuotes(): Promise<Map<string, RawQuote>> {
   const now = Date.now();
   if (cachedQuotes && now - cachedQuotes.at < CACHE_TTL_MS) {
     return cachedQuotes.map;
   }
-  const symbols = getAllStocks(true).map((s) => s.symbol);
+  const symbols = getScreenerUniverse().map((s) => s.symbol);
   const map = new Map<string, RawQuote>();
-  // Chunk into 75-symbol batches to keep request URL/timeouts sane.
-  for (let i = 0; i < symbols.length; i += 75) {
-    const chunk = symbols.slice(i, i + 75);
+  // Chunk into 100-symbol batches for efficiency
+  for (let i = 0; i < symbols.length; i += 100) {
+    const chunk = symbols.slice(i, i + 100);
     try {
       const quotes = await yahooFinance.quote(chunk);
       const list = Array.isArray(quotes) ? quotes : [quotes];
@@ -78,7 +106,7 @@ export async function GET(req: NextRequest) {
   const includeEtf = type === "etf" || type === "all";
   const onlyEtf = type === "etf";
 
-  const universe = getAllStocks(true).filter((s) => {
+  const universe = getScreenerUniverse().filter((s) => {
     if (sector && s.sector !== sector) return false;
     if (market === "JP" && s.market !== "JP") return false;
     if (market === "US" && s.market !== "US") return false;
@@ -125,7 +153,7 @@ export async function GET(req: NextRequest) {
     name: stock.name,
     nameJa: namesJa[i] ?? stock.name,
     market: stock.market,
-    sector: stock.sector,
+    sector: stock.sector ?? null,
     type: stock.type ?? "stock",
     price: q?.regularMarketPrice ?? null,
     changePercent: q?.regularMarketChangePercent ?? null,
