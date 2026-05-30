@@ -129,8 +129,8 @@ function InlineChart({ symbol, currency, up }: { symbol: string; currency?: stri
         )}
       </div>
 
-      {/* Chart area */}
-      <div className="h-44 w-full">
+      {/* Chart area — touch-pan-y: 縦スクロールはページに委譲し、横スワイプはチャートのツールチップに使用 */}
+      <div className="h-44 w-full touch-pan-y select-none">
         {loading ? (
           <div className="h-full w-full rounded-xl bg-slate-100 dark:bg-slate-800/60 animate-pulse" />
         ) : data.length === 0 ? (

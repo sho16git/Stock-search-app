@@ -63,6 +63,9 @@ html {
   text-rendering: optimizeLegibility;
   /* Prevent iOS Safari from auto-scaling text on rotation */
   -webkit-text-size-adjust: 100%;
+  /* Prevent horizontal rubber-band on iOS Safari */
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 /* Tap targets on touch devices stay snappy & visible */
@@ -87,6 +90,8 @@ body {
     "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
   line-height: 1.6;
   letter-spacing: 0.01em;
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
 }
 
 /* Slightly looser kerning for kana headings */

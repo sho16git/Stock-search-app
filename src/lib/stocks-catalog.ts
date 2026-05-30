@@ -1,4 +1,8 @@
 import type { GicsSectorId } from "./gics";
+import { US_STOCKS_SUPPLEMENT } from "./us-stocks-list";
+import { US_SECTOR_MAP } from "./us-sector-supplement";
+import { TSE_NAMES } from "./tse-names";
+import { JP_SECTOR_MAP } from "./jp-sector-supplement";
 
 export type CatalogStock = {
   symbol: string;
@@ -535,20 +539,6 @@ export function getJpStocks(): CatalogStock[] {
 export function getStocksBySectorAll(
   sector: GicsSectorId,
 ): { symbol: string; name: string; market: "JP" | "US" }[] {
-  // Lazy imports to avoid circular deps
-  const { US_STOCKS_SUPPLEMENT } = require("./us-stocks-list") as {
-    US_STOCKS_SUPPLEMENT: [string, string][];
-  };
-  const { US_SECTOR_MAP } = require("./us-sector-supplement") as {
-    US_SECTOR_MAP: Record<string, GicsSectorId>;
-  };
-  const { TSE_NAMES } = require("./tse-names") as {
-    TSE_NAMES: [string, string][];
-  };
-  const { JP_SECTOR_MAP } = require("./jp-sector-supplement") as {
-    JP_SECTOR_MAP: Record<string, GicsSectorId>;
-  };
-
   // Start with curated catalog (non-ETF)
   const curated = STOCKS_CATALOG.filter(
     (s) => s.sector === sector && s.type !== "etf",

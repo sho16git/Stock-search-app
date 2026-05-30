@@ -329,7 +329,7 @@ function MiniChart({ symbol, range, label, currency }: {
         </div>
       </div>
       {/* Chart */}
-      <div className="h-32 flex-1" ref={canvasRef}>
+      <div className="h-32 flex-1 touch-pan-y select-none" ref={canvasRef}>
         {loading ? (
           <div className="skeleton h-full w-full" />
         ) : raw.length === 0 ? (
@@ -547,7 +547,7 @@ export default function PriceChart({ symbol, currency }: { symbol: string; curre
 
           {/* レンジ選択（単一表示時のみ） */}
           {!multiView && (
-            <div className="flex gap-0.5 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-lg overflow-x-auto">
+            <div className="flex gap-0.5 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-lg overflow-x-auto touch-pan-x">
               {RANGES.map(r => (
                 <button
                   key={r.key}
@@ -628,7 +628,7 @@ export default function PriceChart({ symbol, currency }: { symbol: string; curre
         </div>
       ) : (
         /* ── 単一チャート ── */
-        <div className="h-72" ref={canvasRef}>
+        <div className="h-72 touch-pan-y select-none" ref={canvasRef}>
           {loading && (
             <div className="skeleton h-full w-full rounded-xl" />
           )}
