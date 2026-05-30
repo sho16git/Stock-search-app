@@ -535,12 +535,18 @@ export function getJpStocks(): CatalogStock[] {
 export function getStocksBySectorAll(
   sector: GicsSectorId,
 ): { symbol: string; name: string; market: "JP" | "US" }[] {
-  // Lazy import to avoid circular deps
+  // Lazy imports to avoid circular deps
   const { US_STOCKS_SUPPLEMENT } = require("./us-stocks-list") as {
     US_STOCKS_SUPPLEMENT: [string, string][];
   };
   const { US_SECTOR_MAP } = require("./us-sector-supplement") as {
     US_SECTOR_MAP: Record<string, GicsSectorId>;
+  };
+  const { TSE_NAMES } = require("./tse-names") as {
+    TSE_NAMES: [string, string][];
+  };
+  const { JP_SECTOR_MAP } = require("./jp-sector-supplement") as {
+    JP_SECTOR_MAP: Record<string, GicsSectorId>;
   };
 
   // Start with curated catalog (non-ETF)
@@ -550,13 +556,25 @@ export function getStocksBySectorAll(
 
   const seen = new Set(curated.map((s) => s.symbol));
 
-  // Add supplement stocks that match this sector and aren't already curated
+  // Add US supplement stocks that match this sector
   for (const [sym, name] of US_STOCKS_SUPPLEMENT) {
     if (seen.has(sym)) continue;
     if ((US_SECTOR_MAP[sym] as GicsSectorId) !== sector) continue;
     if (name.includes("廃止") || name.includes("delisted")) continue;
     seen.add(sym);
     curated.push({ symbol: sym, name, market: "US" });
+  }
+
+  // Add JP supplement stocks (TSE) that match this sector
+  const jpSymSeen = new Set<string>();
+  for (const [sym, name] of TSE_NAMES) {
+    if (seen.has(sym)) continue; // already in curated catalog or added above
+    if (name.includes("廃止") || name.includes("重複") || name === "?" || name.startsWith("?")) continue;
+    if ((JP_SECTOR_MAP[sym] as GicsSectorId) !== sector) continue;
+    if (jpSymSeen.has(sym)) continue; // dedup: first occurrence per symbol wins
+    jpSymSeen.add(sym);
+    seen.add(sym);
+    curated.push({ symbol: sym, name, market: "JP" });
   }
 
   return curated;

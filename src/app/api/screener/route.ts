@@ -5,6 +5,8 @@ import { GICS_SECTORS, type GicsSectorId } from "@/lib/gics";
 import { getCompanyNameJa } from "@/lib/translate-name";
 import { US_STOCKS_SUPPLEMENT } from "@/lib/us-stocks-list";
 import { US_SECTOR_MAP } from "@/lib/us-sector-supplement";
+import { TSE_NAMES } from "@/lib/tse-names";
+import { JP_SECTOR_MAP } from "@/lib/jp-sector-supplement";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +29,7 @@ type RawQuote = {
   currency?: string;
 };
 
-/** Build the full screener universe: curated catalog + US supplement (no ETF dupes) */
+/** Build the full screener universe: curated catalog + US supplement + TSE supplement */
 function getScreenerUniverse(): { symbol: string; name: string; market: "JP" | "US"; sector: GicsSectorId | null; type: string }[] {
   const curated = getAllStocks(true).map((s) => ({
     symbol: s.symbol,
@@ -51,6 +53,24 @@ function getScreenerUniverse(): { symbol: string; name: string; market: "JP" | "
       type: "stock",
     });
   }
+
+  // Add supplement JP stocks from TSE (exclude 廃止 / 重複 / ?)
+  const jpSymSeen = new Set<string>();
+  for (const [sym, name] of TSE_NAMES) {
+    if (seen.has(sym)) continue;
+    if (name.includes("廃止") || name.includes("重複") || name === "?" || name.startsWith("?")) continue;
+    if (jpSymSeen.has(sym)) continue; // dedup: first occurrence per symbol wins
+    jpSymSeen.add(sym);
+    seen.add(sym);
+    curated.push({
+      symbol: sym,
+      name,
+      market: "JP",
+      sector: (JP_SECTOR_MAP[sym] as GicsSectorId) ?? null,
+      type: "stock",
+    });
+  }
+
   return curated;
 }
 
