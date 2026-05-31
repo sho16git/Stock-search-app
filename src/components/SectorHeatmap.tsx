@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   RefreshCw, LayoutGrid, AlignJustify,
   TrendingUp, TrendingDown, Minus,
@@ -224,9 +225,10 @@ export default function SectorHeatmap() {
             const isBottom = idx === displayRanks.length - 1 && pct !== null && pct < 0;
 
             return (
-              <div
+              <Link
                 key={rank.id}
-                className={`relative rounded-xl p-3.5 ${style.bg} transition-all duration-500`}
+                href={`/sector/${rank.id}`}
+                className={`relative block rounded-xl p-3.5 ${style.bg} transition-all duration-300 hover:scale-[1.03] hover:shadow-lg hover:z-10 cursor-pointer`}
               >
                 {/* Top / Bottom badge */}
                 {(isTop || isBottom) && (
@@ -275,7 +277,7 @@ export default function SectorHeatmap() {
                     />
                   </div>
                 )}
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -300,9 +302,10 @@ export default function SectorHeatmap() {
             const Icon   = pct == null ? Minus : pct >= 0 ? TrendingUp : TrendingDown;
 
             return (
-              <div
+              <Link
                 key={rank.id}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                href={`/sector/${rank.id}`}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group"
               >
                 {/* Rank */}
                 <div className="w-5 shrink-0 text-center">
@@ -315,7 +318,7 @@ export default function SectorHeatmap() {
                 <div className="flex items-center gap-2 w-36 shrink-0">
                   <span className="text-xl">{s.emoji}</span>
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate">{s.nameJa}</div>
+                    <div className="text-sm font-semibold truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{s.nameJa}</div>
                     <div className="text-[10px] text-slate-400">
                       {count > 0 ? `${count}銘柄` : "—"}
                     </div>
@@ -390,7 +393,7 @@ export default function SectorHeatmap() {
                     </div>
                   )}
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
