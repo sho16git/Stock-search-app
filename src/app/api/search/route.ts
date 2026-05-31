@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import yahooFinance from "@/lib/yfinance";
 import {
-  searchJpStocks, searchUsStocks, searchTseNames,
+  searchJpStocks, searchUsStocks, searchTseNames, searchAllUsKatakana,
   type JpStock, type TseNameMatch,
 } from "@/lib/jp-stocks";
 import { getUsKatakana } from "@/lib/us-katakana";
@@ -124,11 +124,12 @@ export async function GET(req: NextRequest) {
 
   // ── Japanese text query ───────────────────────────────────────────────────
   if (JP_TEXT.test(q)) {
-    // Always run local + Yahoo in parallel for maximum coverage
-    const [jpResults, tseResults, usResults, yahooResults] = await Promise.all([
+    // Run local + Yahoo in parallel for maximum coverage
+    const [jpResults, tseResults, usResults, usKatakanaAll, yahooResults] = await Promise.all([
       Promise.resolve(searchJpStocks(q, 10)),
       Promise.resolve(searchTseNames(q, 8)),
       Promise.resolve(searchUsStocks(q, 5)),
+      Promise.resolve(searchAllUsKatakana(q, 10)), // full US_KATAKANA dict search
       yahooSearch(q, 10),
     ]);
 
@@ -142,6 +143,21 @@ export async function GET(req: NextRequest) {
       ...usResults.map(usStockToResult),
     ]) {
       if (!seen.has(r.symbol)) { seen.add(r.symbol); merged.push(r); }
+    }
+
+    // Append US stocks found via full katakana dict (not already in catalog results)
+    for (const { symbol, katakana } of usKatakanaAll) {
+      if (!seen.has(symbol)) {
+        seen.add(symbol);
+        merged.push({
+          symbol,
+          longname: katakana,
+          jpName: katakana,
+          exchange: "US",
+          quoteType: "EQUITY",
+          typeDisp: "Equity",
+        });
+      }
     }
 
     // Append Yahoo results not already covered by local catalog

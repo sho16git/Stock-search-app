@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from "recharts";
-import { Maximize2, X, TrendingUp, TrendingDown } from "lucide-react";
+import { Maximize2, X, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 
 /* ─── Types ─── */
 type Point = {
@@ -438,6 +438,23 @@ function ExpandedModal({
   );
 }
 
+/* ─── Auto-refresh intervals for intraday ranges (ms) ─── */
+const REFRESH_MS: Partial<Record<RangeKey, number>> = {
+  "1min":  15_000,   // 15 s — new candle every minute
+  "5min":  30_000,   // 30 s
+  "10min": 30_000,   // 30 s
+  "1h":    60_000,   // 1 min
+  "1d":    30_000,   // 30 s — during-session view
+  "1wk":   120_000,  // 2 min
+};
+
+function fmtUpdatedAt(d: Date): string {
+  const h = d.getHours().toString().padStart(2, "0");
+  const m = d.getMinutes().toString().padStart(2, "0");
+  const s = d.getSeconds().toString().padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
 /* ─── Main StockChart component ─── */
 export default function StockChart({ symbol, currency }: { symbol: string; currency?: string | null }) {
   const [range, setRange]           = useState<RangeKey>("3mo");
@@ -445,6 +462,11 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
   const [data, setData]             = useState<Point[]>([]);
   const [loading, setLoading]       = useState(true);
   const [expanded, setExpanded]     = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [updatedAt, setUpdatedAt]   = useState<Date | null>(null);
+  const [spinning, setSpinning]     = useState(false);
+
+  const isIntraday = useMemo(() => RANGES.find(r => r.key === range)?.group === "intraday", [range]);
 
   useEffect(() => {
     const r = RANGES.find(r => r.key === range)!;
@@ -452,11 +474,25 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
     setLoading(true);
     fetch(`/api/chart?symbol=${encodeURIComponent(symbol)}&range=${r.apiRange}`, { signal: ctrl.signal })
       .then(res => res.json())
-      .then(j => setData((j.data ?? []) as Point[]))
+      .then(j => { setData((j.data ?? []) as Point[]); setUpdatedAt(new Date()); })
       .catch(() => {})
       .finally(() => setLoading(false));
     return () => ctrl.abort();
+  }, [symbol, range, refreshTick]);
+
+  // Auto-refresh for intraday ranges
+  useEffect(() => {
+    const ms = REFRESH_MS[range];
+    if (!ms) return;
+    const id = setInterval(() => setRefreshTick(t => t + 1), ms);
+    return () => clearInterval(id);
   }, [symbol, range]);
+
+  const handleManualRefresh = () => {
+    setSpinning(true);
+    setRefreshTick(t => t + 1);
+    setTimeout(() => setSpinning(false), 800);
+  };
 
   const first = data[0]?.close ?? 0;
   const last  = data[data.length - 1]?.close ?? 0;
@@ -468,42 +504,61 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
         {/* Header */}
         <div className="px-4 pt-4 pb-3 border-b border-slate-100 dark:border-slate-800/60 space-y-2">
-          {/* Top row: period return + chart type + expand */}
+          {/* Top row: period return + chart type + refresh + expand */}
           <div className="flex items-center justify-between gap-2">
-            {/* Period return badge */}
-            <div className="h-5">
+            {/* Period return + last-updated */}
+            <div className="flex items-center gap-2 min-w-0">
               {!loading && data.length > 0 && (
                 <div className={`flex items-center gap-1 text-xs font-bold font-mono tabular-nums ${up ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
                   {up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
                   {up ? "+" : ""}{pct.toFixed(2)}%
                 </div>
               )}
+              {isIntraday && updatedAt && !loading && (
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 tabular-nums">
+                  {fmtUpdatedAt(updatedAt)} 更新
+                </span>
+              )}
             </div>
 
-          {/* Chart type toggle */}
-          <div className="flex gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs">
+          <div className="flex items-center gap-1.5">
+            {/* Manual refresh (intraday only) */}
+            {isIntraday && (
+              <button
+                onClick={handleManualRefresh}
+                title="最新データに更新"
+                disabled={loading}
+                className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-blue-400 hover:text-blue-500 disabled:opacity-40 transition-all"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${spinning ? "animate-spin" : ""}`} />
+              </button>
+            )}
+
+            {/* Chart type toggle */}
+            <div className="flex gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs">
+              <button
+                onClick={() => setChartType("line")}
+                className={`px-2 py-1 rounded-md font-semibold transition-all ${chartType === "line" ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white" : "text-slate-500"}`}
+              >
+                折れ線
+              </button>
+              <button
+                onClick={() => setChartType("candle")}
+                className={`px-2 py-1 rounded-md font-semibold transition-all ${chartType === "candle" ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white" : "text-slate-500"}`}
+              >
+                ローソク
+              </button>
+            </div>
+
+            {/* Expand */}
             <button
-              onClick={() => setChartType("line")}
-              className={`px-2 py-1 rounded-md font-semibold transition-all ${chartType === "line" ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white" : "text-slate-500"}`}
+              onClick={() => setExpanded(true)}
+              title="全画面表示"
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-all"
             >
-              折れ線
-            </button>
-            <button
-              onClick={() => setChartType("candle")}
-              className={`px-2 py-1 rounded-md font-semibold transition-all ${chartType === "candle" ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white" : "text-slate-500"}`}
-            >
-              ローソク
+              <Maximize2 className="w-3.5 h-3.5" />
             </button>
           </div>
-
-          {/* Expand */}
-          <button
-            onClick={() => setExpanded(true)}
-            title="全画面表示"
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-all"
-          >
-            <Maximize2 className="w-3.5 h-3.5" />
-          </button>
           </div>
 
           {/* Range tabs (2 rows: 足種 / 期間) */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Result = {
@@ -27,35 +27,48 @@ export default function SearchBox({ autoFocus = false }: { autoFocus?: boolean }
   const [active, setActive] = useState(0);
   const router = useRouter();
   const boxRef = useRef<HTMLDivElement>(null);
+  // IME composition guard: prevents firing search on every intermediate character
+  const composingRef = useRef(false);
+
+  const runSearch = useCallback(async (query: string) => {
+    if (query.trim().length < 1) {
+      setResults([]);
+      setOpen(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      const json: SearchResponse = await res.json();
+      setResults(json.results ?? []);
+      setHint(json.hint);
+      setOpen(true);
+      setActive(0);
+    } catch {
+      // ignored
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (q.trim().length < 1) {
       setResults([]);
+      setOpen(false);
       return;
     }
+    // Skip search while IME is composing — wait for compositionend
+    if (composingRef.current) return;
+
     const ctrl = new AbortController();
-    const t = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
-          signal: ctrl.signal,
-        });
-        const json: SearchResponse = await res.json();
-        setResults(json.results ?? []);
-        setHint(json.hint);
-        setOpen(true);
-        setActive(0);
-      } catch {
-        // ignored
-      } finally {
-        setLoading(false);
-      }
+    const t = setTimeout(() => {
+      if (!composingRef.current) runSearch(q);
     }, 200);
     return () => {
       ctrl.abort();
       clearTimeout(t);
     };
-  }, [q]);
+  }, [q, runSearch]);
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -68,6 +81,7 @@ export default function SearchBox({ autoFocus = false }: { autoFocus?: boolean }
   const go = (symbol: string) => {
     router.push(`/stock/${encodeURIComponent(symbol)}`);
     setOpen(false);
+    setQ("");
   };
 
   return (
@@ -78,7 +92,18 @@ export default function SearchBox({ autoFocus = false }: { autoFocus?: boolean }
         autoFocus={autoFocus}
         onChange={(e) => setQ(e.target.value)}
         onFocus={() => results.length && setOpen(true)}
+        /* ── IME composition handling ── */
+        onCompositionStart={() => { composingRef.current = true; }}
+        onCompositionEnd={(e) => {
+          composingRef.current = false;
+          // Immediately trigger search with the composed value
+          const val = e.currentTarget.value;
+          setQ(val);
+          runSearch(val);
+        }}
         onKeyDown={(e) => {
+          // During IME composition, let the browser handle the keys
+          if (e.nativeEvent.isComposing) return;
           if (!open) return;
           if (e.key === "ArrowDown") {
             e.preventDefault();
@@ -94,7 +119,7 @@ export default function SearchBox({ autoFocus = false }: { autoFocus?: boolean }
             setOpen(false);
           }
         }}
-        placeholder="銘柄名・コード・ティッカー (例: トヨタ, 7203, AAPL)"
+        placeholder="銘柄名・コード・ティッカー (例: トヨタ, 7203, AAPL, アップル)"
         className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-transparent shadow-sm hover:shadow-md transition-shadow"
       />
       <svg

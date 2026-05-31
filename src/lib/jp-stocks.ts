@@ -1,5 +1,5 @@
 import { STOCKS_CATALOG, type CatalogStock } from "./stocks-catalog";
-import { getUsKatakana } from "./us-katakana";
+import { getUsKatakana, US_KATAKANA } from "./us-katakana";
 import { TSE_NAMES } from "./tse-names";
 
 export type JpStock = CatalogStock;
@@ -145,6 +145,38 @@ export function searchTseNames(query: string, limit = 10): TseNameMatch[] {
     else if (rank === 1) contains.push(s);
   }
 
+  return [...exact, ...startsWith, ...contains].slice(0, limit);
+}
+
+/**
+ * Search ALL US_KATAKANA entries directly (not limited to STOCKS_CATALOG).
+ * Returns { symbol, katakana } pairs. Used to ensure full coverage of
+ * ~300 US stocks even when only a subset is in the curated catalog.
+ */
+export function searchAllUsKatakana(
+  query: string,
+  limit = 10,
+): { symbol: string; katakana: string }[] {
+  const q = normalize(query);
+  if (!q) return [];
+  const exact:      { symbol: string; katakana: string }[] = [];
+  const startsWith: { symbol: string; katakana: string }[] = [];
+  const contains:   { symbol: string; katakana: string }[] = [];
+
+  for (const [symbol, katakana] of Object.entries(US_KATAKANA)) {
+    const h = normalize(katakana);
+    const hs = normalize(symbol);
+    let rank: 0 | 1 | 2 | 3 = 0;
+    for (const hay of [h, hs]) {
+      if (hay === q)           { rank = 3; break; }
+      else if (hay.startsWith(q)) rank = Math.max(rank, 2) as 2;
+      else if (hay.includes(q))   rank = Math.max(rank, 1) as 1;
+    }
+    const item = { symbol, katakana };
+    if      (rank === 3) exact.push(item);
+    else if (rank === 2) startsWith.push(item);
+    else if (rank === 1) contains.push(item);
+  }
   return [...exact, ...startsWith, ...contains].slice(0, limit);
 }
 

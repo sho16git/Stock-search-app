@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Newspaper, BookOpen, ChevronUp } from "lucide-react";
+import { Newspaper, BookOpen, ChevronUp, RefreshCw } from "lucide-react";
 import ArticleBody from "./ArticleBody";
 
 type News = {
@@ -37,27 +37,47 @@ function relativeTime(iso: string | null): string {
   });
 }
 
+const NEWS_REFRESH_MS = 3 * 60 * 1000; // 3 minutes
+
 export default function NewsCard({ symbol }: { symbol: string }) {
   const [news, setNews] = useState<News[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [refreshTick, setRefreshTick] = useState(0);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [spinning, setSpinning] = useState(false);
 
   useEffect(() => {
     const ctrl = new AbortController();
     setLoading(true);
-    setNews(null);
-    setExpanded(new Set());
+    // Don't reset news on refresh (keep showing old news while loading)
+    if (refreshTick === 0) {
+      setNews(null);
+      setExpanded(new Set());
+    }
     fetch(`/api/news?symbol=${encodeURIComponent(symbol)}`, {
       signal: ctrl.signal,
     })
       .then((r) => r.json())
       .then((j) => {
-        if (!j.error) setNews(j.news ?? []);
+        if (!j.error) { setNews(j.news ?? []); setUpdatedAt(new Date()); }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
     return () => ctrl.abort();
+  }, [symbol, refreshTick]);
+
+  // Auto-refresh every 3 minutes
+  useEffect(() => {
+    const id = setInterval(() => setRefreshTick((t) => t + 1), NEWS_REFRESH_MS);
+    return () => clearInterval(id);
   }, [symbol]);
+
+  const handleManualRefresh = () => {
+    setSpinning(true);
+    setRefreshTick((t) => t + 1);
+    setTimeout(() => setSpinning(false), 800);
+  };
 
   const toggle = (uuid: string) => {
     setExpanded((prev) => {
@@ -80,10 +100,27 @@ export default function NewsCard({ symbol }: { symbol: string }) {
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-      <h2 className="text-base font-semibold tracking-tight flex items-center gap-2 mb-4">
-        <Newspaper className="w-4 h-4 text-slate-500" />
-        関連ニュース
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-base font-semibold tracking-tight flex items-center gap-2">
+          <Newspaper className="w-4 h-4 text-slate-500" />
+          関連ニュース
+        </h2>
+        <div className="flex items-center gap-2">
+          {updatedAt && !loading && (
+            <span className="text-[10px] text-slate-400 tabular-nums">
+              {updatedAt.getHours().toString().padStart(2,"0")}:{updatedAt.getMinutes().toString().padStart(2,"0")} 更新
+            </span>
+          )}
+          <button
+            onClick={handleManualRefresh}
+            disabled={loading}
+            title="ニュースを最新に更新"
+            className="p-1 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40 transition-all"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${spinning ? "animate-spin" : ""}`} />
+          </button>
+        </div>
+      </div>
       <ul className="space-y-3">
         {news.slice(0, 8).map((n) => {
           const primaryTitle = n.titleJa ?? n.title;
