@@ -51,6 +51,22 @@ function NavLink({ href, label }: { href: string; label: string }) {
   );
 }
 
+function AiNavLink() {
+  return (
+    <Link
+      href="/ai-ranking"
+      className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 shadow-sm shadow-violet-500/30 hover:shadow-violet-500/50 transition-all whitespace-nowrap"
+    >
+      {/* pulse dot */}
+      <span className="relative flex h-1.5 w-1.5">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+      </span>
+      ✨ AI予想
+    </Link>
+  );
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -106,13 +122,24 @@ export default function RootLayout({
               <NavLink href="/screener"  label="スクリーナー" />
               <NavLink href="/stocks"    label="全銘柄" />
               <NavLink href="/sectors"   label="セクター" />
-              <NavLink href="/ai-ranking" label="AI予想" />
+              <AiNavLink />
               <NavLink href="/learn"     label="学習" />
               <NavLink href="/watchlist" label="ウォッチ" />
             </nav>
 
             {/* Mobile quick-access */}
-            <div className="flex md:hidden gap-1 ml-auto">
+            <div className="flex md:hidden gap-1 ml-auto items-center">
+              {/* AI予想 — highlighted pill */}
+              <Link
+                href="/ai-ranking"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-violet-500 to-fuchsia-500 shadow-sm shadow-violet-500/30 transition-all"
+              >
+                <span className="relative flex h-1.5 w-1.5 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+                </span>
+                AI予想
+              </Link>
               <Link
                 href="/screener"
                 className="flex items-center justify-center w-9 h-9 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
