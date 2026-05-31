@@ -58,14 +58,19 @@
 
 html {
   font-size: 15px;
+  scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  /* Prevent iOS Safari from auto-scaling text on rotation */
   -webkit-text-size-adjust: 100%;
-  /* Prevent horizontal rubber-band on iOS Safari */
   overflow-x: hidden;
   overscroll-behavior-x: none;
+}
+
+/* Selection color */
+::selection {
+  background-color: rgb(139 92 246 / 0.15);
+  color: inherit;
 }
 
 /* Tap targets on touch devices stay snappy & visible */
@@ -95,36 +100,41 @@ body {
 }
 
 /* Slightly looser kerning for kana headings */
-h1,
-h2,
-h3 {
-  letter-spacing: -0.005em;
+h1, h2, h3 {
+  letter-spacing: -0.01em;
 }
 
-/* Friendlier focus rings */
+/* Friendly focus ring */
 :focus-visible {
+  outline: 2px solid rgb(139 92 246 / 0.55);
   outline-offset: 2px;
-  outline-color: rgb(59 130 246 / 0.6);
 }
 
-/* Subtle scrollbar styling */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
+/* Refined scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgb(148 163 184 / 0.3);
-  border-radius: 6px;
+  background: rgb(148 163 184 / 0.22);
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgb(148 163 184 / 0.55);
+  background: rgb(148 163 184 / 0.45);
 }
 
-/* Utility: hide scrollbars for horizontal scroll containers (nav etc.) */
-.scrollbar-hide {
+/* Hide scrollbar utilities */
+.scrollbar-hide,
+.scrollbar-none {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
+.scrollbar-hide::-webkit-scrollbar,
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
+/* iOS-friendly momentum scroll for horizontal containers */
+.momentum-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+}
+.momentum-scroll > * {
+  scroll-snap-align: start;
 }

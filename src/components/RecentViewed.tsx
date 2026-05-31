@@ -53,11 +53,11 @@ export default function RecentViewed() {
 
   return (
     <section>
-      <h2 className="text-base font-bold tracking-tight mb-2.5 flex items-center gap-1.5">
-        <Clock className="w-4 h-4 text-slate-500" />
-        最近みた銘柄
-      </h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+      <div className="flex items-center gap-1.5 mb-3">
+        <Clock className="w-3.5 h-3.5 text-slate-400" />
+        <span className="text-sm font-bold text-slate-700 dark:text-slate-200">最近見た銘柄</span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-2">
         {items.slice(0, 6).map((r) => {
           const q = quotes[r.symbol];
           const change = q?.regularMarketChangePercent ?? 0;

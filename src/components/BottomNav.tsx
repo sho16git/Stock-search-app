@@ -2,15 +2,53 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Home, Briefcase, SlidersHorizontal, BarChart2, Star } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-const ITEMS = [
-  { href: "/",          emoji: "🏠", label: "ホーム",    color: "from-violet-500 to-indigo-500"  },
-  { href: "/portfolio", emoji: "💼", label: "保有",      color: "from-emerald-500 to-teal-500"   },
-  { href: "/screener",  emoji: "🎯", label: "検索",      color: "from-orange-500 to-amber-500"   },
-  { href: "/sectors",   emoji: "📊", label: "セクター",  color: "from-violet-500 to-purple-500"  },
-  { href: "/learn",     emoji: "📚", label: "学習",      color: "from-green-500 to-emerald-500"  },
-  { href: "/fx",        emoji: "💱", label: "FX",        color: "from-cyan-500 to-sky-500"       },
-  { href: "/watchlist", emoji: "⭐", label: "ウォッチ",  color: "from-pink-500 to-rose-500"      },
+type NavItem = {
+  href: string;
+  label: string;
+  Icon: LucideIcon;
+  activeFg: string;
+  activeBg: string;
+};
+
+const ITEMS: NavItem[] = [
+  {
+    href: "/",
+    label: "ホーム",
+    Icon: Home,
+    activeFg: "text-violet-600 dark:text-violet-400",
+    activeBg: "bg-violet-100 dark:bg-violet-900/40",
+  },
+  {
+    href: "/portfolio",
+    label: "保有",
+    Icon: Briefcase,
+    activeFg: "text-emerald-600 dark:text-emerald-400",
+    activeBg: "bg-emerald-100 dark:bg-emerald-900/40",
+  },
+  {
+    href: "/screener",
+    label: "スクリーナー",
+    Icon: SlidersHorizontal,
+    activeFg: "text-orange-600 dark:text-orange-400",
+    activeBg: "bg-orange-100 dark:bg-orange-900/40",
+  },
+  {
+    href: "/sectors",
+    label: "セクター",
+    Icon: BarChart2,
+    activeFg: "text-blue-600 dark:text-blue-400",
+    activeBg: "bg-blue-100 dark:bg-blue-900/40",
+  },
+  {
+    href: "/watchlist",
+    label: "ウォッチ",
+    Icon: Star,
+    activeFg: "text-pink-600 dark:text-pink-400",
+    activeBg: "bg-pink-100 dark:bg-pink-900/40",
+  },
 ];
 
 export default function BottomNav() {
@@ -21,23 +59,43 @@ export default function BottomNav() {
       className="fixed bottom-0 inset-x-0 z-40 md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="bg-white/92 dark:bg-slate-900/92 backdrop-blur-xl border-t border-slate-200/60 dark:border-slate-800/60 flex items-stretch justify-around px-0.5 shadow-2xl shadow-black/10 overflow-x-auto scrollbar-hide">
+      {/* Top hairline */}
+      <div className="h-px bg-gradient-to-r from-transparent via-slate-200/80 dark:via-slate-700/50 to-transparent" />
+
+      <div className="bg-white/96 dark:bg-slate-900/96 backdrop-blur-2xl flex items-stretch justify-around">
         {ITEMS.map((item) => {
-          const active = item.href === "/"
-            ? pathname === "/"
-            : pathname.startsWith(item.href);
+          const active =
+            item.href === "/"
+              ? pathname === "/"
+              : pathname.startsWith(item.href);
+
           return (
             <Link
               key={item.href}
               href={item.href}
-              className="flex-1 min-w-[52px] flex flex-col items-center justify-center py-2 gap-0.5 transition-all active:scale-90"
+              className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-all active:scale-90"
+              style={{ minHeight: 56 }}
             >
-              <span className={`flex items-center justify-center w-8 h-6 rounded-lg text-base transition-all ${active ? `bg-gradient-to-br ${item.color} shadow-sm` : ""}`}>
-                {item.emoji}
+              {/* Icon container */}
+              <span
+                className={`flex items-center justify-center w-9 h-7 rounded-xl transition-all duration-150 ${
+                  active ? `${item.activeBg} ${item.activeFg}` : "text-slate-400 dark:text-slate-600"
+                }`}
+              >
+                <item.Icon
+                  className="w-[19px] h-[19px]"
+                  strokeWidth={active ? 2.5 : 1.8}
+                />
               </span>
-              <span className={`text-[8px] font-medium tracking-wide transition-colors whitespace-nowrap ${
-                active ? "text-slate-900 dark:text-white font-bold" : "text-slate-400 dark:text-slate-500"
-              }`}>
+
+              {/* Label */}
+              <span
+                className={`text-[9px] font-semibold tracking-wide leading-none transition-colors whitespace-nowrap ${
+                  active
+                    ? "text-slate-800 dark:text-slate-100"
+                    : "text-slate-400 dark:text-slate-600"
+                }`}
+              >
                 {item.label}
               </span>
             </Link>
