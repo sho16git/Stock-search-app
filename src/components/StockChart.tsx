@@ -17,30 +17,51 @@ type Point = {
   volume?: number | null;
 };
 
-type RangeKey = "1d" | "1wk" | "1mo" | "3mo" | "6mo" | "1y" | "5y";
+type RangeKey =
+  | "1min" | "5min" | "10min" | "1h"           // 足種
+  | "1d" | "1wk" | "1mo" | "3mo" | "6mo" | "1y" | "5y" | "10y" | "max"; // 期間
+
 type ChartType = "line" | "candle";
 
-const RANGES: { key: RangeKey; label: string; apiRange: string }[] = [
-  { key: "1d",  label: "1日",  apiRange: "5min" },
-  { key: "1wk", label: "1週",  apiRange: "1h"   },
-  { key: "1mo", label: "1月",  apiRange: "1mo"  },
-  { key: "3mo", label: "3月",  apiRange: "3mo"  },
-  { key: "6mo", label: "6月",  apiRange: "6mo"  },
-  { key: "1y",  label: "1年",  apiRange: "1y"   },
-  { key: "5y",  label: "5年",  apiRange: "5y"   },
+const RANGES: { key: RangeKey; label: string; apiRange: string; group: "intraday" | "period" }[] = [
+  /* ── 足種 ── */
+  { key: "1min",  label: "1分",   apiRange: "1min",  group: "intraday" },
+  { key: "5min",  label: "5分",   apiRange: "5min",  group: "intraday" },
+  { key: "10min", label: "10分",  apiRange: "10min", group: "intraday" }, // 15m足で代用
+  { key: "1h",    label: "1時間", apiRange: "1h",    group: "intraday" },
+  /* ── 期間 ── */
+  { key: "1d",    label: "1日",   apiRange: "1d",    group: "period" },
+  { key: "1wk",   label: "1週",   apiRange: "5d",    group: "period" },
+  { key: "1mo",   label: "1月",   apiRange: "1mo",   group: "period" },
+  { key: "3mo",   label: "3月",   apiRange: "3mo",   group: "period" },
+  { key: "6mo",   label: "6月",   apiRange: "6mo",   group: "period" },
+  { key: "1y",    label: "1年",   apiRange: "1y",    group: "period" },
+  { key: "5y",    label: "5年",   apiRange: "5y",    group: "period" },
+  { key: "10y",   label: "10年",  apiRange: "10y",   group: "period" },
+  { key: "max",   label: "MAX",   apiRange: "max",   group: "period" },
 ];
 
 /* ─── Helpers ─── */
 function fmtDate(date: string, range: RangeKey): string {
   const d = new Date(date);
-  if (range === "1d") {
-    return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+  const hh = d.getHours().toString().padStart(2, "0");
+  const mm = d.getMinutes().toString().padStart(2, "0");
+  const mo = d.getMonth() + 1;
+  const da = d.getDate();
+  // 分足・当日分 → HH:MM
+  if (range === "1min" || range === "5min" || range === "10min" || range === "1d") {
+    return `${hh}:${mm}`;
   }
-  if (range === "1wk") {
-    return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, "0")}:00`;
+  // 時間足・週次 → M/D HH:00
+  if (range === "1h" || range === "1wk") {
+    return `${mo}/${da} ${hh}:00`;
   }
-  if (range === "5y") return `${d.getFullYear()}/${d.getMonth() + 1}`;
-  return `${d.getMonth() + 1}/${d.getDate()}`;
+  // 長期 → YYYY/M
+  if (range === "5y" || range === "10y" || range === "max") {
+    return `${d.getFullYear()}/${mo}`;
+  }
+  // 中期 → M/D
+  return `${mo}/${da}`;
 }
 
 function fmtPrice(v: number): string {
@@ -175,14 +196,23 @@ function CandleChart({
 }
 
 /* ─── Chart controls ─── */
-function RangeTabs({ range, onChange }: { range: RangeKey; onChange: (r: RangeKey) => void }) {
+const INTRADAY_RANGES = RANGES.filter(r => r.group === "intraday");
+const PERIOD_RANGES   = RANGES.filter(r => r.group === "period");
+
+function TabRow({
+  items, range, onChange,
+}: {
+  items: typeof RANGES;
+  range: RangeKey;
+  onChange: (r: RangeKey) => void;
+}) {
   return (
     <div className="flex gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg">
-      {RANGES.map(r => (
+      {items.map(r => (
         <button
           key={r.key}
           onClick={() => onChange(r.key)}
-          className={`px-2.5 py-1 text-[11px] rounded-md font-semibold transition-all ${
+          className={`px-2 sm:px-2.5 py-1 text-[11px] rounded-md font-semibold transition-all whitespace-nowrap ${
             range === r.key
               ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white"
               : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
@@ -191,6 +221,27 @@ function RangeTabs({ range, onChange }: { range: RangeKey; onChange: (r: RangeKe
           {r.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+function RangeTabs({ range, onChange }: { range: RangeKey; onChange: (r: RangeKey) => void }) {
+  return (
+    <div className="space-y-1.5">
+      {/* 足種 */}
+      <div className="flex items-center gap-2">
+        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 w-7 shrink-0">足種</span>
+        <div className="overflow-x-auto scrollbar-none">
+          <TabRow items={INTRADAY_RANGES} range={range} onChange={onChange} />
+        </div>
+      </div>
+      {/* 期間 */}
+      <div className="flex items-center gap-2">
+        <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 w-7 shrink-0">期間</span>
+        <div className="overflow-x-auto scrollbar-none">
+          <TabRow items={PERIOD_RANGES} range={range} onChange={onChange} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -350,8 +401,8 @@ function ExpandedModal({
         </div>
       </div>
 
-      {/* Range tabs */}
-      <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800/70 shrink-0">
+      {/* Range tabs (2 rows) */}
+      <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800/70 shrink-0 overflow-x-auto">
         <RangeTabs range={range} onChange={setRange} />
       </div>
 
@@ -416,19 +467,18 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
     <>
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
         {/* Header */}
-        <div className="flex flex-wrap items-center gap-3 px-4 pt-4 pb-3 border-b border-slate-100 dark:border-slate-800/60">
-          {/* Range selector */}
-          <div className="flex-1">
-            <RangeTabs range={range} onChange={setRange} />
-          </div>
-
-          {/* Period return */}
-          {!loading && data.length > 0 && (
-            <div className={`flex items-center gap-1 text-xs font-bold font-mono tabular-nums ${up ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-              {up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-              {up ? "+" : ""}{pct.toFixed(2)}%
+        <div className="px-4 pt-4 pb-3 border-b border-slate-100 dark:border-slate-800/60 space-y-2">
+          {/* Top row: period return + chart type + expand */}
+          <div className="flex items-center justify-between gap-2">
+            {/* Period return badge */}
+            <div className="h-5">
+              {!loading && data.length > 0 && (
+                <div className={`flex items-center gap-1 text-xs font-bold font-mono tabular-nums ${up ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                  {up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                  {up ? "+" : ""}{pct.toFixed(2)}%
+                </div>
+              )}
             </div>
-          )}
 
           {/* Chart type toggle */}
           <div className="flex gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs">
@@ -454,6 +504,10 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
           >
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
+          </div>
+
+          {/* Range tabs (2 rows: 足種 / 期間) */}
+          <RangeTabs range={range} onChange={setRange} />
         </div>
 
         {/* Chart */}

@@ -7,20 +7,22 @@ export const dynamic = "force-dynamic";
 type Interval = "1m" | "5m" | "15m" | "30m" | "60m" | "1h" | "1d" | "1wk" | "1mo";
 
 const RANGES: Record<string, { period: number; interval: Interval; intraday?: boolean }> = {
-  "1min": { period: 2,        interval: "1m",  intraday: true  }, // 1-minute candles
-  "5min": { period: 2,        interval: "5m",  intraday: true  }, // 5-minute candles
-  "30min":{ period: 5,        interval: "30m", intraday: true  }, // 30-minute candles
-  "1h":   { period: 30,       interval: "60m", intraday: true  }, // 1-hour candles
-  // legacy aliases (keep for MiniChart backward compat)
-  "1d":   { period: 2,        interval: "5m",  intraday: true  },
-  "5d":   { period: 5,        interval: "30m", intraday: true  },
-  // daily+
-  "1mo":  { period: 30,       interval: "1d"  },
-  "3mo":  { period: 90,       interval: "1d"  },
-  "6mo":  { period: 180,      interval: "1d"  },
-  "1y":   { period: 365,      interval: "1d"  },
-  "5y":   { period: 365 * 5,  interval: "1wk" },
-  "10y":  { period: 365 * 10, interval: "1mo" },
+  /* ── 足種 (intraday bar sizes) ─────────────────────────────────── */
+  "1min":  { period: 2,        interval: "1m",  intraday: true  }, // 1分足 : 1-minute bars
+  "5min":  { period: 3,        interval: "5m",  intraday: true  }, // 5分足 : 5-minute bars
+  "10min": { period: 5,        interval: "15m", intraday: true  }, // 10分足: 15m は Yahoo の最小近似値
+  "30min": { period: 5,        interval: "30m", intraday: true  }, // 30分足
+  "1h":    { period: 30,       interval: "60m", intraday: true  }, // 1時間足: 60-minute bars
+  /* ── 期間プリセット ─────────────────────────────────────────────── */
+  "1d":    { period: 2,        interval: "5m",  intraday: true  }, // 1日   (5m/2d)
+  "5d":    { period: 5,        interval: "30m", intraday: true  }, // 1週   (30m/5d)
+  "1mo":   { period: 30,       interval: "1d"  },                   // 1月
+  "3mo":   { period: 90,       interval: "1d"  },                   // 3月
+  "6mo":   { period: 180,      interval: "1d"  },                   // 6月
+  "1y":    { period: 365,      interval: "1d"  },                   // 1年
+  "5y":    { period: 365 * 5,  interval: "1wk" },                   // 5年
+  "10y":   { period: 365 * 10, interval: "1mo" },                   // 10年
+  "max":   { period: 365 * 40, interval: "1mo" },                   // MAX (~40年)
 };
 
 export async function GET(req: NextRequest) {
