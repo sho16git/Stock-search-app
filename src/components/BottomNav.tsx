@@ -9,14 +9,36 @@ type NavItem = {
   href: string;
   label: string;
   Icon: LucideIcon;
+  activeFg: string;
+  activeBg: string;
 };
 
 const ITEMS: NavItem[] = [
-  { href: "/",          label: "ホーム",      Icon: Home              },
-  { href: "/portfolio", label: "保有",        Icon: Briefcase         },
-  { href: "/screener",  label: "スクリーナー", Icon: SlidersHorizontal },
-  { href: "/sectors",   label: "セクター",    Icon: BarChart2         },
-  { href: "/watchlist", label: "ウォッチ",    Icon: Star              },
+  {
+    href: "/",          label: "ホーム",      Icon: Home,
+    activeFg: "text-violet-600 dark:text-violet-400",
+    activeBg: "bg-violet-50 dark:bg-violet-500/[0.12]",
+  },
+  {
+    href: "/portfolio", label: "保有",        Icon: Briefcase,
+    activeFg: "text-emerald-600 dark:text-emerald-400",
+    activeBg: "bg-emerald-50 dark:bg-emerald-500/[0.12]",
+  },
+  {
+    href: "/screener",  label: "スクリーナー", Icon: SlidersHorizontal,
+    activeFg: "text-orange-500 dark:text-orange-400",
+    activeBg: "bg-orange-50 dark:bg-orange-500/[0.12]",
+  },
+  {
+    href: "/sectors",   label: "セクター",    Icon: BarChart2,
+    activeFg: "text-blue-600 dark:text-blue-400",
+    activeBg: "bg-blue-50 dark:bg-blue-500/[0.12]",
+  },
+  {
+    href: "/watchlist", label: "ウォッチ",    Icon: Star,
+    activeFg: "text-pink-600 dark:text-pink-400",
+    activeBg: "bg-pink-50 dark:bg-pink-500/[0.12]",
+  },
 ];
 
 export default function BottomNav() {
@@ -48,7 +70,7 @@ export default function BottomNav() {
               <span
                 className={`flex items-center justify-center w-9 h-7 rounded-xl transition-all duration-150 ${
                   active
-                    ? "bg-blue-50 dark:bg-blue-500/[0.12] text-blue-500 dark:text-blue-400"
+                    ? `${item.activeBg} ${item.activeFg}`
                     : "text-zinc-400 dark:text-zinc-600"
                 }`}
               >

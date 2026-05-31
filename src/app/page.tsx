@@ -21,9 +21,9 @@ export default function Home() {
         <div className="space-y-2.5">
           <SearchBox autoFocus />
           <div className="flex flex-wrap gap-2 text-xs">
-            <QuickLink href="/stocks"    icon={<Library           className="w-3.5 h-3.5" />}>全銘柄</QuickLink>
-            <QuickLink href="/screener"  icon={<SlidersHorizontal className="w-3.5 h-3.5" />}>スクリーナー</QuickLink>
-            <QuickLink href="/watchlist" icon={<Star              className="w-3.5 h-3.5" />}>ウォッチリスト</QuickLink>
+            <QuickLink href="/stocks"    icon={<Library           className="w-3.5 h-3.5" />} color="bg-blue-500 hover:bg-blue-600">全銘柄</QuickLink>
+            <QuickLink href="/screener"  icon={<SlidersHorizontal className="w-3.5 h-3.5" />} color="bg-violet-500 hover:bg-violet-600">スクリーナー</QuickLink>
+            <QuickLink href="/watchlist" icon={<Star              className="w-3.5 h-3.5" />} color="bg-pink-500 hover:bg-pink-600">ウォッチリスト</QuickLink>
           </div>
         </div>
       </section>
@@ -75,16 +75,18 @@ function SectionLabel({ emoji, text }: { emoji: string; text: string }) {
 function QuickLink({
   href,
   icon,
+  color,
   children,
 }: {
   href: string;
   icon: React.ReactNode;
+  color: string;
   children: React.ReactNode;
 }) {
   return (
     <Link
       href={href}
-      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 text-xs font-semibold hover:bg-zinc-700 dark:hover:bg-zinc-300 active:scale-95 transition-all duration-150"
+      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg ${color} text-white text-xs font-semibold active:scale-95 transition-all duration-150`}
     >
       {icon}
       {children}
