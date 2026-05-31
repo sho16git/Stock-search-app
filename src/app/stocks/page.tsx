@@ -17,6 +17,7 @@ import { formatNumber, formatLargeNumber, formatPercent } from "@/lib/format";
 type Row = {
   symbol: string;
   name: string;
+  nameEn: string | null;
   market: "JP" | "US";
   sector: string | null;
   price: number | null;
@@ -150,7 +151,7 @@ export default function AllStocksPage() {
               type="text"
               value={inputVal}
               onChange={(e) => handleInput(e.target.value)}
-              placeholder="銘柄名・コードで絞り込み (例: トヨタ, 7203)"
+              placeholder="銘柄名・コードで絞り込み (例: トヨタ, 7203, アップル, AAPL)"
               className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             />
           </div>
@@ -239,9 +240,12 @@ export default function AllStocksPage() {
                       <td className="py-3 px-4">
                         <Link
                           href={`/stock/${encodeURIComponent(r.symbol)}`}
-                          className="hover:text-blue-600 dark:hover:text-blue-400 truncate block max-w-[260px]"
+                          className="hover:text-blue-600 dark:hover:text-blue-400 block max-w-[260px]"
                         >
-                          {r.name}
+                          <span className="truncate block">{r.name}</span>
+                          {r.market === "US" && r.nameEn && r.nameEn !== r.name && (
+                            <span className="text-[11px] text-zinc-400 dark:text-zinc-500 truncate block">{r.nameEn}</span>
+                          )}
                         </Link>
                       </td>
                       <td className="py-3 px-4 text-right font-mono tabular-nums text-slate-700 dark:text-slate-300">

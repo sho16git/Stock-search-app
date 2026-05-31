@@ -16,13 +16,15 @@ import { getFullJpBrowseList } from "@/lib/jp-stocks";
 import { getAllStocks } from "@/lib/stocks-catalog";
 import { normalize } from "@/lib/jp-stocks";
 import { US_STOCKS_SUPPLEMENT } from "@/lib/us-stocks-list";
+import { getUsKatakana } from "@/lib/us-katakana";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type BrowseItem = {
   symbol: string;
-  name: string;
+  name: string;        // 表示名 (JP: 日本語, US: カタカナ優先)
+  nameEn?: string;     // English name (US only, for fallback)
   market: "JP" | "US";
   sector?: string;
 };
@@ -42,22 +44,30 @@ function getUniverse(): BrowseItem[] {
   // US stocks from the curated catalog (no ETFs)
   const usCurated = getAllStocks(false)
     .filter((s) => s.market === "US")
-    .map((s) => ({
-      symbol: s.symbol,
-      name: s.name,
-      market: "US" as const,
-      sector: s.sector,
-    }));
+    .map((s) => {
+      const katakana = getUsKatakana(s.symbol);
+      return {
+        symbol: s.symbol,
+        name: katakana ?? s.name,   // カタカナ優先
+        nameEn: s.name,
+        market: "US" as const,
+        sector: s.sector,
+      };
+    });
 
   // ETFs
   const etfs = getAllStocks(true)
     .filter((s) => s.type === "etf")
-    .map((s) => ({
-      symbol: s.symbol,
-      name: s.name,
-      market: s.market as "JP" | "US",
-      sector: s.sector,
-    }));
+    .map((s) => {
+      const katakana = s.market === "US" ? getUsKatakana(s.symbol) : null;
+      return {
+        symbol: s.symbol,
+        name: katakana ?? s.name,
+        nameEn: s.market === "US" ? s.name : undefined,
+        market: s.market as "JP" | "US",
+        sector: s.sector,
+      };
+    });
 
   // Merge US supplement — skip duplicates and stale/廃止 entries
   const curatedUsSymbols = new Set(usCurated.map((s) => s.symbol));
@@ -68,7 +78,13 @@ function getUniverse(): BrowseItem[] {
     if (seenSuppSymbols.has(sym)) continue;           // dedup within supplement
     if (name.includes("廃止") || name.includes("delisted")) continue;
     seenSuppSymbols.add(sym);
-    usSupply.push({ symbol: sym, name, market: "US" as const });
+    const katakana = getUsKatakana(sym);
+    usSupply.push({
+      symbol: sym,
+      name: katakana ?? name,   // カタカナ優先
+      nameEn: name,
+      market: "US" as const,
+    });
   }
 
   _universe = [...jpList, ...usCurated, ...usSupply, ...etfs];
@@ -88,18 +104,21 @@ export async function GET(req: NextRequest) {
   if (market === "JP") universe = universe.filter((s) => s.market === "JP");
   else if (market === "US") universe = universe.filter((s) => s.market === "US");
 
-  // Search filter — support Japanese and Roman text
+  // Search filter — support Japanese/katakana and Roman text
   if (rawQ) {
     const q = normalize(rawQ);
     const ql = rawQ.toLowerCase();
     universe = universe.filter((s) => {
       const normName = normalize(s.name);
-      const normSym = normalize(s.symbol);
+      const normSym  = normalize(s.symbol);
+      const normEn   = s.nameEn ? normalize(s.nameEn) : "";
       return (
         normName.includes(q) ||
         normSym.includes(q) ||
+        normEn.includes(q) ||
         s.symbol.toLowerCase().includes(ql) ||
-        s.name.toLowerCase().includes(ql)
+        s.name.toLowerCase().includes(ql) ||
+        (s.nameEn ?? "").toLowerCase().includes(ql)
       );
     });
   }
@@ -143,7 +162,8 @@ export async function GET(req: NextRequest) {
     const q = quoteMap.get(s.symbol);
     return {
       symbol: s.symbol,
-      name: s.name,
+      name: s.name,         // カタカナ (US) or 日本語 (JP)
+      nameEn: s.nameEn ?? null,
       market: s.market,
       sector: s.sector ?? null,
       price: q?.price ?? null,
