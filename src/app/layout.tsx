@@ -106,6 +106,7 @@ export default function RootLayout({
               <NavLink href="/screener"  label="スクリーナー" />
               <NavLink href="/stocks"    label="全銘柄" />
               <NavLink href="/sectors"   label="セクター" />
+              <NavLink href="/ai-ranking" label="AI予想" />
               <NavLink href="/learn"     label="学習" />
               <NavLink href="/watchlist" label="ウォッチ" />
             </nav>

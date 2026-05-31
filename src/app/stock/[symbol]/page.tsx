@@ -13,6 +13,7 @@ import PeerStocks from "@/components/PeerStocks";
 import RecentViewedTracker from "@/components/RecentViewedTracker";
 import BuySellSentiment from "@/components/BuySellSentiment";
 import AIAnalysis from "@/components/AIAnalysis";
+import AiScenarios from "@/components/AiScenarios";
 import StockGeopoliticalNews from "@/components/StockGeopoliticalNews";
 import DividendHistory from "@/components/DividendHistory";
 
@@ -45,6 +46,7 @@ export default async function StockPage({
       <DividendHistory symbol={symbol} />
       <BuySellSentiment symbol={symbol} />
       <AIAnalysis symbol={symbol} />
+      <AiScenarios symbol={symbol} />
       <AnalystRecommendations symbol={symbol} />
       <EarningsCard symbol={symbol} />
       <YutaiCard symbol={symbol} />
