@@ -84,7 +84,7 @@ export default function InvestmentThemes() {
           <div className="flex p-0.5 bg-slate-100 dark:bg-slate-800/60 rounded-lg gap-0.5">
             <button
               onClick={() => setStockSort("gainers")}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
                 stockSort === "gainers"
                   ? "bg-emerald-500 text-white shadow-sm"
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
@@ -94,7 +94,7 @@ export default function InvestmentThemes() {
             </button>
             <button
               onClick={() => setStockSort("losers")}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
                 stockSort === "losers"
                   ? "bg-rose-500 text-white shadow-sm"
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
