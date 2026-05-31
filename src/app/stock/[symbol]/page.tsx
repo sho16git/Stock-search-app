@@ -14,6 +14,7 @@ import RecentViewedTracker from "@/components/RecentViewedTracker";
 import BuySellSentiment from "@/components/BuySellSentiment";
 import AIAnalysis from "@/components/AIAnalysis";
 import StockGeopoliticalNews from "@/components/StockGeopoliticalNews";
+import DividendHistory from "@/components/DividendHistory";
 
 export default async function StockPage({
   params,
@@ -45,6 +46,7 @@ export default async function StockPage({
       <AIAnalysis symbol={symbol} />
       <AnalystRecommendations symbol={symbol} />
       <EarningsCard symbol={symbol} />
+      <DividendHistory symbol={symbol} />
       <YutaiCard symbol={symbol} />
       <FundamentalsTable symbol={symbol} />
       <HoldersCard symbol={symbol} />
