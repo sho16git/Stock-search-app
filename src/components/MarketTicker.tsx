@@ -35,7 +35,7 @@ export default function MarketTicker() {
   const doubled = [...items, ...items, ...items];
 
   return (
-    <div className="bg-slate-900 overflow-hidden h-7 flex items-center border-b border-slate-700/40 shrink-0">
+    <div className="bg-zinc-950 overflow-hidden h-7 flex items-center border-b border-white/[0.06] shrink-0">
       <div className="flex animate-ticker whitespace-nowrap select-none">
         {doubled.map((item, i) => {
           const up = (item.change ?? 0) >= 0;
@@ -43,9 +43,9 @@ export default function MarketTicker() {
           return (
             <span
               key={i}
-              className="inline-flex items-center gap-1.5 px-5 border-r border-slate-700/40 text-[11px]"
+              className="inline-flex items-center gap-1.5 px-5 border-r border-white/[0.06] text-[11px]"
             >
-              <span className="text-slate-400">
+              <span className="text-zinc-500">
                 {item.flag} {item.name}
               </span>
               <span className="font-mono font-bold text-white">

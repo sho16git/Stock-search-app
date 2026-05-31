@@ -9,46 +9,14 @@ type NavItem = {
   href: string;
   label: string;
   Icon: LucideIcon;
-  activeFg: string;
-  activeBg: string;
 };
 
 const ITEMS: NavItem[] = [
-  {
-    href: "/",
-    label: "ホーム",
-    Icon: Home,
-    activeFg: "text-violet-600 dark:text-violet-400",
-    activeBg: "bg-violet-100 dark:bg-violet-900/40",
-  },
-  {
-    href: "/portfolio",
-    label: "保有",
-    Icon: Briefcase,
-    activeFg: "text-emerald-600 dark:text-emerald-400",
-    activeBg: "bg-emerald-100 dark:bg-emerald-900/40",
-  },
-  {
-    href: "/screener",
-    label: "スクリーナー",
-    Icon: SlidersHorizontal,
-    activeFg: "text-orange-600 dark:text-orange-400",
-    activeBg: "bg-orange-100 dark:bg-orange-900/40",
-  },
-  {
-    href: "/sectors",
-    label: "セクター",
-    Icon: BarChart2,
-    activeFg: "text-blue-600 dark:text-blue-400",
-    activeBg: "bg-blue-100 dark:bg-blue-900/40",
-  },
-  {
-    href: "/watchlist",
-    label: "ウォッチ",
-    Icon: Star,
-    activeFg: "text-pink-600 dark:text-pink-400",
-    activeBg: "bg-pink-100 dark:bg-pink-900/40",
-  },
+  { href: "/",          label: "ホーム",      Icon: Home              },
+  { href: "/portfolio", label: "保有",        Icon: Briefcase         },
+  { href: "/screener",  label: "スクリーナー", Icon: SlidersHorizontal },
+  { href: "/sectors",   label: "セクター",    Icon: BarChart2         },
+  { href: "/watchlist", label: "ウォッチ",    Icon: Star              },
 ];
 
 export default function BottomNav() {
@@ -59,10 +27,10 @@ export default function BottomNav() {
       className="fixed bottom-0 inset-x-0 z-40 md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      {/* Top hairline */}
-      <div className="h-px bg-gradient-to-r from-transparent via-slate-200/80 dark:via-slate-700/50 to-transparent" />
+      {/* Hairline separator */}
+      <div className="h-px bg-zinc-200/80 dark:bg-white/[0.06]" />
 
-      <div className="bg-white/96 dark:bg-slate-900/96 backdrop-blur-2xl flex items-stretch justify-around">
+      <div className="bg-white/95 dark:bg-zinc-950/95 backdrop-blur-2xl flex items-stretch justify-around">
         {ITEMS.map((item) => {
           const active =
             item.href === "/"
@@ -76,10 +44,12 @@ export default function BottomNav() {
               className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-all active:scale-90"
               style={{ minHeight: 56 }}
             >
-              {/* Icon container */}
+              {/* Icon */}
               <span
                 className={`flex items-center justify-center w-9 h-7 rounded-xl transition-all duration-150 ${
-                  active ? `${item.activeBg} ${item.activeFg}` : "text-slate-400 dark:text-slate-600"
+                  active
+                    ? "bg-blue-50 dark:bg-blue-500/[0.12] text-blue-500 dark:text-blue-400"
+                    : "text-zinc-400 dark:text-zinc-600"
                 }`}
               >
                 <item.Icon
@@ -92,8 +62,8 @@ export default function BottomNav() {
               <span
                 className={`text-[9px] font-semibold tracking-wide leading-none transition-colors whitespace-nowrap ${
                   active
-                    ? "text-slate-800 dark:text-slate-100"
-                    : "text-slate-400 dark:text-slate-600"
+                    ? "text-zinc-800 dark:text-zinc-100"
+                    : "text-zinc-400 dark:text-zinc-600"
                 }`}
               >
                 {item.label}

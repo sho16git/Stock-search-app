@@ -20,19 +20,18 @@ type Mover = {
 
 type Tab = "day_gainers" | "day_losers" | "most_actives";
 type Market = "US" | "JP";
+type Key = `${Market}:${Tab}`;
 
-const TABS: { id: Tab; label: string; emoji: string }[] = [
-  { id: "day_gainers",  label: "値上がり", emoji: "🚀" },
-  { id: "day_losers",   label: "値下がり", emoji: "📉" },
-  { id: "most_actives", label: "出来高",   emoji: "⚡" },
+const TABS: { id: Tab; label: string }[] = [
+  { id: "day_gainers",  label: "値上がり" },
+  { id: "day_losers",   label: "値下がり" },
+  { id: "most_actives", label: "出来高"   },
 ];
 
 const MARKETS: { id: Market; label: string; flag: string }[] = [
-  { id: "US", label: "米国株", flag: "🇺🇸" },
-  { id: "JP", label: "日本株", flag: "🇯🇵" },
+  { id: "US", label: "US", flag: "🇺🇸" },
+  { id: "JP", label: "JP", flag: "🇯🇵" },
 ];
-
-type Key = `${Market}:${Tab}`;
 
 export default function TopMovers() {
   const [market, setMarket] = useState<Market>("US");
@@ -58,24 +57,23 @@ export default function TopMovers() {
   const isLoading = loadingKey === key;
 
   return (
-    <div className="flex flex-col bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 shadow-sm overflow-hidden">
+    <div className="flex flex-col bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200/60 dark:border-white/[0.07] overflow-hidden">
       {/* Header */}
-      <div className="px-4 pt-3.5 pb-3 border-b border-slate-100 dark:border-slate-800/60 space-y-2.5">
-        <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-          📈 今日動いた銘柄
-        </h2>
-
-        {/* Market toggle */}
+      <div className="px-4 pt-3.5 pb-3 border-b border-zinc-100 dark:border-white/[0.05] space-y-2.5">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg">
+          <h2 className="text-sm font-bold text-zinc-800 dark:text-zinc-100">
+            今日動いた銘柄
+          </h2>
+          {/* Market toggle */}
+          <div className="flex gap-1 p-0.5 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
             {MARKETS.map((m) => (
               <button
                 key={m.id}
                 onClick={() => setMarket(m.id)}
-                className={`px-3 py-1 text-xs rounded-md transition-all font-semibold inline-flex items-center gap-1 ${
+                className={`px-2.5 py-1 text-xs rounded-md transition-all font-semibold inline-flex items-center gap-1 ${
                   market === m.id
-                    ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm"
-                    : "text-slate-500 dark:text-slate-400"
+                    ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm"
+                    : "text-zinc-500 dark:text-zinc-400"
                 }`}
               >
                 <span>{m.flag}</span>
@@ -83,33 +81,33 @@ export default function TopMovers() {
               </button>
             ))}
           </div>
+        </div>
 
-          {/* Type tabs */}
-          <div className="flex gap-1">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`px-2.5 py-1 text-[11px] rounded-lg transition-all font-semibold ${
-                  tab === t.id
-                    ? "bg-slate-900 dark:bg-white text-white dark:text-slate-900"
-                    : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                }`}
-              >
-                {t.emoji} {t.label}
-              </button>
-            ))}
-          </div>
+        {/* Type tabs */}
+        <div className="flex gap-1">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex-1 py-1.5 text-[11px] rounded-lg transition-all font-semibold ${
+                tab === t.id
+                  ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900"
+                  : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* List */}
       <div className="flex-1">
         {isLoading && items.length === 0 ? (
-          <div className="divide-y divide-slate-100 dark:divide-slate-800/60">
+          <div className="divide-y divide-zinc-100 dark:divide-white/[0.04]">
             {Array(7).fill(null).map((_, i) => (
               <div key={i} className="flex items-center gap-3 px-4 py-3">
-                <div className="skeleton h-3.5 w-4 rounded" />
+                <div className="skeleton h-3 w-4 rounded" />
                 <div className="flex-1 space-y-1.5">
                   <div className="skeleton h-3.5 w-14 rounded" />
                   <div className="skeleton h-3 w-20 rounded" />
@@ -122,28 +120,29 @@ export default function TopMovers() {
             ))}
           </div>
         ) : items.length === 0 ? (
-          <div className="flex items-center justify-center h-40 text-sm text-slate-400">
+          <div className="flex items-center justify-center h-40 text-sm text-zinc-400">
             データがありません
           </div>
         ) : (
-          <ul className="divide-y divide-slate-100/70 dark:divide-slate-800/40">
+          <ul className="divide-y divide-zinc-100/70 dark:divide-white/[0.04]">
             {items.slice(0, 8).map((m, i) => {
               const up   = (m.change ?? 0) >= 0;
               const name = getJpName(m.symbol) ?? m.nameJa ?? m.longName ?? m.shortName;
-              const medals = ["🥇","🥈","🥉"];
 
               return (
                 <li key={m.symbol}>
                   <Link
                     href={`/stock/${encodeURIComponent(m.symbol)}`}
-                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition-colors group"
+                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-zinc-50/80 dark:hover:bg-white/[0.03] transition-colors group"
                   >
                     {/* Rank */}
-                    <span className="w-5 text-center shrink-0 text-sm font-medium">
-                      {i < 3
-                        ? medals[i]
-                        : <span className="text-xs text-slate-400">{i + 1}</span>
-                      }
+                    <span className={`w-5 text-center shrink-0 font-mono font-bold tabular-nums leading-none ${
+                      i === 0 ? "text-amber-500 dark:text-amber-400 text-sm" :
+                      i === 1 ? "text-zinc-500 dark:text-zinc-400 text-sm" :
+                      i === 2 ? "text-orange-500/80 dark:text-orange-400/80 text-sm" :
+                                "text-zinc-400 dark:text-zinc-600 text-xs"
+                    }`}>
+                      {i + 1}
                     </span>
 
                     {/* Name */}
@@ -151,19 +150,19 @@ export default function TopMovers() {
                       <div className="font-mono font-bold text-sm text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
                         {m.symbol}
                       </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{name ?? "—"}</div>
+                      <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{name ?? "—"}</div>
                     </div>
 
                     {/* Price + change */}
                     <div className="text-right shrink-0">
-                      <div className="font-mono text-sm font-semibold tabular-nums text-slate-800 dark:text-slate-100">
+                      <div className="font-mono text-sm font-semibold tabular-nums text-zinc-800 dark:text-zinc-100">
                         {formatNumber(m.price)}
-                        <span className="text-[10px] text-slate-400 ml-0.5">{m.currency}</span>
+                        <span className="text-[10px] text-zinc-400 ml-0.5">{m.currency}</span>
                       </div>
                       <div className={`text-xs font-mono font-bold tabular-nums px-1.5 py-0.5 rounded-md inline-block mt-0.5 ${
                         up
                           ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
-                          : "bg-rose-50 dark:bg-rose-950/40 text-rose-500 dark:text-rose-400"
+                          : "bg-red-50 dark:bg-red-950/30 text-red-500 dark:text-red-400"
                       }`}>
                         {m.changePercent !== null
                           ? `${up ? "▲" : "▼"}${Math.abs(m.changePercent).toFixed(2)}%`

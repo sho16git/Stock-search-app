@@ -53,9 +53,12 @@ export default function RecentViewed() {
 
   return (
     <section>
-      <div className="flex items-center gap-1.5 mb-3">
-        <Clock className="w-3.5 h-3.5 text-slate-400" />
-        <span className="text-sm font-bold text-slate-700 dark:text-slate-200">最近見た銘柄</span>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-1 h-4 rounded-full bg-gradient-to-b from-blue-500 to-violet-500 shrink-0" />
+        <span className="text-sm font-bold text-zinc-700 dark:text-zinc-200 tracking-tight flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5 text-zinc-400" />
+          最近見た銘柄
+        </span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-2">
         {items.slice(0, 6).map((r) => {
@@ -68,27 +71,27 @@ export default function RecentViewed() {
             <Link
               key={r.symbol}
               href={`/stock/${encodeURIComponent(r.symbol)}`}
-              className="group block p-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm hover:shadow-md"
+              className="group block p-3 rounded-xl border border-zinc-200 dark:border-white/[0.07] bg-white dark:bg-zinc-900 hover:border-blue-400/60 dark:hover:border-blue-500/50 transition-colors"
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <div className="font-mono font-semibold text-sm text-blue-600 dark:text-blue-400">
                     {r.symbol}
                   </div>
-                  <div className="text-xs text-slate-500 truncate">
+                  <div className="text-xs text-zinc-500 truncate">
                     {name ?? r.symbol}
                   </div>
                 </div>
                 {q && (
                   <div className="text-right">
-                    <div className="font-mono text-sm font-semibold tabular-nums">
+                    <div className="font-mono text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
                       {formatNumber(q.regularMarketPrice)}
                     </div>
                     <div
                       className={`text-[11px] font-mono font-semibold ${
                         up
                           ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-rose-600 dark:text-rose-400"
+                          : "text-red-500 dark:text-red-400"
                       }`}
                     >
                       {up ? "+" : ""}

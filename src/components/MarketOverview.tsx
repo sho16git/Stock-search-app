@@ -20,17 +20,19 @@ const ACCENT: Record<string, { from: string; to: string }> = {
   "^DJI":      { from: "#0ea5e9", to: "#3b82f6" },
   "000001.SS": { from: "#f59e0b", to: "#f97316" },
 };
-const DEFAULT_ACCENT = { from: "#64748b", to: "#94a3b8" };
+const DEFAULT_ACCENT = { from: "#52525b", to: "#71717a" };
 
 function pctColor(pct: number | null) {
-  if (pct === null) return "text-slate-400";
-  return pct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500 dark:text-rose-400";
+  if (pct === null) return "text-zinc-400";
+  return pct >= 0
+    ? "text-emerald-600 dark:text-emerald-400"
+    : "text-red-500 dark:text-red-400";
 }
 function pctBg(pct: number | null) {
-  if (pct === null) return "bg-slate-100 dark:bg-slate-800";
+  if (pct === null) return "bg-zinc-100 dark:bg-zinc-800";
   return pct >= 0
     ? "bg-emerald-50 dark:bg-emerald-950/40"
-    : "bg-rose-50 dark:bg-rose-950/40";
+    : "bg-red-50 dark:bg-red-950/30";
 }
 
 export default function MarketOverview() {
@@ -67,23 +69,24 @@ export default function MarketOverview() {
     <div>
       {/* Section label */}
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-          🌐 マーケット指数
+        <div className="w-1 h-4 rounded-full bg-gradient-to-b from-blue-500 to-violet-500 shrink-0" />
+        <span className="text-sm font-bold text-zinc-700 dark:text-zinc-200 tracking-tight">
+          マーケット指数
         </span>
       </div>
 
       {/* Mobile: horizontal snap scroll / Desktop: grid */}
       <div className="-mx-3 sm:-mx-4 lg:mx-0 overflow-x-auto lg:overflow-visible scrollbar-none">
-        <div className="flex lg:grid lg:grid-cols-3 xl:grid-cols-6 gap-2.5 px-3 sm:px-4 lg:px-0 pb-1.5 lg:pb-0 momentum-scroll lg:[scroll-snap-type:unset]">
+        <div className="flex lg:grid lg:grid-cols-3 xl:grid-cols-6 gap-2 px-3 sm:px-4 lg:px-0 pb-1.5 lg:pb-0 momentum-scroll lg:[scroll-snap-type:unset]">
           {items.map((idx: Index | null, i: number) => {
             /* ── Skeleton ── */
             if (!idx) {
               return (
                 <div
                   key={i}
-                  className="shrink-0 min-w-[152px] lg:min-w-0 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 overflow-hidden shadow-sm"
+                  className="shrink-0 min-w-[144px] lg:min-w-0 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-white/[0.07] overflow-hidden"
                 >
-                  <div className="h-1 bg-slate-200 dark:bg-slate-800" />
+                  <div className="h-[2px] bg-zinc-200 dark:bg-zinc-800" />
                   <div className="px-3 py-3 space-y-2">
                     <div className="skeleton h-2.5 w-14 rounded" />
                     <div className="skeleton h-5 w-20 rounded" />
@@ -104,23 +107,23 @@ export default function MarketOverview() {
             return (
               <div
                 key={idx.symbol}
-                className={`shrink-0 min-w-[152px] lg:min-w-0 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/60 overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 ${flashClass}`}
+                className={`shrink-0 min-w-[144px] lg:min-w-0 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-white/[0.07] overflow-hidden hover:border-zinc-300 dark:hover:border-white/[0.14] transition-colors ${flashClass}`}
               >
                 {/* Color accent bar */}
                 <div
-                  className="h-[3px]"
+                  className="h-[2px]"
                   style={{ background: `linear-gradient(90deg, ${accent.from}, ${accent.to})` }}
                 />
 
                 <div className="px-3 py-3">
                   {/* Name */}
-                  <div className="text-[10px] font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1 mb-1.5 truncate">
+                  <div className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 flex items-center gap-1 mb-1.5 truncate">
                     <span>{idx.flag}</span>
                     <span className="truncate">{idx.name}</span>
                   </div>
 
                   {/* Price */}
-                  <div className="font-mono font-black text-[17px] tabular-nums leading-tight text-slate-900 dark:text-slate-50">
+                  <div className="font-mono font-black text-[17px] tabular-nums leading-tight text-zinc-900 dark:text-zinc-50">
                     {idx.price !== null ? formatNumber(idx.price) : "—"}
                   </div>
 

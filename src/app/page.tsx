@@ -21,9 +21,9 @@ export default function Home() {
         <div className="space-y-2.5">
           <SearchBox autoFocus />
           <div className="flex flex-wrap gap-2 text-xs">
-            <QuickLink href="/stocks"    icon={<Library           className="w-3.5 h-3.5" />} color="from-blue-500 to-cyan-500">全銘柄</QuickLink>
-            <QuickLink href="/screener"  icon={<SlidersHorizontal className="w-3.5 h-3.5" />} color="from-orange-500 to-amber-500">スクリーナー</QuickLink>
-            <QuickLink href="/watchlist" icon={<Star              className="w-3.5 h-3.5" />} color="from-pink-500 to-rose-500">ウォッチリスト</QuickLink>
+            <QuickLink href="/stocks"    icon={<Library           className="w-3.5 h-3.5" />}>全銘柄</QuickLink>
+            <QuickLink href="/screener"  icon={<SlidersHorizontal className="w-3.5 h-3.5" />}>スクリーナー</QuickLink>
+            <QuickLink href="/watchlist" icon={<Star              className="w-3.5 h-3.5" />}>ウォッチリスト</QuickLink>
           </div>
         </div>
       </section>
@@ -62,8 +62,9 @@ export default function Home() {
 function SectionLabel({ emoji, text }: { emoji: string; text: string }) {
   return (
     <div className="flex items-center gap-2 mb-3">
-      <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-        <span>{emoji}</span>
+      <div className="w-1 h-4 rounded-full bg-gradient-to-b from-blue-500 to-violet-500 shrink-0" />
+      <span className="text-sm font-bold text-zinc-700 dark:text-zinc-200 tracking-tight flex items-center gap-1.5">
+        <span className="opacity-70">{emoji}</span>
         <span>{text}</span>
       </span>
     </div>
@@ -74,18 +75,16 @@ function SectionLabel({ emoji, text }: { emoji: string; text: string }) {
 function QuickLink({
   href,
   icon,
-  color,
   children,
 }: {
   href: string;
   icon: React.ReactNode;
-  color: string;
   children: React.ReactNode;
 }) {
   return (
     <Link
       href={href}
-      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-gradient-to-r ${color} text-white text-xs font-semibold shadow-sm hover:shadow-md hover:-translate-y-0.5 active:scale-95 transition-all duration-150`}
+      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 text-xs font-semibold hover:bg-zinc-700 dark:hover:bg-zinc-300 active:scale-95 transition-all duration-150"
     >
       {icon}
       {children}

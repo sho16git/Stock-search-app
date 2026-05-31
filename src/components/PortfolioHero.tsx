@@ -26,7 +26,7 @@ export default function PortfolioHero() {
   // Empty state — show friendly onboarding
   if (!summary || holdings.length === 0) {
     return (
-      <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800/80 bg-gradient-to-br from-white via-sky-50 to-blue-50 dark:from-slate-900 dark:via-slate-900 dark:to-blue-950/40 px-6 py-7 md:px-10 md:py-9 shadow-sm">
+      <div className="relative overflow-hidden rounded-xl border border-zinc-200/80 dark:border-white/[0.07] bg-gradient-to-br from-white via-sky-50/50 to-blue-50/60 dark:from-zinc-900 dark:via-zinc-900 dark:to-blue-950/30 px-6 py-7 md:px-10 md:py-9">
         <div className="absolute -right-10 -top-10 w-48 h-48 rounded-full bg-blue-200/40 dark:bg-blue-900/30 blur-3xl" />
         <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -59,10 +59,10 @@ export default function PortfolioHero() {
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800/80 px-4 py-5 sm:px-6 sm:py-7 md:px-10 md:py-9 shadow-sm ${
+      className={`relative overflow-hidden rounded-xl border border-zinc-200/80 dark:border-white/[0.07] px-4 py-5 sm:px-6 sm:py-7 md:px-10 md:py-9 ${
         up
-          ? "bg-gradient-to-br from-white via-emerald-50/40 to-emerald-50/80 dark:from-slate-900 dark:via-slate-900 dark:to-emerald-950/30"
-          : "bg-gradient-to-br from-white via-rose-50/40 to-rose-50/80 dark:from-slate-900 dark:via-slate-900 dark:to-rose-950/30"
+          ? "bg-gradient-to-br from-white via-emerald-50/30 to-emerald-50/60 dark:from-zinc-900 dark:via-zinc-900 dark:to-emerald-950/25"
+          : "bg-gradient-to-br from-white via-rose-50/30 to-rose-50/60 dark:from-zinc-900 dark:via-zinc-900 dark:to-rose-950/25"
       }`}
     >
       <div
@@ -74,7 +74,7 @@ export default function PortfolioHero() {
       />
       <div className="relative">
         <div className="flex items-center justify-between mb-3">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-200/60 dark:border-slate-700/60">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/80 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 text-xs font-medium border border-slate-200/60 dark:border-white/[0.07]">
             <Wallet className="w-3.5 h-3.5" />
             マイポートフォリオ
             <span className="text-slate-400">·</span>
@@ -179,7 +179,7 @@ function Stat({
       : "text-rose-700 dark:text-rose-400";
   }
   return (
-    <div className="px-4 py-3 rounded-xl bg-white/70 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 backdrop-blur-sm">
+    <div className="px-4 py-3 rounded-xl bg-white/70 dark:bg-zinc-800/40 border border-slate-200/60 dark:border-white/[0.07] backdrop-blur-sm">
       <div className="text-[10px] uppercase tracking-wider text-slate-500">
         {label}
       </div>
