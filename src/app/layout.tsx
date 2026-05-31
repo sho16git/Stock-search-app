@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import MarketTicker from "@/components/MarketTicker";
 import BottomNav from "@/components/BottomNav";
+import Sidebar from "@/components/Sidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,44 +41,6 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-function NavLink({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      href={href}
-      className="px-3 py-1.5 rounded-lg text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-all whitespace-nowrap"
-    >
-      {label}
-    </Link>
-  );
-}
-
-function LearnNavLink() {
-  return (
-    <Link
-      href="/learn"
-      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all whitespace-nowrap"
-    >
-      📚 学習
-    </Link>
-  );
-}
-
-function AiNavLink() {
-  return (
-    <Link
-      href="/ai-ranking"
-      className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold text-white bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 shadow-sm shadow-violet-500/30 hover:shadow-violet-500/50 transition-all whitespace-nowrap"
-    >
-      {/* pulse dot */}
-      <span className="relative flex h-1.5 w-1.5">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
-      </span>
-      ✨ AI予想
-    </Link>
-  );
-}
-
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -87,36 +50,24 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body
-        className="min-h-full flex flex-col bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100"
+        className="min-h-full bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100"
         style={{
           paddingTop: "env(safe-area-inset-top)",
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        {/* ── Header ── */}
+        {/* ── Header (全幅 sticky) ─────────────────────────────── */}
         <header
           className="sticky top-0 z-30 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl border-b border-zinc-200/80 dark:border-white/[0.06] [padding-left:env(safe-area-inset-left)] [padding-right:env(safe-area-inset-right)]"
         >
-          {/* Gradient accent stripe */}
+          {/* グラデーションライン */}
           <div className="h-[2px] bg-gradient-to-r from-blue-500 via-violet-500 to-cyan-400" />
 
-          <div className="max-w-6xl mx-auto px-3 sm:px-4 h-12 flex items-center gap-3 md:gap-4">
-            {/* Logo */}
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 group shrink-0"
-            >
-              <span className="inline-flex w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 items-center justify-center text-white shadow-md shadow-blue-500/25 group-hover:scale-105 group-hover:shadow-blue-500/35 transition-all duration-150">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  width="14"
-                  height="14"
-                  stroke="currentColor"
-                >
+          <div className="h-12 px-3 sm:px-4 flex items-center gap-3">
+            {/* ロゴ */}
+            <Link href="/" className="inline-flex items-center gap-2 group shrink-0">
+              <span className="inline-flex w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 items-center justify-center text-white shadow-md shadow-blue-500/25 group-hover:scale-105 transition-all duration-150">
+                <svg viewBox="0 0 24 24" fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="14" height="14" stroke="currentColor">
                   <polyline points="3 17 9 11 13 15 21 7" />
                   <polyline points="14 7 21 7 21 14" />
                 </svg>
@@ -126,24 +77,15 @@ export default function RootLayout({
               </span>
             </Link>
 
-            {/* Desktop nav */}
-            <nav className="hidden md:flex gap-0.5 overflow-x-auto scrollbar-none flex-1">
-              <NavLink href="/"          label="ホーム" />
-              <NavLink href="/portfolio" label="保有" />
-              <NavLink href="/screener"  label="スクリーナー" />
-              <NavLink href="/stocks"    label="全銘柄" />
-              <NavLink href="/sectors"   label="セクター" />
-              <AiNavLink />
-              <LearnNavLink />
-              <NavLink href="/watchlist" label="ウォッチ" />
-            </nav>
+            {/* Desktop: サイドバーがあるので spacer のみ */}
+            <div className="hidden md:block flex-1" />
 
-            {/* Mobile quick-access */}
+            {/* Mobile: クイックアクセス */}
             <div className="flex md:hidden gap-1 ml-auto items-center">
-              {/* AI予想 — highlighted pill */}
+              {/* AI予想 pill */}
               <Link
                 href="/ai-ranking"
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-violet-500 to-fuchsia-500 shadow-sm shadow-violet-500/30 transition-all"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-violet-500 to-fuchsia-500 shadow-sm shadow-violet-500/30"
               >
                 <span className="relative flex h-1.5 w-1.5 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
@@ -151,19 +93,14 @@ export default function RootLayout({
                 </span>
                 AI予想
               </Link>
-              {/* 学習 pill */}
-              <Link
-                href="/learn"
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700/60 transition-all"
-              >
-                📚 学習
-              </Link>
+              {/* スクリーナー */}
               <Link
                 href="/screener"
                 className="flex items-center justify-center w-9 h-9 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
               >
                 <span className="text-base">🎯</span>
               </Link>
+              {/* ウォッチ */}
               <Link
                 href="/watchlist"
                 className="flex items-center justify-center w-9 h-9 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
@@ -174,22 +111,25 @@ export default function RootLayout({
           </div>
         </header>
 
-        {/* ── Market Ticker ── */}
-        <MarketTicker />
+        {/* ── デスクトップ左サイドバー ───────────────────────────── */}
+        <Sidebar />
 
-        {/* ── Main content ── */}
-        <main className="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-5 pb-24 md:pb-8 [padding-left:max(0.75rem,env(safe-area-inset-left))] [padding-right:max(0.75rem,env(safe-area-inset-right))]">
-          {children}
-        </main>
+        {/* ── コンテンツエリア (サイドバー分右にずらす) ──────────── */}
+        <div className="md:ml-52 flex flex-col min-h-[calc(100vh-50px)]">
+          <MarketTicker />
+          <main className="flex-1 px-3 sm:px-4 lg:px-6 py-4 sm:py-5 pb-24 md:pb-8 [padding-left:max(0.75rem,env(safe-area-inset-left))] [padding-right:max(0.75rem,env(safe-area-inset-right))]">
+            {children}
+          </main>
 
-        {/* ── Footer (desktop only) ── */}
-        <footer className="hidden md:flex items-center justify-center border-t border-zinc-200/50 dark:border-white/[0.05] py-4 text-xs text-zinc-400 gap-3">
-          <span>Powered by Yahoo Finance</span>
-          <span className="text-zinc-300 dark:text-zinc-700">·</span>
-          <span>投資判断は自己責任でお願いします</span>
-        </footer>
+          {/* フッター (desktop only) */}
+          <footer className="hidden md:flex items-center justify-center border-t border-zinc-200/50 dark:border-white/[0.05] py-4 text-xs text-zinc-400 gap-3">
+            <span>Powered by Yahoo Finance</span>
+            <span className="text-zinc-300 dark:text-zinc-700">·</span>
+            <span>投資判断は自己責任でお願いします</span>
+          </footer>
+        </div>
 
-        {/* ── Mobile Bottom Nav ── */}
+        {/* ── モバイル ボトムナビ ──────────────────────────────── */}
         <BottomNav />
       </body>
     </html>
