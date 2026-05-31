@@ -80,27 +80,14 @@ export default function RootLayout({
             {/* Desktop: サイドバーがあるので spacer のみ */}
             <div className="hidden md:block flex-1" />
 
-            {/* Mobile: クイックアクセス */}
+            {/* Mobile: クイックアクセス (スクリーナー・ウォッチのみ) */}
             <div className="flex md:hidden gap-1 ml-auto items-center">
-              {/* AI予想 pill */}
-              <Link
-                href="/ai-ranking"
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-gradient-to-r from-violet-500 to-fuchsia-500 shadow-sm shadow-violet-500/30"
-              >
-                <span className="relative flex h-1.5 w-1.5 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
-                </span>
-                AI予想
-              </Link>
-              {/* スクリーナー */}
               <Link
                 href="/screener"
                 className="flex items-center justify-center w-9 h-9 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
               >
                 <span className="text-base">🎯</span>
               </Link>
-              {/* ウォッチ */}
               <Link
                 href="/watchlist"
                 className="flex items-center justify-center w-9 h-9 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"

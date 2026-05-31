@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Library, SlidersHorizontal, Star } from "lucide-react";
+import { Library, SlidersHorizontal, Star, Sparkles, BookOpen } from "lucide-react";
 import SearchBox from "@/components/SearchBox";
 import SectorHeatmap from "@/components/SectorHeatmap";
 import MarketOverview from "@/components/MarketOverview";
@@ -21,9 +21,11 @@ export default function Home() {
         <div className="space-y-2.5">
           <SearchBox autoFocus />
           <div className="flex flex-wrap gap-2 text-xs">
-            <QuickLink href="/stocks"    icon={<Library           className="w-3.5 h-3.5" />} color="bg-blue-500 hover:bg-blue-600">全銘柄</QuickLink>
-            <QuickLink href="/screener"  icon={<SlidersHorizontal className="w-3.5 h-3.5" />} color="bg-violet-500 hover:bg-violet-600">スクリーナー</QuickLink>
-            <QuickLink href="/watchlist" icon={<Star              className="w-3.5 h-3.5" />} color="bg-pink-500 hover:bg-pink-600">ウォッチリスト</QuickLink>
+            <QuickLink href="/stocks"      icon={<Library           className="w-3.5 h-3.5" />} color="bg-blue-500 hover:bg-blue-600">全銘柄</QuickLink>
+            <QuickLink href="/screener"    icon={<SlidersHorizontal className="w-3.5 h-3.5" />} color="bg-violet-500 hover:bg-violet-600">スクリーナー</QuickLink>
+            <QuickLink href="/watchlist"   icon={<Star              className="w-3.5 h-3.5" />} color="bg-pink-500 hover:bg-pink-600">ウォッチリスト</QuickLink>
+            <QuickLink href="/ai-ranking"  icon={<Sparkles          className="w-3.5 h-3.5" />} color="bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600" pulse>AI予想</QuickLink>
+            <QuickLink href="/learn"       icon={<BookOpen          className="w-3.5 h-3.5" />} color="bg-teal-500 hover:bg-teal-600">学習</QuickLink>
           </div>
         </div>
       </section>
@@ -76,11 +78,13 @@ function QuickLink({
   href,
   icon,
   color,
+  pulse,
   children,
 }: {
   href: string;
   icon: React.ReactNode;
   color: string;
+  pulse?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -88,6 +92,12 @@ function QuickLink({
       href={href}
       className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg ${color} text-white text-xs font-semibold active:scale-95 transition-all duration-150`}
     >
+      {pulse && (
+        <span className="relative flex h-1.5 w-1.5 shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+        </span>
+      )}
       {icon}
       {children}
     </Link>
