@@ -51,6 +51,17 @@ function NavLink({ href, label }: { href: string; label: string }) {
   );
 }
 
+function LearnNavLink() {
+  return (
+    <Link
+      href="/learn"
+      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all whitespace-nowrap"
+    >
+      📚 学習
+    </Link>
+  );
+}
+
 function AiNavLink() {
   return (
     <Link
@@ -123,7 +134,7 @@ export default function RootLayout({
               <NavLink href="/stocks"    label="全銘柄" />
               <NavLink href="/sectors"   label="セクター" />
               <AiNavLink />
-              <NavLink href="/learn"     label="学習" />
+              <LearnNavLink />
               <NavLink href="/watchlist" label="ウォッチ" />
             </nav>
 
@@ -139,6 +150,13 @@ export default function RootLayout({
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
                 </span>
                 AI予想
+              </Link>
+              {/* 学習 pill */}
+              <Link
+                href="/learn"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700/60 transition-all"
+              >
+                📚 学習
               </Link>
               <Link
                 href="/screener"

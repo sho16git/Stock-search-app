@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Briefcase, SlidersHorizontal, BarChart2, Star } from "lucide-react";
+import { Home, Briefcase, BookOpen, BarChart2, Star } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type NavItem = {
@@ -15,27 +15,27 @@ type NavItem = {
 
 const ITEMS: NavItem[] = [
   {
-    href: "/",          label: "ホーム",      Icon: Home,
+    href: "/",          label: "ホーム",   Icon: Home,
     activeFg: "text-violet-600 dark:text-violet-400",
     activeBg: "bg-violet-50 dark:bg-violet-500/[0.12]",
   },
   {
-    href: "/portfolio", label: "保有",        Icon: Briefcase,
+    href: "/portfolio", label: "保有",     Icon: Briefcase,
     activeFg: "text-emerald-600 dark:text-emerald-400",
     activeBg: "bg-emerald-50 dark:bg-emerald-500/[0.12]",
   },
   {
-    href: "/screener",  label: "スクリーナー", Icon: SlidersHorizontal,
-    activeFg: "text-orange-500 dark:text-orange-400",
-    activeBg: "bg-orange-50 dark:bg-orange-500/[0.12]",
-  },
-  {
-    href: "/sectors",   label: "セクター",    Icon: BarChart2,
+    href: "/sectors",   label: "セクター", Icon: BarChart2,
     activeFg: "text-blue-600 dark:text-blue-400",
     activeBg: "bg-blue-50 dark:bg-blue-500/[0.12]",
   },
   {
-    href: "/watchlist", label: "ウォッチ",    Icon: Star,
+    href: "/learn",     label: "学習",     Icon: BookOpen,
+    activeFg: "text-teal-600 dark:text-teal-400",
+    activeBg: "bg-teal-50 dark:bg-teal-500/[0.12]",
+  },
+  {
+    href: "/watchlist", label: "ウォッチ", Icon: Star,
     activeFg: "text-pink-600 dark:text-pink-400",
     activeBg: "bg-pink-50 dark:bg-pink-500/[0.12]",
   },
