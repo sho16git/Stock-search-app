@@ -22,10 +22,10 @@ type Tab = "day_gainers" | "day_losers" | "most_actives";
 type Market = "US" | "JP";
 type Key = `${Market}:${Tab}`;
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: "day_gainers",  label: "値上がり" },
-  { id: "day_losers",   label: "値下がり" },
-  { id: "most_actives", label: "出来高"   },
+const TABS: { id: Tab; label: string; activeClass: string }[] = [
+  { id: "day_gainers",  label: "▲ 値上がり", activeClass: "bg-emerald-500 dark:bg-emerald-500 text-white" },
+  { id: "day_losers",   label: "▼ 値下がり", activeClass: "bg-red-500    dark:bg-red-500    text-white" },
+  { id: "most_actives", label: "⚡ 出来高",  activeClass: "bg-blue-500   dark:bg-blue-500   text-white" },
 ];
 
 const MARKETS: { id: Market; label: string; flag: string }[] = [
@@ -91,7 +91,7 @@ export default function TopMovers() {
               onClick={() => setTab(t.id)}
               className={`flex-1 py-1.5 text-[11px] rounded-lg transition-all font-semibold ${
                 tab === t.id
-                  ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900"
+                  ? t.activeClass
                   : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               }`}
             >
