@@ -33,23 +33,23 @@ export default function Home() {
         <MarketOverview />
       </section>
 
-      {/* ── Movers + News (2-col on tablet+) ── */}
+      {/* ── Movers + Sector (2-col on tablet+) ── */}
       <section>
         <SectionLabel emoji="📊" text="マーケット動向" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
           <TopMovers />
-          <NewsPanel />
+          <SectorHeatmap />
         </div>
       </section>
 
       {/* ── Recent viewed ── */}
       <RecentViewed />
 
-      {/* ── Sector + Themes (2-col on tablet+) ── */}
+      {/* ── News + Themes (2-col on tablet+) ── */}
       <section>
-        <SectionLabel emoji="🗂️" text="セクター・テーマ" />
+        <SectionLabel emoji="🗂️" text="ニュース・テーマ" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-          <SectorHeatmap />
+          <NewsPanel />
           <InvestmentThemes />
         </div>
       </section>
