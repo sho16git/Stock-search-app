@@ -42,11 +42,11 @@ export default async function StockPage({
 
       <QuoteHeader symbol={symbol} />
       <StockChart symbol={symbol} />
+      <DividendHistory symbol={symbol} />
       <BuySellSentiment symbol={symbol} />
       <AIAnalysis symbol={symbol} />
       <AnalystRecommendations symbol={symbol} />
       <EarningsCard symbol={symbol} />
-      <DividendHistory symbol={symbol} />
       <YutaiCard symbol={symbol} />
       <FundamentalsTable symbol={symbol} />
       <HoldersCard symbol={symbol} />
