@@ -102,7 +102,7 @@ export default function RootLayout({
         <Sidebar />
 
         {/* ── コンテンツエリア (サイドバー分右にずらす) ──────────── */}
-        <div className="md:ml-52 flex flex-col min-h-[calc(100vh-50px)]">
+        <div className="md:ml-48 flex flex-col min-h-[calc(100vh-50px)]">
           <MarketTicker />
           <main className="flex-1 px-3 sm:px-4 lg:px-6 py-4 sm:py-5 pb-24 md:pb-8 [padding-left:max(0.75rem,env(safe-area-inset-left))] [padding-right:max(0.75rem,env(safe-area-inset-right))]">
             {children}
