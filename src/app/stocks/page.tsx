@@ -7,6 +7,11 @@ import {
   ChevronUp, ChevronDown, ChevronsUpDown, Layers, List,
 } from "lucide-react";
 import { formatNumber, formatLargeNumber } from "@/lib/format";
+import { GICS_SECTORS } from "@/lib/gics";
+
+// ── GICS ID → 表示情報マップ ───────────────────────────────────────
+const GICS_ID_MAP: Record<string, { nameJa: string; emoji: string }> =
+  Object.fromEntries(GICS_SECTORS.map(s => [s.id, { nameJa: s.nameJa, emoji: s.emoji }]));
 
 // ── Types ──────────────────────────────────────────────────────────
 type Row = {
@@ -33,41 +38,12 @@ type SortKey  = "price" | "changePercent" | "marketCap";
 type SortDir  = "asc" | "desc";
 type ViewMode = "list" | "sector";
 
-// ── セクター定義（Yahoo Finance → 日本語）────────────────────────
-const SECTOR_DISPLAY: Record<string, { nameJa: string; emoji: string }> = {
-  "Technology":              { nameJa: "情報技術",          emoji: "💻" },
-  "Financial Services":      { nameJa: "金融",              emoji: "🏦" },
-  "Consumer Cyclical":       { nameJa: "一般消費財",        emoji: "🛍️" },
-  "Consumer Defensive":      { nameJa: "生活必需品",        emoji: "🛒" },
-  "Healthcare":              { nameJa: "ヘルスケア",        emoji: "💊" },
-  "Communication Services":  { nameJa: "コミュニケーション", emoji: "📡" },
-  "Energy":                  { nameJa: "エネルギー",        emoji: "⛽" },
-  "Basic Materials":         { nameJa: "素材",              emoji: "🪨" },
-  "Industrials":             { nameJa: "資本財・サービス",  emoji: "🏭" },
-  "Utilities":               { nameJa: "公益事業",          emoji: "💡" },
-  "Real Estate":             { nameJa: "不動産",            emoji: "🏢" },
-};
-
 function getSectorInfo(raw: string | null): { nameJa: string; emoji: string; key: string } {
   if (!raw) return { nameJa: "未分類", emoji: "📋", key: "__other__" };
-  const info = SECTOR_DISPLAY[raw];
+  const info = GICS_ID_MAP[raw];
   if (info) return { ...info, key: raw };
-  // 日本語セクター名がそのまま来る場合（JP stocks）
-  const jpMap: Record<string, string> = {
-    "電気機器": "💻", "情報・通信業": "📡", "自動車・輸送機器": "🚗",
-    "銀行業": "🏦", "保険業": "🛡️", "証券、商品先物取引業": "📈",
-    "医薬品": "💊", "小売業": "🛒", "サービス業": "🏢",
-    "建設業": "🏗️", "食料品": "🍱", "化学": "🧪",
-    "機械": "⚙️", "鉄鋼": "🔧", "非鉄金属": "🔩",
-    "輸送用機器": "🚗", "精密機器": "🔬", "不動産業": "🏠",
-    "鉱業": "⛏️", "繊維製品": "🧵", "パルプ・紙": "📄",
-    "ゴム製品": "⭕", "ガラス・土石製品": "🏺", "その他製品": "📦",
-    "卸売業": "🏭", "陸運業": "🚃", "海運業": "🚢",
-    "空運業": "✈️", "倉庫・運輸関連業": "📦", "電力・ガス業": "💡",
-    "水産・農林業": "🌾", "鉱業・採掘": "⛏️",
-  };
-  const emoji = jpMap[raw] ?? "📊";
-  return { nameJa: raw, emoji, key: raw };
+  // 不明なセクター（GICSマップ外）はそのまま表示
+  return { nameJa: raw, emoji: "📊", key: raw };
 }
 
 // ── 並び替えアイコン ───────────────────────────────────────────────
