@@ -28,8 +28,8 @@ type Market = "US" | "JP";
 type StockSort = "gainers" | "losers";
 
 const MARKET_TABS: { key: Market; flag: string; label: string }[] = [
-  { key: "US", flag: "🇺🇸", label: "米国株" },
   { key: "JP", flag: "🇯🇵", label: "日本株" },
+  { key: "US", flag: "🇺🇸", label: "米株" },
 ];
 
 function Skeleton() {
@@ -43,7 +43,7 @@ function Skeleton() {
 }
 
 export default function InvestmentThemes() {
-  const [market, setMarket]       = useState<Market>("US");
+  const [market, setMarket]       = useState<Market>("JP");
   const [themes, setThemes]       = useState<Record<Market, Theme[] | null>>({ US: null, JP: null });
   const [loading, setLoading]     = useState(false);
   const [stockSort, setStockSort] = useState<StockSort>("gainers");
@@ -84,7 +84,7 @@ export default function InvestmentThemes() {
           <div className="flex p-0.5 bg-slate-100 dark:bg-slate-800/60 rounded-lg gap-0.5">
             <button
               onClick={() => setStockSort("gainers")}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+              className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold transition-all whitespace-nowrap ${
                 stockSort === "gainers"
                   ? "bg-emerald-500 text-white shadow-sm"
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
@@ -94,7 +94,7 @@ export default function InvestmentThemes() {
             </button>
             <button
               onClick={() => setStockSort("losers")}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all ${
+              className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold transition-all whitespace-nowrap ${
                 stockSort === "losers"
                   ? "bg-rose-500 text-white shadow-sm"
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"

@@ -94,7 +94,9 @@ function getUniverse(): BrowseItem[] {
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const page = Math.max(0, parseInt(sp.get("page") ?? "0", 10) || 0);
-  const pageSize = Math.min(100, Math.max(10, parseInt(sp.get("pageSize") ?? "50", 10) || 50));
+  const noPrices = sp.get("noPrices") === "true";
+  const maxPageSize = noPrices ? 3000 : 100;
+  const pageSize = Math.min(maxPageSize, Math.max(10, parseInt(sp.get("pageSize") ?? "50", 10) || 50));
   const market = sp.get("market") ?? "";
   const rawQ = sp.get("q")?.trim() ?? "";
 
@@ -135,7 +137,7 @@ export async function GET(req: NextRequest) {
     currency: string | null;
   }>();
 
-  if (symbols.length > 0) {
+  if (!noPrices && symbols.length > 0) {
     try {
       const rawQuotes = await yahooFinance
         .quote(symbols)

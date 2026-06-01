@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, Briefcase, SlidersHorizontal, Library,
-  BarChart2, Star, Sparkles, BookOpen,
+  BarChart2, Star, Sparkles, BookOpen, Calendar, Rocket,
 } from "lucide-react";
 
 type NavItem = {
@@ -53,6 +53,18 @@ const ITEMS: NavItem[] = [
     fg: "text-pink-600 dark:text-pink-400",
     bg: "bg-pink-50 dark:bg-pink-500/10",
     dot: "bg-pink-500",
+  },
+  {
+    href: "/earnings",  label: "決算カレンダー", Icon: Calendar,
+    fg: "text-amber-600 dark:text-amber-400",
+    bg: "bg-amber-50 dark:bg-amber-500/10",
+    dot: "bg-amber-500",
+  },
+  {
+    href: "/ipo",       label: "IPO情報",        Icon: Rocket,
+    fg: "text-rose-600 dark:text-rose-400",
+    bg: "bg-rose-50 dark:bg-rose-500/10",
+    dot: "bg-rose-500",
   },
 ];
 

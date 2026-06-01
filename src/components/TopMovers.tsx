@@ -29,12 +29,12 @@ const TABS: { id: Tab; label: string; activeClass: string }[] = [
 ];
 
 const MARKETS: { id: Market; label: string; flag: string }[] = [
-  { id: "US", label: "US", flag: "🇺🇸" },
-  { id: "JP", label: "JP", flag: "🇯🇵" },
+  { id: "JP", label: "日本株", flag: "🇯🇵" },
+  { id: "US", label: "米株",   flag: "🇺🇸" },
 ];
 
 export default function TopMovers() {
-  const [market, setMarket] = useState<Market>("US");
+  const [market, setMarket] = useState<Market>("JP");
   const [tab, setTab]       = useState<Tab>("day_gainers");
   const [cache, setCache]   = useState<Partial<Record<Key, Mover[]>>>({});
   const [loadingKey, setLoadingKey] = useState<Key | null>(null);
@@ -89,7 +89,7 @@ export default function TopMovers() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 py-1.5 text-[11px] rounded-lg transition-all font-semibold ${
+              className={`flex-1 py-1.5 text-xs rounded-lg transition-all font-semibold ${
                 tab === t.id
                   ? t.activeClass
                   : "text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"

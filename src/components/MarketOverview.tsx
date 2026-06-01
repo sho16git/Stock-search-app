@@ -117,7 +117,7 @@ export default function MarketOverview() {
 
                 <div className="px-3 py-3">
                   {/* Name */}
-                  <div className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 flex items-center gap-1 mb-1.5 truncate">
+                  <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400 flex items-center gap-1 mb-1.5 truncate">
                     <span>{idx.flag}</span>
                     <span className="truncate">{idx.name}</span>
                   </div>
@@ -128,7 +128,7 @@ export default function MarketOverview() {
                   </div>
 
                   {/* Change badge */}
-                  <div className={`inline-flex items-center gap-0.5 mt-1.5 px-1.5 py-0.5 rounded-md text-[11px] font-mono font-bold ${pctBg(idx.changePercent)} ${pctColor(idx.changePercent)}`}>
+                  <div className={`inline-flex items-center gap-0.5 mt-1.5 px-1.5 py-0.5 rounded-md text-xs font-mono font-bold ${pctBg(idx.changePercent)} ${pctColor(idx.changePercent)}`}>
                     {up ? "▲" : "▼"}
                     {idx.changePercent !== null
                       ? Math.abs(idx.changePercent).toFixed(2) + "%"

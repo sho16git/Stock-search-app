@@ -238,13 +238,13 @@ export default function QuoteHeader({ symbol }: { symbol: string }) {
                     : amt != null ? formatNumber(amt) : "—";
                   const hi = shares === 100;
                   return (
-                    <div key={shares} className={`px-2 py-1.5 rounded-lg border text-center ${
+                    <div key={shares} className={`px-1.5 py-1.5 rounded-lg border text-center min-w-0 ${
                       hi
                         ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800"
                         : "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700"
                     }`}>
-                      <div className="text-[10px] text-slate-500">{shares.toLocaleString("ja-JP")}株</div>
-                      <div className={`font-mono font-bold text-xs tabular-nums ${
+                      <div className="text-[9px] text-slate-500">{shares.toLocaleString("ja-JP")}株</div>
+                      <div className={`font-mono font-bold text-[10px] tabular-nums truncate ${
                         hi ? "text-blue-700 dark:text-blue-300" : "text-slate-800 dark:text-slate-200"
                       }`}>{dispAmt}</div>
                       {!(canToggle && showJpy) && (
