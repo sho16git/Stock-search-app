@@ -152,144 +152,152 @@ function SectorGroup({
       {/* Stock list */}
       {open && (
         <div className="border-t border-zinc-100 dark:border-zinc-800">
-          {/* テーブルヘッダー行 */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[640px]">
-              <thead>
-                <tr className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-800/30">
-                  <th className="py-2 px-3 text-left text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[140px]">銘柄</th>
-                  <th className="py-2 px-3 text-left text-xs font-semibold text-zinc-400 uppercase tracking-wide">会社名</th>
-                  <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[110px]">
-                    <span className="flex items-center justify-end gap-1">
-                      株価
-                      {priceFetched && (
-                        <button
-                          onClick={handleRefresh}
-                          className="ml-1 p-0.5 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
-                          title="株価を再取得"
-                        >
-                          <RefreshCw className="w-3 h-3 text-zinc-400" />
-                        </button>
+
+          {/* ── スケルトン ── */}
+          {priceLoading && (
+            <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60 animate-pulse">
+              {rows.slice(0, 4).map(r => (
+                <div key={r.symbol} className="flex items-center gap-3 px-4 py-3">
+                  <div className="h-3 w-20 rounded bg-zinc-200 dark:bg-zinc-700" />
+                  <div className="flex-1 h-3 rounded bg-zinc-100 dark:bg-zinc-800" />
+                  <div className="h-3 w-16 rounded bg-zinc-200 dark:bg-zinc-700" />
+                  <div className="h-5 w-14 rounded-md bg-zinc-100 dark:bg-zinc-800" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!priceLoading && (<>
+            {/* ── モバイル: カードリスト (< sm) ── */}
+            <div className="sm:hidden divide-y divide-zinc-100 dark:divide-zinc-800/60">
+              {sortedRows.map(r => {
+                const q   = priceMap[r.symbol];
+                const up  = (q?.changePercent ?? 0) >= 0;
+                return (
+                  <Link
+                    key={r.symbol}
+                    href={`/stock/${encodeURIComponent(r.symbol)}`}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 active:bg-zinc-100 dark:active:bg-zinc-800/50 transition-colors"
+                  >
+                    {/* 左: 銘柄 + 社名 */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1">
+                        <span className="font-mono font-bold text-sm text-blue-600 dark:text-blue-400">{r.symbol}</span>
+                        <span className="text-xs">{r.market === "JP" ? "🇯🇵" : "🇺🇸"}</span>
+                      </div>
+                      <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">{r.name}</div>
+                    </div>
+
+                    {/* 右: 株価 + 騰落率 */}
+                    <div className="shrink-0 text-right">
+                      {q?.price != null ? (
+                        <div className="font-mono font-semibold text-sm text-zinc-800 dark:text-zinc-100 tabular-nums">
+                          {formatNumber(q.price)}
+                          <span className="text-[10px] text-zinc-400 ml-0.5">{q.currency ?? ""}</span>
+                        </div>
+                      ) : (
+                        <div className="text-xs text-zinc-300 dark:text-zinc-600">—</div>
                       )}
-                    </span>
-                  </th>
-                  <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[90px]">騰落率</th>
-                  <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[110px]">時価総額</th>
-                  <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[90px] hidden lg:table-cell">52W高値</th>
-                  <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[90px] hidden lg:table-cell">52W安値</th>
-                  <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[56px]"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                {/* 株価読み込み中スケルトン */}
-                {priceLoading && rows.slice(0, 5).map((r) => (
-                  <tr key={r.symbol} className="animate-pulse">
-                    <td className="py-2.5 px-3">
-                      <div className="h-3 w-20 rounded bg-zinc-200 dark:bg-zinc-700" />
-                    </td>
-                    <td className="py-2.5 px-3">
-                      <div className="h-3 w-40 rounded bg-zinc-100 dark:bg-zinc-800" />
-                    </td>
-                    <td className="py-2.5 px-3"><div className="h-3 w-16 rounded bg-zinc-200 dark:bg-zinc-700 ml-auto" /></td>
-                    <td className="py-2.5 px-3"><div className="h-3 w-12 rounded bg-zinc-200 dark:bg-zinc-700 ml-auto" /></td>
-                    <td className="py-2.5 px-3"><div className="h-3 w-14 rounded bg-zinc-200 dark:bg-zinc-700 ml-auto" /></td>
-                    <td className="py-2.5 px-3 hidden lg:table-cell"><div className="h-3 w-14 rounded bg-zinc-200 dark:bg-zinc-700 ml-auto" /></td>
-                    <td className="py-2.5 px-3 hidden lg:table-cell"><div className="h-3 w-14 rounded bg-zinc-200 dark:bg-zinc-700 ml-auto" /></td>
-                    <td className="py-2.5 px-3" />
+                      {q?.changePercent != null ? (
+                        <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-xs font-bold mt-0.5 ${
+                          up
+                            ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
+                            : "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400"
+                        }`}>
+                          {up ? "▲" : "▼"}{Math.abs(q.changePercent).toFixed(2)}%
+                        </span>
+                      ) : (
+                        <div className="text-xs text-zinc-300 dark:text-zinc-600">—</div>
+                      )}
+                    </div>
+
+                    {/* 時価総額 (sm以上に移動、ここでは小さく表示) */}
+                    {q?.marketCap != null && (
+                      <div className="shrink-0 text-right hidden xs:block">
+                        <div className="text-[10px] text-zinc-400">{formatLargeNumber(q.marketCap)}</div>
+                      </div>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* ── デスクトップ: テーブル (sm 以上) ── */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-sm min-w-[560px]">
+                <thead>
+                  <tr className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-800/30">
+                    <th className="py-2 px-3 text-left text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[130px]">銘柄</th>
+                    <th className="py-2 px-3 text-left text-xs font-semibold text-zinc-400 uppercase tracking-wide">会社名</th>
+                    <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[100px]">
+                      <span className="inline-flex items-center justify-end gap-1">
+                        株価
+                        {priceFetched && (
+                          <button onClick={handleRefresh} className="p-0.5 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors" title="再取得">
+                            <RefreshCw className="w-3 h-3 text-zinc-400" />
+                          </button>
+                        )}
+                      </span>
+                    </th>
+                    <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[86px]">騰落率</th>
+                    <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[100px]">時価総額</th>
+                    <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[86px] hidden lg:table-cell">52W高値</th>
+                    <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[86px] hidden lg:table-cell">52W安値</th>
+                    <th className="py-2 px-3 w-[50px]"></th>
                   </tr>
-                ))}
-
-                {!priceLoading && sortedRows.map(r => {
-                  const q = priceMap[r.symbol];
-                  const up = (q?.changePercent ?? 0) >= 0;
-                  return (
-                    <tr key={r.symbol} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
-                      {/* 銘柄コード */}
-                      <td className="py-2.5 px-3">
-                        <Link
-                          href={`/stock/${encodeURIComponent(r.symbol)}`}
-                          className="inline-flex items-center gap-1 font-mono font-bold text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                        >
-                          {r.symbol}
-                          <span className="text-xs">{r.market === "JP" ? "🇯🇵" : "🇺🇸"}</span>
-                        </Link>
-                      </td>
-
-                      {/* 会社名 */}
-                      <td className="py-2.5 px-3 max-w-[240px]">
-                        <Link href={`/stock/${encodeURIComponent(r.symbol)}`} className="hover:text-blue-600 dark:hover:text-blue-400">
-                          <span className="block truncate text-sm text-zinc-700 dark:text-zinc-200">{r.name}</span>
-                          {r.market === "US" && r.nameEn && r.nameEn !== r.name && (
-                            <span className="block truncate text-xs text-zinc-400">{r.nameEn}</span>
-                          )}
-                        </Link>
-                      </td>
-
-                      {/* 株価 */}
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums">
-                        {q?.price != null ? (
-                          <div>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                  {sortedRows.map(r => {
+                    const q  = priceMap[r.symbol];
+                    const up = (q?.changePercent ?? 0) >= 0;
+                    return (
+                      <tr key={r.symbol} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                        <td className="py-2.5 px-3">
+                          <Link href={`/stock/${encodeURIComponent(r.symbol)}`} className="inline-flex items-center gap-1 font-mono font-bold text-sm text-blue-600 dark:text-blue-400 hover:underline">
+                            {r.symbol}<span className="text-xs">{r.market === "JP" ? "🇯🇵" : "🇺🇸"}</span>
+                          </Link>
+                        </td>
+                        <td className="py-2.5 px-3 max-w-[220px]">
+                          <Link href={`/stock/${encodeURIComponent(r.symbol)}`} className="hover:text-blue-600 dark:hover:text-blue-400">
+                            <span className="block truncate text-sm text-zinc-700 dark:text-zinc-200">{r.name}</span>
+                            {r.market === "US" && r.nameEn && r.nameEn !== r.name && (
+                              <span className="block truncate text-xs text-zinc-400">{r.nameEn}</span>
+                            )}
+                          </Link>
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono tabular-nums">
+                          {q?.price != null ? (
                             <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
-                              {formatNumber(q.price)}
+                              {formatNumber(q.price)}<span className="text-xs text-zinc-400 ml-0.5">{q.currency ?? ""}</span>
                             </span>
-                            <span className="text-xs text-zinc-400 ml-0.5">{q.currency ?? ""}</span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-zinc-300 dark:text-zinc-600">—</span>
-                        )}
-                      </td>
-
-                      {/* 騰落率 */}
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums">
-                        {q?.changePercent != null ? (
-                          <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-xs font-bold ${
-                            up
-                              ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
-                              : "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400"
-                          }`}>
-                            {up ? "▲" : "▼"}{Math.abs(q.changePercent).toFixed(2)}%
-                          </span>
-                        ) : (
-                          <span className="text-xs text-zinc-300 dark:text-zinc-600">—</span>
-                        )}
-                      </td>
-
-                      {/* 時価総額 */}
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs text-zinc-500 dark:text-zinc-400">
-                        {q?.marketCap != null
-                          ? formatLargeNumber(q.marketCap)
-                          : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
-                      </td>
-
-                      {/* 52W高値 */}
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs text-zinc-500 dark:text-zinc-400 hidden lg:table-cell">
-                        {q?.high52w != null
-                          ? formatNumber(q.high52w)
-                          : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
-                      </td>
-
-                      {/* 52W安値 */}
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs text-zinc-500 dark:text-zinc-400 hidden lg:table-cell">
-                        {q?.low52w != null
-                          ? formatNumber(q.low52w)
-                          : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
-                      </td>
-
-                      {/* 詳細 */}
-                      <td className="py-2.5 px-3 text-right">
-                        <Link
-                          href={`/stock/${encodeURIComponent(r.symbol)}`}
-                          className="text-xs text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 font-medium"
-                        >
-                          詳細→
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                          ) : <span className="text-xs text-zinc-300 dark:text-zinc-600">—</span>}
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          {q?.changePercent != null ? (
+                            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-xs font-bold ${up ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400" : "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400"}`}>
+                              {up ? "▲" : "▼"}{Math.abs(q.changePercent).toFixed(2)}%
+                            </span>
+                          ) : <span className="text-xs text-zinc-300 dark:text-zinc-600">—</span>}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono text-xs text-zinc-500 tabular-nums">
+                          {q?.marketCap != null ? formatLargeNumber(q.marketCap) : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono text-xs text-zinc-500 tabular-nums hidden lg:table-cell">
+                          {q?.high52w != null ? formatNumber(q.high52w) : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono text-xs text-zinc-500 tabular-nums hidden lg:table-cell">
+                          {q?.low52w != null ? formatNumber(q.low52w) : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
+                        </td>
+                        <td className="py-2.5 px-3 text-right">
+                          <Link href={`/stock/${encodeURIComponent(r.symbol)}`} className="text-xs text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 font-medium">詳細→</Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>)}
         </div>
       )}
     </div>

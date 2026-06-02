@@ -5,6 +5,7 @@ import "./globals.css";
 import MarketTicker from "@/components/MarketTicker";
 import BottomNav from "@/components/BottomNav";
 import Sidebar from "@/components/Sidebar";
+import SwipeBack from "@/components/SwipeBack";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -118,6 +119,9 @@ export default function RootLayout({
 
         {/* ── モバイル ボトムナビ ──────────────────────────────── */}
         <BottomNav />
+
+        {/* ── スワイプバック (左端 → 右スワイプで前画面へ) ─────── */}
+        <SwipeBack />
       </body>
     </html>
   );

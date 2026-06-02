@@ -113,7 +113,7 @@ function Gauge({ buyPct }: { buyPct: number }) {
   return (
     <div className="flex flex-col items-center">
       <svg
-        viewBox="0 0 200 110"
+        viewBox="0 0 200 118"
         className="w-full max-w-[220px]"
         aria-label={`買い動向 ${pct}%`}
       >
@@ -198,9 +198,9 @@ function Gauge({ buyPct }: { buyPct: number }) {
         </text>
 
         {/* ── Axis labels ── */}
-        <text x="12" y={CY + 16} textAnchor="middle" fontSize="8.5" fill="#ef4444">売り</text>
-        <text x="100" y="15"     textAnchor="middle" fontSize="8.5" className="fill-zinc-400">中立</text>
-        <text x="188" y={CY + 16} textAnchor="middle" fontSize="8.5" fill="#22c55e">買い</text>
+        <text x="16"  y={CY + 16} textAnchor="middle" fontSize="9" fontWeight="700" fill="#ef4444">売り</text>
+        <text x="100" y="14"      textAnchor="middle" fontSize="9" fontWeight="600" fill="#a1a1aa">中立</text>
+        <text x="184" y={CY + 16} textAnchor="middle" fontSize="9" fontWeight="700" fill="#22c55e">買い</text>
       </svg>
     </div>
   );
