@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Calendar, RefreshCw, TrendingUp, TrendingDown, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar, RefreshCw, TrendingUp, TrendingDown, ChevronDown, ChevronUp, BarChart2 } from "lucide-react";
 import { formatNumber } from "@/lib/format";
+import PastEarningsView from "@/components/PastEarningsView";
 
 // ── Types ──────────────────────────────────────────────────────────
 type Stock = {
@@ -31,7 +32,8 @@ type CalendarResp = {
   calendar:  DayEntry[];
 };
 
-type Market = "JP" | "US";
+type Market  = "JP" | "US";
+type ViewTab = "calendar" | "history";
 
 // ── Helpers ────────────────────────────────────────────────────────
 const WEEKDAY_JP = ["日", "月", "火", "水", "木", "金", "土"];
@@ -176,6 +178,7 @@ function StockRow({ s, market }: { s: Stock; market: Market }) {
 
 // ── Main Page ──────────────────────────────────────────────────────
 export default function EarningsPage() {
+  const [tab,      setTab]      = useState<ViewTab>("calendar");
   const [market,   setMarket]   = useState<Market>("JP");
   const [data,     setData]     = useState<CalendarResp | null>(null);
   const [loading,  setLoading]  = useState(true);
@@ -209,9 +212,43 @@ export default function EarningsPage() {
           決算カレンダー
         </h1>
         <p className="text-sm text-zinc-500 mt-1">
-          今後の決算発表予定日を一覧で確認できます。タップで詳細を表示。
+          {tab === "calendar"
+            ? "今後の決算発表予定日を一覧で確認できます。タップで詳細を表示。"
+            : "アプリ内銘柄の過去の決算結果をセクター別・銘柄別に閲覧できます。"}
         </p>
       </header>
+
+      {/* ── タブ切り替え ── */}
+      <div className="flex p-1 bg-zinc-100 dark:bg-zinc-800/60 rounded-2xl gap-1 max-w-sm">
+        <button
+          onClick={() => setTab("calendar")}
+          className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+            tab === "calendar"
+              ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white"
+              : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+          }`}
+        >
+          <Calendar className="w-4 h-4 shrink-0" />
+          決算カレンダー
+        </button>
+        <button
+          onClick={() => setTab("history")}
+          className={`flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+            tab === "history"
+              ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white"
+              : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+          }`}
+        >
+          <BarChart2 className="w-4 h-4 shrink-0" />
+          過去の決算
+        </button>
+      </div>
+
+      {/* ── 過去の決算ビュー ── */}
+      {tab === "history" && <PastEarningsView />}
+
+      {/* ── カレンダービュー (tab === "calendar" のみ表示) ── */}
+      {tab === "calendar" && (<>
 
       {/* ── コントロール ── */}
       <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-3 shadow-sm">
@@ -381,6 +418,8 @@ export default function EarningsPage() {
         ※ 決算予定日はYahoo Finance APIより自動取得。実際の発表日程と異なる場合があります。<br />
         決算翌日の株価変動に備え、前日中のポジション確認を推奨します。
       </p>
+
+      </>)}
     </div>
   );
 }
