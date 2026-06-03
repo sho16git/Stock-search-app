@@ -21,12 +21,18 @@ type BrowseRow = {
 type EarningsEntry = {
   date:               string;
   period:             string | null;
+  periodType:         string | null;
   epsActual:          number | null;
-  epsEstimate:        number | null;
+  epsEstimate:        number | null;    // アナリスト予想 (US) or 会社予想 (JP)
   epsSurprise:        number | null;
   epsSurprisePercent: number | null;
   revenue:            number | null;
+  operatingProfit:    number | null;   // J-Quants のみ
   netIncome:          number | null;
+  forecastRevenue:    number | null;   // 会社通期予想 (J-Quants のみ)
+  forecastNetIncome:  number | null;
+  forecastEps:        number | null;
+  source:             "jquants" | "yahoo" | undefined;
 };
 
 type EarningsResp = {
@@ -88,8 +94,9 @@ function StockEarningsRow({ row }: { row: BrowseRow }) {
     if (next && !data && !loading) doFetch();
   };
 
-  const beat  = (p: number | null) => p !== null && p >= 0;
+  const beat    = (p: number | null) => p !== null && p >= 0;
   const hasData = data && data.history.length > 0;
+  const isJQ    = !!(data?.history[0]?.source === "jquants");
 
   return (
     <div className="border-b border-zinc-100 dark:border-zinc-800/60 last:border-0">
@@ -161,10 +168,15 @@ function StockEarningsRow({ row }: { row: BrowseRow }) {
                   <tr className="border-b border-zinc-200 dark:border-zinc-700">
                     <th className="py-2 px-2 text-left font-semibold text-zinc-400 uppercase tracking-wide">決算期</th>
                     <th className="py-2 px-2 text-right font-semibold text-zinc-400 uppercase tracking-wide">発表月</th>
-                    <th className="py-2 px-2 text-right font-semibold text-zinc-400 uppercase tracking-wide">予想EPS</th>
+                    <th className="py-2 px-2 text-right font-semibold text-zinc-400 uppercase tracking-wide">
+                      {isJQ ? "会社予想EPS" : "アナリスト予想"}
+                    </th>
                     <th className="py-2 px-2 text-right font-semibold text-zinc-400 uppercase tracking-wide">実績EPS</th>
                     <th className="py-2 px-2 text-right font-semibold text-zinc-400 uppercase tracking-wide">乖離率</th>
                     <th className="py-2 px-2 text-right font-semibold text-zinc-400 uppercase tracking-wide">売上高</th>
+                    {isJQ && (
+                      <th className="py-2 px-2 text-right font-semibold text-zinc-400 uppercase tracking-wide">営業利益</th>
+                    )}
                     <th className="py-2 px-2 text-right font-semibold text-zinc-400 uppercase tracking-wide">純利益</th>
                   </tr>
                 </thead>
@@ -231,6 +243,21 @@ function StockEarningsRow({ row }: { row: BrowseRow }) {
                             : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
                         </td>
 
+                        {/* 営業利益 (J-Quants only) */}
+                        {isJQ && (
+                          <td className={`py-2 px-2 text-right font-mono whitespace-nowrap ${
+                            e.operatingProfit === null
+                              ? "text-zinc-300 dark:text-zinc-600"
+                              : e.operatingProfit >= 0
+                                ? "text-emerald-600 dark:text-emerald-400"
+                                : "text-rose-600 dark:text-rose-400"
+                          }`}>
+                            {e.operatingProfit !== null
+                              ? formatLargeNumber(e.operatingProfit)
+                              : "—"}
+                          </td>
+                        )}
+
                         {/* 純利益 */}
                         <td className={`py-2 px-2 text-right font-mono whitespace-nowrap ${
                           e.netIncome === null
@@ -252,7 +279,10 @@ function StockEarningsRow({ row }: { row: BrowseRow }) {
               {/* Currency / Detail link */}
               <div className="flex items-center justify-between mt-2 pt-1">
                 <span className="text-[10px] text-zinc-400">
-                  通貨: {data.currency ?? "—"} ／ 出典: Yahoo Finance
+                  通貨: {data.currency ?? "—"} ／ 出典:{" "}
+                  {isJQ
+                    ? <span className="text-blue-500 font-semibold">J-Quants</span>
+                    : "Yahoo Finance"}
                 </span>
                 <Link
                   href={`/stock/${encodeURIComponent(row.symbol)}`}
@@ -434,8 +464,8 @@ export default function PastEarningsView() {
 
       {/* Footer note */}
       <p className="text-xs text-zinc-400 text-center leading-relaxed pb-2">
-        ※ EPSデータはYahoo Finance APIより自動取得。日本株はデータが限られる場合があります。<br />
-        乖離率 = (実績EPS − 予想EPS) ÷ |予想EPS| × 100
+        ※ 日本株はJ-Quants（JPX公式）、米国株はYahoo Finance APIより自動取得。<br />
+        日本株の「会社予想EPS」は通期予想。乖離率 = (実績EPS − 予想EPS) ÷ |予想EPS| × 100
       </p>
     </div>
   );

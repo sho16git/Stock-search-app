@@ -13,13 +13,31 @@ import { GICS_SECTORS } from "@/lib/gics";
 const GICS_ID_MAP: Record<string, { nameJa: string; emoji: string }> =
   Object.fromEntries(GICS_SECTORS.map(s => [s.id, { nameJa: s.nameJa, emoji: s.emoji }]));
 
+// ── セグメントバッジ ───────────────────────────────────────────────
+const SEGMENT_STYLE: Record<string, string> = {
+  "プライム":    "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
+  "スタンダード": "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400",
+  "グロース":    "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400",
+};
+function SegmentBadge({ segment }: { segment: string | null }) {
+  if (!segment || !SEGMENT_STYLE[segment]) return null;
+  return (
+    <span className={`inline-block text-[9px] font-bold px-1 py-0.5 rounded leading-none ${SEGMENT_STYLE[segment]}`}>
+      {segment}
+    </span>
+  );
+}
+
 // ── Types ──────────────────────────────────────────────────────────
+type Segment = "" | "プライム" | "スタンダード" | "グロース";
+
 type Row = {
   symbol:        string;
   name:          string;
   nameEn:        string | null;
   market:        "JP" | "US";
   sector:        string | null;
+  segment:       string | null;
   price:         number | null;
   changePercent: number | null;
   marketCap:     number | null;
@@ -71,10 +89,12 @@ function SectorGroup({
   sectorKey: string;
   rows: Row[];
 }) {
-  const [open,         setOpen]         = useState(false);
-  const [priceMap,     setPriceMap]     = useState<Record<string, QuoteData>>({});
-  const [priceLoading, setPriceLoading] = useState(false);
-  const [priceFetched, setPriceFetched] = useState(false);
+  const [open,          setOpen]          = useState(false);
+  const [priceMap,      setPriceMap]      = useState<Record<string, QuoteData>>({});
+  const [priceLoading,  setPriceLoading]  = useState(false);
+  const [priceFetched,  setPriceFetched]  = useState(false);
+  const [sectorSortKey, setSectorSortKey] = useState<"changePercent" | "price" | "marketCap">("changePercent");
+  const [sectorSortAsc, setSectorSortAsc] = useState(false);
 
   const info = getSectorInfo(sectorKey === "__other__" ? null : sectorKey);
 
@@ -118,15 +138,15 @@ function SectorGroup({
     fetchPrices().then(() => setPriceFetched(true));
   };
 
-  // changePercent 上位でソート
+  // 指定キーでソート (デフォルト: changePercent 降順)
   const sortedRows = priceFetched
     ? [...rows].sort((a, b) => {
-        const pa = priceMap[a.symbol]?.changePercent ?? null;
-        const pb = priceMap[b.symbol]?.changePercent ?? null;
+        const pa = priceMap[a.symbol]?.[sectorSortKey] ?? null;
+        const pb = priceMap[b.symbol]?.[sectorSortKey] ?? null;
         if (pa === null && pb === null) return 0;
         if (pa === null) return 1;
         if (pb === null) return -1;
-        return pb - pa;
+        return sectorSortAsc ? pa - pb : pb - pa;
       })
     : rows;
 
@@ -168,68 +188,108 @@ function SectorGroup({
           )}
 
           {!priceLoading && (<>
-            {/* ── モバイル: カードリスト (< sm) ── */}
-            <div className="sm:hidden divide-y divide-zinc-100 dark:divide-zinc-800/60">
-              {sortedRows.map(r => {
-                const q   = priceMap[r.symbol];
-                const up  = (q?.changePercent ?? 0) >= 0;
-                return (
-                  <Link
-                    key={r.symbol}
-                    href={`/stock/${encodeURIComponent(r.symbol)}`}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 active:bg-zinc-100 dark:active:bg-zinc-800/50 transition-colors"
-                  >
-                    {/* 左: 銘柄 + 社名 */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1">
-                        <span className="font-mono font-bold text-sm text-blue-600 dark:text-blue-400">{r.symbol}</span>
-                        <span className="text-xs">{r.market === "JP" ? "🇯🇵" : "🇺🇸"}</span>
-                      </div>
-                      <div className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">{r.name}</div>
-                    </div>
+            {/* ── モバイル: カードリスト (< md) ── */}
+            <div className="md:hidden">
+              {/* ソートコントロール (価格取得後に表示) */}
+              {priceFetched && (
+                <div className="flex items-center gap-1.5 px-3 py-2 bg-zinc-50/70 dark:bg-zinc-800/40 border-b border-zinc-100 dark:border-zinc-800">
+                  <span className="text-[10px] text-zinc-400 shrink-0 font-medium mr-0.5">並び替え</span>
+                  {(["changePercent", "price", "marketCap"] as const).map(col => {
+                    const labels = { changePercent: "騰落率", price: "株価", marketCap: "時価総額" } as const;
+                    const active = sectorSortKey === col;
+                    return (
+                      <button
+                        key={col}
+                        onClick={() => {
+                          if (sectorSortKey === col) setSectorSortAsc(a => !a);
+                          else { setSectorSortKey(col); setSectorSortAsc(false); }
+                        }}
+                        className={`shrink-0 inline-flex items-center gap-0.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
+                          active
+                            ? "bg-blue-500 text-white shadow-sm"
+                            : "bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700"
+                        }`}
+                      >
+                        {labels[col]}
+                        {active && (!sectorSortAsc
+                          ? <ChevronDown className="w-3 h-3" />
+                          : <ChevronUp   className="w-3 h-3" />)}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
-                    {/* 右: 株価 + 騰落率 */}
-                    <div className="shrink-0 text-right">
-                      {q?.price != null ? (
-                        <div className="font-mono font-semibold text-sm text-zinc-800 dark:text-zinc-100 tabular-nums">
-                          {formatNumber(q.price)}
-                          <span className="text-[10px] text-zinc-400 ml-0.5">{q.currency ?? ""}</span>
+              <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                {sortedRows.map(r => {
+                  const q   = priceMap[r.symbol];
+                  const up  = (q?.changePercent ?? 0) >= 0;
+                  return (
+                    <Link
+                      key={r.symbol}
+                      href={`/stock/${encodeURIComponent(r.symbol)}`}
+                      className="flex items-start gap-2 px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 active:bg-zinc-100 dark:active:bg-zinc-800/50 transition-colors"
+                    >
+                      {/* 左: 銘柄コード + 社名 */}
+                      <div className="flex-1 min-w-0 pt-0.5">
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono font-bold text-sm text-blue-600 dark:text-blue-400">{r.symbol}</span>
+                          <span className="text-xs">{r.market === "JP" ? "🇯🇵" : "🇺🇸"}</span>
                         </div>
-                      ) : (
-                        <div className="text-xs text-zinc-300 dark:text-zinc-600">—</div>
-                      )}
-                      {q?.changePercent != null ? (
-                        <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-xs font-bold mt-0.5 ${
-                          up
-                            ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
-                            : "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400"
-                        }`}>
-                          {up ? "▲" : "▼"}{Math.abs(q.changePercent).toFixed(2)}%
-                        </span>
-                      ) : (
-                        <div className="text-xs text-zinc-300 dark:text-zinc-600">—</div>
-                      )}
-                    </div>
-
-                    {/* 時価総額 (sm以上に移動、ここでは小さく表示) */}
-                    {q?.marketCap != null && (
-                      <div className="shrink-0 text-right hidden xs:block">
-                        <div className="text-[10px] text-zinc-400">{formatLargeNumber(q.marketCap)}</div>
+                        <div className="text-sm text-zinc-700 dark:text-zinc-300 truncate leading-tight">{r.name}</div>
+                        {r.market === "US" && r.nameEn && r.nameEn !== r.name && (
+                          <div className="text-xs text-zinc-400 truncate">{r.nameEn}</div>
+                        )}
                       </div>
-                    )}
-                  </Link>
-                );
-              })}
+
+                      {/* 右: 株価・騰落率・時価総額 (縦積み) */}
+                      <div className="shrink-0 text-right w-[108px]">
+                        <div className="font-mono font-semibold text-sm text-zinc-800 dark:text-zinc-100 tabular-nums">
+                          {q?.price != null
+                            ? <>{formatNumber(q.price)}<span className="text-[10px] text-zinc-400 ml-0.5">{q.currency ?? ""}</span></>
+                            : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
+                        </div>
+                        <div className="mt-0.5">
+                          {q?.changePercent != null ? (
+                            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-xs font-bold ${
+                              up
+                                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
+                                : "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400"
+                            }`}>
+                              {up ? "▲" : "▼"}{Math.abs(q.changePercent).toFixed(2)}%
+                            </span>
+                          ) : (
+                            <span className="text-xs text-zinc-300 dark:text-zinc-600">—</span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-zinc-400 tabular-nums mt-0.5">
+                          {q?.marketCap != null ? formatLargeNumber(q.marketCap) : ""}
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* ── デスクトップ: テーブル (sm 以上) ── */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-sm min-w-[560px]">
+            {/* ── デスクトップ: テーブル (md 以上) ── */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm table-fixed">
+                <colgroup>
+                  <col className="w-[120px]" />  {/* 銘柄 */}
+                  <col />                        {/* 会社名 (auto) */}
+                  <col className="w-[104px]" />  {/* 株価 */}
+                  <col className="w-[84px]" />   {/* 騰落率 */}
+                  <col className="w-[96px]" />   {/* 時価総額 */}
+                  <col className="w-[84px]" />   {/* 52W高値 (lg) */}
+                  <col className="w-[84px]" />   {/* 52W安値 (lg) */}
+                  <col className="w-[44px]" />   {/* 詳細 */}
+                </colgroup>
                 <thead>
                   <tr className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-800/30">
-                    <th className="py-2 px-3 text-left text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[130px]">銘柄</th>
+                    <th className="py-2 px-3 text-left text-xs font-semibold text-zinc-400 uppercase tracking-wide">銘柄</th>
                     <th className="py-2 px-3 text-left text-xs font-semibold text-zinc-400 uppercase tracking-wide">会社名</th>
-                    <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[100px]">
+                    <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[96px]">
                       <span className="inline-flex items-center justify-end gap-1">
                         株価
                         {priceFetched && (
@@ -239,11 +299,11 @@ function SectorGroup({
                         )}
                       </span>
                     </th>
-                    <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[86px]">騰落率</th>
-                    <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[100px]">時価総額</th>
-                    <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[86px] hidden lg:table-cell">52W高値</th>
-                    <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[86px] hidden lg:table-cell">52W安値</th>
-                    <th className="py-2 px-3 w-[50px]"></th>
+                    <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[80px]">騰落率</th>
+                    <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[88px]">時価総額</th>
+                    <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[80px] hidden lg:table-cell">52W高値</th>
+                    <th className="py-2 px-3 text-right text-xs font-semibold text-zinc-400 uppercase tracking-wide w-[80px] hidden lg:table-cell">52W安値</th>
+                    <th className="py-2 px-3 w-[44px]"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
@@ -312,6 +372,7 @@ export default function AllStocksPage() {
   const [loading,   setLoading]   = useState(true);
   const [page,      setPage]      = useState(0);
   const [market,    setMarket]    = useState<"" | "JP" | "US">("");
+  const [segment,   setSegment]   = useState<Segment>("");
   const [query,     setQuery]     = useState("");
   const [inputVal,  setInputVal]  = useState("");
   const [sortKey,   setSortKey]   = useState<SortKey | null>(null);
@@ -325,10 +386,11 @@ export default function AllStocksPage() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // リスト用データ取得
-  const fetchData = useCallback(async (p: number, mkt: string, q: string) => {
+  const fetchData = useCallback(async (p: number, mkt: string, seg: string, q: string) => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(p), pageSize: String(PAGE_SIZE) });
     if (mkt) params.set("market", mkt);
+    if (seg) params.set("segment", seg);
     if (q)   params.set("q", q);
     try {
       const res = await fetch(`/api/browse?${params}`).then(r => r.json());
@@ -338,10 +400,11 @@ export default function AllStocksPage() {
   }, []);
 
   // セクター別用データ取得（価格なし、全件）
-  const fetchSectorData = useCallback(async (mkt: string, q: string) => {
+  const fetchSectorData = useCallback(async (mkt: string, seg: string, q: string) => {
     setSectorLoading(true);
-    const params = new URLSearchParams({ page: "0", pageSize: "3000", noPrices: "true" });
+    const params = new URLSearchParams({ page: "0", pageSize: "5000", noPrices: "true" });
     if (mkt) params.set("market", mkt);
+    if (seg) params.set("segment", seg);
     if (q)   params.set("q", q);
     try {
       const res: BrowseResp = await fetch(`/api/browse?${params}`).then(r => r.json());
@@ -351,12 +414,12 @@ export default function AllStocksPage() {
   }, []);
 
   useEffect(() => {
-    if (viewMode === "list") fetchData(page, market, query);
-  }, [page, market, query, fetchData, viewMode]);
+    if (viewMode === "list") fetchData(page, market, segment, query);
+  }, [page, market, segment, query, fetchData, viewMode]);
 
   useEffect(() => {
-    if (viewMode === "sector") fetchSectorData(market, query);
-  }, [viewMode, market, query, fetchSectorData]);
+    if (viewMode === "sector") fetchSectorData(market, segment, query);
+  }, [viewMode, market, segment, query, fetchSectorData]);
 
   const handleInput = (val: string) => {
     setInputVal(val);
@@ -364,7 +427,11 @@ export default function AllStocksPage() {
     debounceRef.current = setTimeout(() => { setQuery(val.trim()); setPage(0); }, 400);
   };
 
-  const handleMarket = (v: "" | "JP" | "US") => { setMarket(v); setPage(0); };
+  const handleMarket = (v: "" | "JP" | "US") => {
+    setMarket(v);
+    setPage(0);
+    if (v !== "JP") setSegment("");  // 米国・全市場はセグメント不問
+  };
 
   const handleSort = (col: SortKey) => {
     if (sortKey === col) setSortDir(d => d === "desc" ? "asc" : "desc");
@@ -407,7 +474,7 @@ export default function AllStocksPage() {
 
   const SortTh = ({ col, label }: { col: SortKey; label: string }) => (
     <th
-      className="py-3 px-4 font-semibold text-right cursor-pointer select-none hover:text-zinc-900 dark:hover:text-white transition-colors"
+      className="py-3 px-3 text-xs font-semibold uppercase tracking-wider text-zinc-500 text-right cursor-pointer select-none hover:text-zinc-900 dark:hover:text-white transition-colors"
       onClick={() => handleSort(col)}
     >
       <span className="inline-flex items-center gap-1 justify-end">
@@ -467,6 +534,28 @@ export default function AllStocksPage() {
           </div>
         </div>
 
+        {/* Segment filter — JP only */}
+        {market === "JP" && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider shrink-0">市場区分</span>
+            <div className="flex p-0.5 bg-zinc-100 dark:bg-zinc-800/60 rounded-xl gap-0.5 flex-wrap">
+              {(["", "プライム", "スタンダード", "グロース"] as const).map(seg => (
+                <button
+                  key={seg}
+                  onClick={() => { setSegment(seg); setPage(0); }}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    segment === seg
+                      ? "bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white"
+                      : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+                  }`}
+                >
+                  {seg === "" ? "全区分" : seg}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* View mode + result count */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           {/* View toggle */}
@@ -515,12 +604,120 @@ export default function AllStocksPage() {
       {/* ── リストビュー ── */}
       {viewMode === "list" && (
         <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+
+          {/* ── モバイルカード (< md) ── */}
+          <div className="md:hidden">
+            {/* ソートコントロール */}
+            {!loading && rows.length > 0 && (
+              <div className="flex items-center gap-1.5 px-3 py-2 bg-zinc-50/70 dark:bg-zinc-800/40 border-b border-zinc-100 dark:border-zinc-800">
+                <span className="text-[10px] text-zinc-400 shrink-0 font-medium mr-0.5">並び替え</span>
+                {(["price", "changePercent", "marketCap"] as const).map(col => {
+                  const labels = { price: "株価", changePercent: "騰落率", marketCap: "時価総額" } as const;
+                  const active = sortKey === col;
+                  return (
+                    <button
+                      key={col}
+                      onClick={() => handleSort(col)}
+                      className={`shrink-0 inline-flex items-center gap-0.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
+                        active
+                          ? "bg-blue-500 text-white shadow-sm"
+                          : "bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700"
+                      }`}
+                    >
+                      {labels[col]}
+                      {active && (sortDir === "desc"
+                        ? <ChevronDown className="w-3 h-3" />
+                        : <ChevronUp   className="w-3 h-3" />)}
+                    </button>
+                  );
+                })}
+                {sortKey && (
+                  <button
+                    onClick={() => setSortKey(null)}
+                    className="shrink-0 text-[10px] text-blue-500 hover:underline ml-auto"
+                  >
+                    解除
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* カードリスト */}
+            <div className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+              {loading ? (
+                <div className="py-16 flex justify-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-zinc-400" />
+                </div>
+              ) : rows.length === 0 ? (
+                <div className="py-16 text-center text-sm text-zinc-400">該当する銘柄が見つかりませんでした</div>
+              ) : (
+                rows.map(r => {
+                  const up = (r.changePercent ?? 0) >= 0;
+                  const sector = r.sector ? getSectorInfo(r.sector) : null;
+                  return (
+                    <Link
+                      key={r.symbol}
+                      href={`/stock/${encodeURIComponent(r.symbol)}`}
+                      className="flex items-start gap-2 px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 active:bg-zinc-100 dark:active:bg-zinc-800/50 transition-colors"
+                    >
+                      {/* 左: 銘柄コード + 社名 + セクター */}
+                      <div className="flex-1 min-w-0 pt-0.5">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="font-mono font-bold text-sm text-blue-600 dark:text-blue-400">{r.symbol}</span>
+                          <span className="text-xs">{r.market === "JP" ? "🇯🇵" : "🇺🇸"}</span>
+                          <SegmentBadge segment={r.segment} />
+                        </div>
+                        <div className="text-sm text-zinc-700 dark:text-zinc-300 truncate leading-tight">{r.name}</div>
+                        {r.market === "US" && r.nameEn && r.nameEn !== r.name
+                          ? <div className="text-xs text-zinc-400 truncate">{r.nameEn}</div>
+                          : sector && <div className="text-[10px] text-zinc-400 truncate">{sector.emoji} {sector.nameJa}</div>
+                        }
+                      </div>
+                      {/* 右: 株価・騰落率・時価総額 (縦積み) */}
+                      <div className="shrink-0 text-right w-[108px]">
+                        <div className="font-mono font-semibold text-sm text-zinc-800 dark:text-zinc-100 tabular-nums">
+                          {r.price !== null
+                            ? <>{formatNumber(r.price)}<span className="text-[10px] text-zinc-400 ml-0.5">{r.currency ?? ""}</span></>
+                            : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
+                        </div>
+                        <div className="mt-0.5">
+                          {r.changePercent !== null ? (
+                            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-xs font-bold ${
+                              up
+                                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
+                                : "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400"
+                            }`}>
+                              {up ? "▲" : "▼"}{Math.abs(r.changePercent).toFixed(2)}%
+                            </span>
+                          ) : (
+                            <span className="text-xs text-zinc-300 dark:text-zinc-600">—</span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-zinc-400 tabular-nums mt-0.5">
+                          {r.marketCap !== null ? formatLargeNumber(r.marketCap) : ""}
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* ── デスクトップテーブル (md 以上) ── */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-sm table-fixed">
+              <colgroup>
+                <col className="w-[140px]" />  {/* 銘柄コード */}
+                <col />                        {/* 会社名 (auto) */}
+                <col className="w-[110px]" />  {/* 株価 */}
+                <col className="w-[92px]" />   {/* 騰落率 */}
+                <col className="w-[104px]" />  {/* 時価総額 */}
+              </colgroup>
               <thead>
                 <tr className="text-left text-xs uppercase tracking-wider text-zinc-500 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-800/30">
-                  <th className="py-3 px-4 font-semibold">銘柄コード</th>
-                  <th className="py-3 px-4 font-semibold">会社名</th>
+                  <th className="py-3 px-3 font-semibold">銘柄コード</th>
+                  <th className="py-3 px-3 font-semibold">会社名</th>
                   <SortTh col="price"         label="株価" />
                   <SortTh col="changePercent" label="騰落率" />
                   <SortTh col="marketCap"     label="時価総額" />
@@ -547,7 +744,7 @@ export default function AllStocksPage() {
                         key={r.symbol}
                         className="border-b border-zinc-100 dark:border-zinc-800/60 last:border-0 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
                       >
-                        <td className="py-3 px-4">
+                        <td className="py-2.5 px-3">
                           <Link
                             href={`/stock/${encodeURIComponent(r.symbol)}`}
                             className="inline-flex items-center gap-1.5 font-mono font-semibold text-sm text-blue-600 dark:text-blue-400 hover:underline"
@@ -555,16 +752,19 @@ export default function AllStocksPage() {
                             {r.symbol}
                             <span className="text-xs">{r.market === "JP" ? "🇯🇵" : "🇺🇸"}</span>
                           </Link>
-                          {r.sector && (
-                            <div className="text-[10px] text-zinc-400 mt-0.5 truncate max-w-[120px]">
-                              {getSectorInfo(r.sector).emoji} {getSectorInfo(r.sector).nameJa}
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                            <SegmentBadge segment={r.segment} />
+                            {r.sector && (
+                              <span className="text-[10px] text-zinc-400 truncate max-w-[110px]">
+                                {getSectorInfo(r.sector).emoji} {getSectorInfo(r.sector).nameJa}
+                              </span>
+                            )}
+                          </div>
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-2.5 px-3">
                           <Link
                             href={`/stock/${encodeURIComponent(r.symbol)}`}
-                            className="hover:text-blue-600 dark:hover:text-blue-400 block max-w-[220px]"
+                            className="hover:text-blue-600 dark:hover:text-blue-400 block max-w-[240px]"
                           >
                             <span className="truncate block text-zinc-700 dark:text-zinc-200">{r.name}</span>
                             {r.market === "US" && r.nameEn && r.nameEn !== r.name && (
@@ -572,24 +772,26 @@ export default function AllStocksPage() {
                             )}
                           </Link>
                         </td>
-                        <td className="py-3 px-4 text-right font-mono tabular-nums text-zinc-700 dark:text-zinc-300">
+                        <td className="py-2.5 px-3 text-right font-mono tabular-nums text-zinc-700 dark:text-zinc-300 text-sm">
                           {r.price !== null
-                            ? `${formatNumber(r.price)} ${r.currency ?? ""}`
+                            ? <>{formatNumber(r.price)}<span className="text-xs text-zinc-400 ml-0.5">{r.currency ?? ""}</span></>
                             : <span className="text-zinc-400 text-xs">—</span>}
                         </td>
-                        <td className={`py-3 px-4 text-right font-mono tabular-nums font-semibold ${
-                          r.changePercent === null
-                            ? "text-zinc-400"
-                            : up
-                              ? "text-emerald-600 dark:text-emerald-400"
-                              : "text-rose-600 dark:text-rose-400"
-                        }`}>
-                          {r.changePercent !== null
-                            ? `${up ? "▲" : "▼"} ${Math.abs(r.changePercent).toFixed(2)}%`
-                            : "—"}
+                        <td className="py-2.5 px-3 text-right">
+                          {r.changePercent !== null ? (
+                            <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-xs font-bold ${
+                              up
+                                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
+                                : "bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400"
+                            }`}>
+                              {up ? "▲" : "▼"}{Math.abs(r.changePercent).toFixed(2)}%
+                            </span>
+                          ) : (
+                            <span className="text-zinc-400 text-xs">—</span>
+                          )}
                         </td>
-                        <td className="py-3 px-4 text-right font-mono tabular-nums text-zinc-500">
-                          {r.marketCap !== null ? formatLargeNumber(r.marketCap) : "—"}
+                        <td className="py-2.5 px-3 text-right font-mono tabular-nums text-xs text-zinc-500">
+                          {r.marketCap !== null ? formatLargeNumber(r.marketCap) : <span className="text-zinc-300 dark:text-zinc-600">—</span>}
                         </td>
                       </tr>
                     );

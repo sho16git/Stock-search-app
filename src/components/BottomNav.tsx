@@ -46,13 +46,15 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 inset-x-0 z-40 md:hidden"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      className="fixed bottom-0 inset-x-0 z-40 md:hidden bg-white/95 dark:bg-zinc-950/95 backdrop-blur-2xl"
     >
       {/* Hairline separator */}
       <div className="h-px bg-zinc-200/80 dark:bg-white/[0.06]" />
 
-      <div className="bg-white/95 dark:bg-zinc-950/95 backdrop-blur-2xl flex items-stretch justify-around">
+      <div
+        className="flex items-stretch justify-around"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
         {ITEMS.map((item) => {
           const active =
             item.href === "/"

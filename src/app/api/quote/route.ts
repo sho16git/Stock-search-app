@@ -12,7 +12,11 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const q = (await yahooFinance.quote(symbol)) as Record<string, unknown>;
+    const q = (await (yahooFinance.quote as Function)(
+      symbol,
+      {},
+      { validateResult: false },
+    )) as Record<string, unknown>;
     const englishName =
       (q?.longName as string | undefined) ??
       (q?.shortName as string | undefined) ??

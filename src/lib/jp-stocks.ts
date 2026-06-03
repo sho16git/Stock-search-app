@@ -39,6 +39,18 @@ for (const { symbol, name } of TSE_SUPPLEMENT) {
 }
 
 /**
+ * Fast O(1) lookup of TSE_NAMES entries.
+ * Used by getJpName to resolve JP names for stocks not in the curated catalog.
+ * First non-defunct name wins.
+ */
+const TSE_NAMES_MAP = new Map<string, string>();
+for (const [symbol, name] of TSE_NAMES) {
+  if (!TSE_NAMES_MAP.has(symbol) && !name.includes("廃止") && !name.includes("重複")) {
+    TSE_NAMES_MAP.set(symbol, name);
+  }
+}
+
+/**
  * Full JP stock browse list: curated catalog JP stocks +
  * supplemental TSE stocks (no aliases, no deleted/duplicate entries).
  * Used by the browse page to populate the complete JP universe.
@@ -64,13 +76,19 @@ export function findJpStockBySymbol(symbol: string): JpStock | undefined {
 
 /**
  * Returns a Japanese-friendly display name for the symbol if known.
- * - JP stocks → official Japanese company name (from catalog)
+ * - JP stocks (curated catalog) → official Japanese company name
+ * - JP stocks (TSE supplement) → Japanese name from tse-names
  * - US stocks → katakana name (from us-katakana overlay) when curated
  * - Otherwise null (caller should fall back to Yahoo's English name)
  */
 export function getJpName(symbol: string): string | null {
   const s = SYMBOL_INDEX.get(symbol);
   if (s?.market === "JP") return s.name;
+  // Fallback: check TSE supplement for stocks not in curated catalog
+  if (symbol.endsWith(".T")) {
+    const tseName = TSE_NAMES_MAP.get(symbol);
+    if (tseName) return tseName;
+  }
   return getUsKatakana(symbol);
 }
 

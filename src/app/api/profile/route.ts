@@ -21,9 +21,11 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const summary = await yahooFinance.quoteSummary(symbol, {
-      modules: ["assetProfile", "summaryProfile"],
-    });
+    const summary = await (yahooFinance.quoteSummary as Function)(
+      symbol,
+      { modules: ["assetProfile", "summaryProfile"] },
+      { validateResult: false },
+    );
     const profile = (summary.assetProfile ??
       summary.summaryProfile ??
       null) as Record<string, unknown> | null;
@@ -68,9 +70,15 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     console.error("profile error", err);
-    return NextResponse.json(
-      { error: "プロフィール取得に失敗しました" },
-      { status: 500 },
-    );
+    // Return empty profile instead of 500 so detail page still loads
+    return NextResponse.json({
+      sector: null, industry: null, gicsId: null,
+      country: null, city: null, state: null,
+      address1: null, zip: null, phone: null,
+      website: null, irWebsite: null,
+      fullTimeEmployees: null,
+      longBusinessSummary: null, longBusinessSummaryJa: null,
+      officers: [],
+    });
   }
 }

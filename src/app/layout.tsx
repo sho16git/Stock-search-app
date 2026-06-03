@@ -52,10 +52,7 @@ export default function RootLayout({
     >
       <body
         className="min-h-full bg-zinc-50 dark:bg-zinc-950 text-zinc-800 dark:text-zinc-100"
-        style={{
-          paddingTop: "env(safe-area-inset-top)",
-          paddingBottom: "env(safe-area-inset-bottom)",
-        }}
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         {/* ── Header (全幅 sticky) ─────────────────────────────── */}
         <header

@@ -30,7 +30,11 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const rawQuotes = await yahooFinance.quote(symbols).catch(() => []);
+    const rawQuotes = await (yahooFinance.quote as Function)(
+      symbols,
+      {},
+      { validateResult: false },
+    ).catch(() => []);
     const list = Array.isArray(rawQuotes) ? rawQuotes : [rawQuotes];
 
     const quotes: Record<string, {

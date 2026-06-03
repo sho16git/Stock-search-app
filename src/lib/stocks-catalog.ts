@@ -83,6 +83,7 @@ export const STOCKS_CATALOG: CatalogStock[] = [
   { symbol: "4768.T", market: "JP", name: "大塚商会", aliases: ["Otsuka Shokai"], sector: "information-technology" },
   { symbol: "6770.T", market: "JP", name: "アルプスアルパイン", aliases: ["Alps Alpine"], sector: "information-technology" },
   { symbol: "6963.T", market: "JP", name: "ローム", aliases: ["ROHM"], sector: "information-technology" },
+  { symbol: "6600.T", market: "JP", name: "キオクシアホールディングス", aliases: ["Kioxia", "キオクシア", "KIOXIA"], sector: "information-technology" },
   { symbol: "6532.T", market: "JP", name: "ベイカレント・コンサルティング", aliases: ["Baycurrent"], sector: "information-technology" },
   { symbol: "3659.T", market: "JP", name: "ネクソン", aliases: ["Nexon"], sector: "communication-services" },
 

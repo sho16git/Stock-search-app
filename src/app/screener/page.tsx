@@ -77,6 +77,17 @@ const initialFilters: Filters = {
   mcapMax: "",
 };
 
+const CACHE_KEY = "screener_cache_v1";
+
+type CacheEntry = {
+  filters:      Filters;
+  results:      Result[];
+  total:        number;
+  universeSize: number;
+  sortKey:      SortKey;
+  sortDir:      "asc" | "desc";
+};
+
 export default function ScreenerPage() {
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [results, setResults] = useState<Result[]>([]);
@@ -86,7 +97,7 @@ export default function ScreenerPage() {
   const [sortKey, setSortKey] = useState<SortKey>("marketCap");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  const search = (f: Filters) => {
+  const search = (f: Filters, sk = sortKey, sd = sortDir) => {
     setLoading(true);
     const params = new URLSearchParams();
     for (const [k, v] of Object.entries(f)) {
@@ -102,16 +113,37 @@ export default function ScreenerPage() {
     fetch(`/api/screener?${params.toString()}`)
       .then((r) => r.json())
       .then((j) => {
-        setResults(j.results ?? []);
-        setTotal(j.total ?? 0);
-        setUniverseSize(j.universeSize ?? 0);
+        const res    = j.results ?? [];
+        const tot    = j.total ?? 0;
+        const uni    = j.universeSize ?? 0;
+        setResults(res);
+        setTotal(tot);
+        setUniverseSize(uni);
+        // 検索状態をセッションに保存 (戻り遷移で復元用)
+        try {
+          const entry: CacheEntry = { filters: f, results: res, total: tot, universeSize: uni, sortKey: sk, sortDir: sd };
+          sessionStorage.setItem(CACHE_KEY, JSON.stringify(entry));
+        } catch { /* ignore */ }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   };
 
-  // Auto-load initial results
+  // 初回マウント: セッションキャッシュがあれば復元、なければデフォルト検索
   useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const c = JSON.parse(raw) as CacheEntry;
+        setFilters(c.filters);
+        setResults(c.results);
+        setTotal(c.total);
+        setUniverseSize(c.universeSize);
+        setSortKey(c.sortKey);
+        setSortDir(c.sortDir);
+        return; // 復元成功 → API呼び出し不要
+      }
+    } catch { /* ignore */ }
     search(initialFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -147,7 +179,10 @@ export default function ScreenerPage() {
 
   const reset = () => {
     setFilters(initialFilters);
-    search(initialFilters);
+    setSortKey("marketCap");
+    setSortDir("desc");
+    try { sessionStorage.removeItem(CACHE_KEY); } catch { /* ignore */ }
+    search(initialFilters, "marketCap", "desc");
   };
 
   return (
@@ -262,7 +297,7 @@ export default function ScreenerPage() {
 
         <div className="flex flex-wrap items-center gap-2 pt-2">
           <button
-            onClick={() => search(filters)}
+            onClick={() => search(filters, sortKey, sortDir)}
             disabled={loading}
             className="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-60 transition-colors"
           >
