@@ -116,23 +116,39 @@ function Gauge({ buyPct }: { buyPct: number }) {
   return (
     <div className="flex flex-col items-center">
       {/*
-        viewBox: 0 0 200 138
-        ─── ゾーン分け ────────────────────────────────────
-        y=  0〜 96  : ニードル掃引ゾーン（テキスト禁止）
-                     arc: (24,96)〜top(100,20)〜(176,96)
-                     indicator dot r=5 → 最大 y=101
-        y= 96      : ピボット
-        y=113      : 【安全ゾーン開始】 ← dot bottom(101) + 12px gap
-                     legend row:  売り(x=40) / 中立(x=100) / 買い(x=160)
-                     ※ x=40 は dot の右端(x=29) より右なので横方向も非接触
-        y=126      : pct% (large)
-        y=136      : verdict (small)
+        viewBox: "0 -18 200 156"
+        ─── レイアウト ────────────────────────────────────
+        y=-10  : 「中立」ラベル (arc最頂点 y=20 より上、dot top y=15 から25unit)
+        y= -1  : 短い垂直ガイドライン (中立 → arc頂部を視覚的に結ぶ)
+        y=  0  : viewBox 旧上端
+        y= 15〜25 : indicator dot (50%時) ← 中立ラベルと25unit以上離れる
+        y= 20  : arc 最頂点 (50%時のdot中心)
+        y= 96  : ピボット (arc両端点: x=24,y=96 / x=176,y=96)
+        y=101  : indicator dot 最大到達点 (dot r=5)
+        y=104  : 区切り線
+        y=113  : 売り (x=24, arc左端揃え) / 買い (x=176, arc右端揃え)
+        y=126  : pct% (large, 判定色)
+        y=136  : verdict (small, 判定色)
         ────────────────────────────────────────────────── */}
       <svg
-        viewBox="0 0 200 138"
+        viewBox="0 -18 200 156"
         className="w-full max-w-[220px]"
         aria-label={`買い動向 ${pct}%`}
       >
+        {/* ── 「中立」ラベル — arc最頂点の真上 ── */}
+        <text
+          x={CX} y="-6"
+          textAnchor="middle"
+          fontSize="9" fontWeight="600"
+          fill="#a1a1aa"
+        >中立</text>
+        {/* arc頂部への短い垂直ガイド (任意の装飾) */}
+        <line
+          x1={CX} y1="-2" x2={CX} y2="12"
+          stroke="#d4d4d8" strokeWidth="1" strokeDasharray="2,2"
+          className="dark:[stroke:#52525b]"
+        />
+
         {/* ── Background arc ── */}
         <path
           d={`M ${P0.x} ${P0.y} A ${R} ${R} 0 0 1 ${P100.x} ${P100.y}`}
@@ -179,29 +195,22 @@ function Gauge({ buyPct }: { buyPct: number }) {
         />
         <circle cx={CX} cy={CY} r="4.5" fill="#1e293b" className="dark:fill-zinc-200" />
 
-        {/* ══════════════════════════════════════════════
-            安全ゾーン (y ≥ 113)  ←  ニードル/dotが届かない
-            legend: 売り | 中立 | 買い  (y=113)
-            ══════════════════════════════════════════════ */}
-        {/* 区切り線 */}
+        {/* ── 安全ゾーン (y ≥ 104) ── */}
         <line x1="20" y1="104" x2="180" y2="104"
           stroke="#e4e4e7" strokeWidth="0.8"
           className="dark:[stroke:#3f3f46]" />
 
-        {/* 売り — x=40 はdot右端(x≈29)より右、横方向も非接触 */}
-        <text x="40"  y="113" textAnchor="middle" fontSize="8" fontWeight="700" fill="#ef4444">売り</text>
-        {/* 中立 — ピボット直下の中央 */}
-        <text x="100" y="113" textAnchor="middle" fontSize="8" fontWeight="600" fill="#a1a1aa">中立</text>
-        {/* 買い — x=160 はdot左端(x≈171)より左、横方向も非接触 */}
-        <text x="160" y="113" textAnchor="middle" fontSize="8" fontWeight="700" fill="#22c55e">買い</text>
+        {/* 売り / 買い — arc端点 x=24, x=176 に揃える */}
+        <text x="24"  y="113" textAnchor="middle" fontSize="8" fontWeight="700" fill="#ef4444">売り</text>
+        <text x="176" y="113" textAnchor="middle" fontSize="8" fontWeight="700" fill="#22c55e">買い</text>
 
-        {/* pct% — 大きく中央 */}
+        {/* pct% */}
         <text x={CX} y="126" textAnchor="middle"
           fontSize="22" fontWeight="800" fill={textFill}>
           {pct}%
         </text>
 
-        {/* 判定ラベル */}
+        {/* 判定 */}
         <text x={CX} y="136" textAnchor="middle"
           fontSize="9" fontWeight="600" fill={textFill}>
           {v.label}
