@@ -110,11 +110,20 @@ function Gauge({ buyPct }: { buyPct: number }) {
   const dotR = 5;
   void np; // suppress unused
 
+  // Use needle color for readout text (same color as needle stroke)
+  const textFill = pct >= 65 ? "#22c55e" : pct >= 45 ? "#f59e0b" : "#ef4444";
+
   return (
     <div className="flex flex-col items-center">
-      {/* Gauge SVG — no center text (moved to HTML below to avoid needle overlap) */}
+      {/*
+        viewBox: 0 0 200 140
+        - Arc center (CY=96) is in upper 70% → needle sweeps y=20〜96
+        - y=100〜140: safe zone below pivot, never touched by needle
+        - pct% display: y=120 (big)  /  verdict: y=132 (small)
+        - 売り / 買い side labels: y=108 (sides only, no 中立 at top)
+      */}
       <svg
-        viewBox="0 0 200 118"
+        viewBox="0 0 200 140"
         className="w-full max-w-[220px]"
         aria-label={`買い動向 ${pct}%`}
       >
@@ -143,7 +152,7 @@ function Gauge({ buyPct }: { buyPct: number }) {
         {/* ── Active arc ── */}
         {pct > 50 && (
           <path
-            d={`M ${P100.x} ${P100.y} A ${R} ${R} 0 ${pct > 50 ? 0 : 1} 0 ${arcPoint(displayed).x} ${arcPoint(displayed).y}`}
+            d={`M ${P100.x} ${P100.y} A ${R} ${R} 0 0 0 ${arcPoint(displayed).x} ${arcPoint(displayed).y}`}
             fill="none" stroke="#22c55e" strokeWidth="13"
             strokeLinecap="round"
           />
@@ -169,27 +178,36 @@ function Gauge({ buyPct }: { buyPct: number }) {
         {/* ── Needle ── */}
         <line
           x1={CX} y1={CY}
-          x2={nx} y2={ny}
+          x2={nx}  y2={ny}
           stroke={pct >= 65 ? "#22c55e" : pct >= 45 ? "#f59e0b" : "#ef4444"}
           strokeWidth="2.5" strokeLinecap="round"
         />
         <circle cx={CX} cy={CY} r="4.5" fill="#1e293b" className="dark:fill-zinc-200" />
 
-        {/* ── Axis labels (sides only — no center text to avoid needle overlap) ── */}
-        <text x="16"  y={CY + 16} textAnchor="middle" fontSize="9" fontWeight="700" fill="#ef4444">売り</text>
-        <text x="100" y="14"      textAnchor="middle" fontSize="9" fontWeight="600" fill="#a1a1aa">中立</text>
-        <text x="184" y={CY + 16} textAnchor="middle" fontSize="9" fontWeight="700" fill="#22c55e">買い</text>
-      </svg>
+        {/* ── Side axis labels (y=108 — clear of needle sweep zone y≤96) ── */}
+        <text x="16"  y="108" textAnchor="middle" fontSize="9" fontWeight="700" fill="#ef4444">売り</text>
+        <text x="184" y="108" textAnchor="middle" fontSize="9" fontWeight="700" fill="#22c55e">買い</text>
 
-      {/* ── Center readout (HTML, below SVG) — avoids needle overlap ── */}
-      <div className="-mt-5 text-center pointer-events-none select-none z-10 relative">
-        <div className="text-2xl font-black tabular-nums leading-none text-zinc-900 dark:text-zinc-50">
+        {/* ── Verdict readout in safe zone (y > 96, below pivot) ── */}
+        {/* Percentage — large, centered */}
+        <text
+          x={CX} y="122"
+          textAnchor="middle"
+          fontSize="22" fontWeight="800"
+          fill={textFill}
+        >
           {pct}%
-        </div>
-        <div className={`text-[11px] font-bold mt-0.5 ${v.color}`}>
+        </text>
+        {/* Verdict label */}
+        <text
+          x={CX} y="134"
+          textAnchor="middle"
+          fontSize="9" fontWeight="600"
+          fill={textFill}
+        >
           {v.label}
-        </div>
-      </div>
+        </text>
+      </svg>
     </div>
   );
 }
