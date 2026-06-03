@@ -116,18 +116,24 @@ function Gauge({ buyPct }: { buyPct: number }) {
   return (
     <div className="flex flex-col items-center">
       {/*
-        viewBox: 0 0 200 140
-        - Arc center (CY=96) is in upper 70% → needle sweeps y=20〜96
-        - y=100〜140: safe zone below pivot, never touched by needle
-        - pct% display: y=120 (big)  /  verdict: y=132 (small)
-        - 売り / 買い side labels: y=108 (sides only, no 中立 at top)
-      */}
+        viewBox: 0 0 200 138
+        ─── ゾーン分け ────────────────────────────────────
+        y=  0〜 96  : ニードル掃引ゾーン（テキスト禁止）
+                     arc: (24,96)〜top(100,20)〜(176,96)
+                     indicator dot r=5 → 最大 y=101
+        y= 96      : ピボット
+        y=113      : 【安全ゾーン開始】 ← dot bottom(101) + 12px gap
+                     legend row:  売り(x=40) / 中立(x=100) / 買い(x=160)
+                     ※ x=40 は dot の右端(x=29) より右なので横方向も非接触
+        y=126      : pct% (large)
+        y=136      : verdict (small)
+        ────────────────────────────────────────────────── */}
       <svg
-        viewBox="0 0 200 140"
+        viewBox="0 0 200 138"
         className="w-full max-w-[220px]"
         aria-label={`買い動向 ${pct}%`}
       >
-        {/* ── Background (gray) full arc ── */}
+        {/* ── Background arc ── */}
         <path
           d={`M ${P0.x} ${P0.y} A ${R} ${R} 0 0 1 ${P100.x} ${P100.y}`}
           fill="none" stroke="#e4e4e7" strokeWidth="13"
@@ -135,76 +141,69 @@ function Gauge({ buyPct }: { buyPct: number }) {
           strokeLinecap="round"
         />
 
-        {/* ── Zone arcs (colored) ── */}
-        <path
-          d={`M ${P0.x} ${P0.y} A ${R} ${R} 0 0 1 ${P35.x} ${P35.y}`}
-          fill="none" stroke="#ef4444" strokeWidth="13" opacity="0.35"
-        />
-        <path
-          d={`M ${P35.x} ${P35.y} A ${R} ${R} 0 0 1 ${P65.x} ${P65.y}`}
-          fill="none" stroke="#f59e0b" strokeWidth="13" opacity="0.35"
-        />
-        <path
-          d={`M ${P65.x} ${P65.y} A ${R} ${R} 0 0 1 ${P100.x} ${P100.y}`}
-          fill="none" stroke="#22c55e" strokeWidth="13" opacity="0.35"
-        />
+        {/* ── Zone arcs ── */}
+        <path d={`M ${P0.x} ${P0.y} A ${R} ${R} 0 0 1 ${P35.x} ${P35.y}`}
+          fill="none" stroke="#ef4444" strokeWidth="13" opacity="0.35" />
+        <path d={`M ${P35.x} ${P35.y} A ${R} ${R} 0 0 1 ${P65.x} ${P65.y}`}
+          fill="none" stroke="#f59e0b" strokeWidth="13" opacity="0.35" />
+        <path d={`M ${P65.x} ${P65.y} A ${R} ${R} 0 0 1 ${P100.x} ${P100.y}`}
+          fill="none" stroke="#22c55e" strokeWidth="13" opacity="0.35" />
 
         {/* ── Active arc ── */}
         {pct > 50 && (
           <path
             d={`M ${P100.x} ${P100.y} A ${R} ${R} 0 0 0 ${arcPoint(displayed).x} ${arcPoint(displayed).y}`}
-            fill="none" stroke="#22c55e" strokeWidth="13"
-            strokeLinecap="round"
+            fill="none" stroke="#22c55e" strokeWidth="13" strokeLinecap="round"
           />
         )}
         {pct <= 50 && (
           <path
             d={`M ${P0.x} ${P0.y} A ${R} ${R} 0 0 1 ${arcPoint(displayed).x} ${arcPoint(displayed).y}`}
-            fill="none" stroke="#ef4444" strokeWidth="13"
-            strokeLinecap="round"
+            fill="none" stroke="#ef4444" strokeWidth="13" strokeLinecap="round"
           />
         )}
 
-        {/* ── Indicator dot on arc ── */}
+        {/* ── Indicator dot ── */}
         <circle
-          cx={arcPoint(displayed).x}
-          cy={arcPoint(displayed).y}
+          cx={arcPoint(displayed).x} cy={arcPoint(displayed).y}
           r={dotR}
           fill={pct >= 50 ? "#22c55e" : "#ef4444"}
-          stroke="white"
-          strokeWidth="2"
+          stroke="white" strokeWidth="2"
         />
 
         {/* ── Needle ── */}
         <line
-          x1={CX} y1={CY}
-          x2={nx}  y2={ny}
+          x1={CX} y1={CY} x2={nx} y2={ny}
           stroke={pct >= 65 ? "#22c55e" : pct >= 45 ? "#f59e0b" : "#ef4444"}
           strokeWidth="2.5" strokeLinecap="round"
         />
         <circle cx={CX} cy={CY} r="4.5" fill="#1e293b" className="dark:fill-zinc-200" />
 
-        {/* ── Side axis labels (y=108 — clear of needle sweep zone y≤96) ── */}
-        <text x="16"  y="108" textAnchor="middle" fontSize="9" fontWeight="700" fill="#ef4444">売り</text>
-        <text x="184" y="108" textAnchor="middle" fontSize="9" fontWeight="700" fill="#22c55e">買い</text>
+        {/* ══════════════════════════════════════════════
+            安全ゾーン (y ≥ 113)  ←  ニードル/dotが届かない
+            legend: 売り | 中立 | 買い  (y=113)
+            ══════════════════════════════════════════════ */}
+        {/* 区切り線 */}
+        <line x1="20" y1="104" x2="180" y2="104"
+          stroke="#e4e4e7" strokeWidth="0.8"
+          className="dark:[stroke:#3f3f46]" />
 
-        {/* ── Verdict readout in safe zone (y > 96, below pivot) ── */}
-        {/* Percentage — large, centered */}
-        <text
-          x={CX} y="122"
-          textAnchor="middle"
-          fontSize="22" fontWeight="800"
-          fill={textFill}
-        >
+        {/* 売り — x=40 はdot右端(x≈29)より右、横方向も非接触 */}
+        <text x="40"  y="113" textAnchor="middle" fontSize="8" fontWeight="700" fill="#ef4444">売り</text>
+        {/* 中立 — ピボット直下の中央 */}
+        <text x="100" y="113" textAnchor="middle" fontSize="8" fontWeight="600" fill="#a1a1aa">中立</text>
+        {/* 買い — x=160 はdot左端(x≈171)より左、横方向も非接触 */}
+        <text x="160" y="113" textAnchor="middle" fontSize="8" fontWeight="700" fill="#22c55e">買い</text>
+
+        {/* pct% — 大きく中央 */}
+        <text x={CX} y="126" textAnchor="middle"
+          fontSize="22" fontWeight="800" fill={textFill}>
           {pct}%
         </text>
-        {/* Verdict label */}
-        <text
-          x={CX} y="134"
-          textAnchor="middle"
-          fontSize="9" fontWeight="600"
-          fill={textFill}
-        >
+
+        {/* 判定ラベル */}
+        <text x={CX} y="136" textAnchor="middle"
+          fontSize="9" fontWeight="600" fill={textFill}>
           {v.label}
         </text>
       </svg>
