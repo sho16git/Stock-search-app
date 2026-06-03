@@ -228,7 +228,7 @@ function SectorGroup({
                     <Link
                       key={r.symbol}
                       href={`/stock/${encodeURIComponent(r.symbol)}`}
-                      className="flex items-start gap-2 px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 active:bg-zinc-100 dark:active:bg-zinc-800/50 transition-colors"
+                      className="row-hover flex items-start gap-2 px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 active:bg-zinc-100 dark:active:bg-zinc-800/50"
                     >
                       {/* 左: 銘柄コード + 社名 */}
                       <div className="flex-1 min-w-0 pt-0.5">
@@ -276,14 +276,14 @@ function SectorGroup({
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm table-fixed">
                 <colgroup>
-                  <col className="w-[120px]" />  {/* 銘柄 */}
-                  <col />                        {/* 会社名 (auto) */}
-                  <col className="w-[104px]" />  {/* 株価 */}
-                  <col className="w-[84px]" />   {/* 騰落率 */}
-                  <col className="w-[96px]" />   {/* 時価総額 */}
-                  <col className="w-[84px]" />   {/* 52W高値 (lg) */}
-                  <col className="w-[84px]" />   {/* 52W安値 (lg) */}
-                  <col className="w-[44px]" />   {/* 詳細 */}
+                  <col className="w-[120px]" />
+                  <col />
+                  <col className="w-[104px]" />
+                  <col className="w-[84px]" />
+                  <col className="w-[96px]" />
+                  <col className="w-[84px]" />
+                  <col className="w-[84px]" />
+                  <col className="w-[44px]" />
                 </colgroup>
                 <thead>
                   <tr className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-800/30">
@@ -311,7 +311,7 @@ function SectorGroup({
                     const q  = priceMap[r.symbol];
                     const up = (q?.changePercent ?? 0) >= 0;
                     return (
-                      <tr key={r.symbol} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                      <tr key={r.symbol} className="row-hover hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
                         <td className="py-2.5 px-3">
                           <Link href={`/stock/${encodeURIComponent(r.symbol)}`} className="inline-flex items-center gap-1 font-mono font-bold text-sm text-blue-600 dark:text-blue-400 hover:underline">
                             {r.symbol}<span className="text-xs">{r.market === "JP" ? "🇯🇵" : "🇺🇸"}</span>
@@ -658,7 +658,7 @@ export default function AllStocksPage() {
                     <Link
                       key={r.symbol}
                       href={`/stock/${encodeURIComponent(r.symbol)}`}
-                      className="flex items-start gap-2 px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 active:bg-zinc-100 dark:active:bg-zinc-800/50 transition-colors"
+                      className="row-hover flex items-start gap-2 px-4 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 active:bg-zinc-100 dark:active:bg-zinc-800/50"
                     >
                       {/* 左: 銘柄コード + 社名 + セクター */}
                       <div className="flex-1 min-w-0 pt-0.5">
@@ -708,11 +708,11 @@ export default function AllStocksPage() {
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm table-fixed">
               <colgroup>
-                <col className="w-[140px]" />  {/* 銘柄コード */}
-                <col />                        {/* 会社名 (auto) */}
-                <col className="w-[110px]" />  {/* 株価 */}
-                <col className="w-[92px]" />   {/* 騰落率 */}
-                <col className="w-[104px]" />  {/* 時価総額 */}
+                <col className="w-[140px]" />
+                <col />
+                <col className="w-[110px]" />
+                <col className="w-[92px]" />
+                <col className="w-[104px]" />
               </colgroup>
               <thead>
                 <tr className="text-left text-xs uppercase tracking-wider text-zinc-500 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/60 dark:bg-zinc-800/30">

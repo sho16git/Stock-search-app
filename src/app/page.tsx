@@ -14,7 +14,7 @@ export default function Home() {
     <div className="space-y-5 sm:space-y-6">
 
       {/* ── Hero: Portfolio + Search ── */}
-      <section className="space-y-3">
+      <section className="space-y-3 animate-slide-up">
         <PortfolioHero />
 
         {/* Search + quick links */}
@@ -33,12 +33,12 @@ export default function Home() {
       </section>
 
       {/* ── Market Overview ── */}
-      <section>
+      <section className="animate-slide-up delay-100">
         <MarketOverview />
       </section>
 
       {/* ── Movers + Sector (2-col on tablet+) ── */}
-      <section>
+      <section className="animate-slide-up delay-150">
         <SectionLabel emoji="📊" text="マーケット動向" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
           <TopMovers />
@@ -50,7 +50,7 @@ export default function Home() {
       <RecentViewed />
 
       {/* ── News + Themes (2-col on tablet+) ── */}
-      <section>
+      <section className="animate-slide-up delay-200">
         <SectionLabel emoji="🗂️" text="ニュース・テーマ" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
           <NewsPanel />
@@ -92,7 +92,7 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg ${color} text-white text-xs font-semibold active:scale-95 transition-all duration-150`}
+      className={`btn-press inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg ${color} text-white text-xs font-semibold hover:brightness-110 hover:-translate-y-0.5 active:scale-95 transition-all duration-150 shadow-sm hover:shadow-md`}
     >
       {pulse && (
         <span className="relative flex h-1.5 w-1.5 shrink-0">

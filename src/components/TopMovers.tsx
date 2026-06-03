@@ -130,10 +130,10 @@ export default function TopMovers() {
               const name = getJpName(m.symbol) ?? m.nameJa ?? m.longName ?? m.shortName;
 
               return (
-                <li key={m.symbol}>
+                <li key={m.symbol} className="animate-fade-up" style={{ animationDelay: `${i * 40}ms` }}>
                   <Link
                     href={`/stock/${encodeURIComponent(m.symbol)}`}
-                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-zinc-50/80 dark:hover:bg-white/[0.03] transition-colors group"
+                    className="row-hover flex items-center gap-3 px-4 py-2.5 hover:bg-zinc-50/80 dark:hover:bg-white/[0.03] group"
                   >
                     {/* Rank */}
                     <span className={`w-5 text-center shrink-0 font-mono font-bold tabular-nums leading-none ${

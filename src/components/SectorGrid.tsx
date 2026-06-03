@@ -11,7 +11,7 @@ export default function SectorGrid() {
           <Link
             key={s.id}
             href={`/sector/${s.id}`}
-            className="group relative block p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-400 dark:hover:border-blue-500 transition-all shadow-sm hover:shadow-md overflow-hidden"
+            className="card-hover group relative block p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-400 dark:hover:border-blue-500 shadow-sm overflow-hidden"
           >
             <div className="absolute -right-2 -bottom-2 text-5xl opacity-10 group-hover:opacity-20 transition-opacity select-none">
               {s.emoji}

@@ -61,7 +61,7 @@ export default function RecentViewed() {
         </span>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-2">
-        {items.slice(0, 6).map((r) => {
+        {items.slice(0, 6).map((r, idx) => {
           const q = quotes[r.symbol];
           const change = q?.regularMarketChangePercent ?? 0;
           const up = change >= 0;
@@ -71,7 +71,8 @@ export default function RecentViewed() {
             <Link
               key={r.symbol}
               href={`/stock/${encodeURIComponent(r.symbol)}`}
-              className="group block p-3 rounded-xl border border-zinc-200 dark:border-white/[0.07] bg-white dark:bg-zinc-900 hover:border-blue-400/60 dark:hover:border-blue-500/50 transition-colors"
+              style={{ animationDelay: `${idx * 60}ms` }}
+              className="card-hover group block p-3 rounded-xl border border-zinc-200 dark:border-white/[0.07] bg-white dark:bg-zinc-900 hover:border-blue-400/60 dark:hover:border-blue-500/50 animate-fade-up"
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0 flex-1">

@@ -107,7 +107,7 @@ export default function MarketOverview() {
             return (
               <div
                 key={idx.symbol}
-                className={`shrink-0 min-w-[144px] lg:min-w-0 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-white/[0.07] overflow-hidden hover:border-zinc-300 dark:hover:border-white/[0.14] transition-colors ${flashClass}`}
+                className={`card-hover shrink-0 min-w-[144px] lg:min-w-0 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-white/[0.07] overflow-hidden hover:border-zinc-300 dark:hover:border-white/[0.14] ${flashClass}`}
               >
                 {/* Color accent bar */}
                 <div

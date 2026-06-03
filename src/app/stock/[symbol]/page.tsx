@@ -28,10 +28,10 @@ export default async function StockPage({
   return (
     <div className="space-y-3.5 sm:space-y-4">
       <RecentViewedTracker symbol={symbol} />
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 animate-fade-up">
         <Link
           href="/"
-          className="inline-flex items-center text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+          className="inline-flex items-center text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:-translate-x-0.5 transition-all duration-150"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
           トップ
@@ -41,20 +41,20 @@ export default async function StockPage({
         </div>
       </div>
 
-      <QuoteHeader symbol={symbol} />
-      <StockChart symbol={symbol} />
-      <DividendHistory symbol={symbol} />
-      <BuySellSentiment symbol={symbol} />
-      <AIAnalysis symbol={symbol} />
-      <AiScenarios symbol={symbol} />
-      <AnalystRecommendations symbol={symbol} />
-      <EarningsCard symbol={symbol} />
-      <YutaiCard symbol={symbol} />
-      <FundamentalsTable symbol={symbol} />
-      <HoldersCard symbol={symbol} />
-      <NewsCard symbol={symbol} />
-      <StockGeopoliticalNews symbol={symbol} />
-      <PeerStocks symbol={symbol} />
+      <div className="animate-slide-up delay-75"><QuoteHeader symbol={symbol} /></div>
+      <div className="animate-slide-up delay-100"><StockChart symbol={symbol} /></div>
+      <div className="animate-slide-up delay-150"><DividendHistory symbol={symbol} /></div>
+      <div className="animate-slide-up delay-200"><BuySellSentiment symbol={symbol} /></div>
+      <div className="animate-slide-up delay-200"><AIAnalysis symbol={symbol} /></div>
+      <div className="animate-slide-up delay-300"><AiScenarios symbol={symbol} /></div>
+      <div className="animate-slide-up delay-300"><AnalystRecommendations symbol={symbol} /></div>
+      <div className="animate-slide-up delay-400"><EarningsCard symbol={symbol} /></div>
+      <div className="animate-slide-up delay-400"><YutaiCard symbol={symbol} /></div>
+      <div className="animate-slide-up delay-500"><FundamentalsTable symbol={symbol} /></div>
+      <div className="animate-slide-up delay-500"><HoldersCard symbol={symbol} /></div>
+      <div className="animate-slide-up delay-500"><NewsCard symbol={symbol} /></div>
+      <div className="animate-slide-up delay-500"><StockGeopoliticalNews symbol={symbol} /></div>
+      <div className="animate-slide-up delay-500"><PeerStocks symbol={symbol} /></div>
     </div>
   );
 }

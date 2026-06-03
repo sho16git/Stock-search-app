@@ -112,6 +112,7 @@ function Gauge({ buyPct }: { buyPct: number }) {
 
   return (
     <div className="flex flex-col items-center">
+      {/* Gauge SVG — no center text (moved to HTML below to avoid needle overlap) */}
       <svg
         viewBox="0 0 200 118"
         className="w-full max-w-[220px]"
@@ -126,24 +127,20 @@ function Gauge({ buyPct }: { buyPct: number }) {
         />
 
         {/* ── Zone arcs (colored) ── */}
-        {/* Sell zone: 0→35% */}
         <path
           d={`M ${P0.x} ${P0.y} A ${R} ${R} 0 0 1 ${P35.x} ${P35.y}`}
           fill="none" stroke="#ef4444" strokeWidth="13" opacity="0.35"
         />
-        {/* Neutral zone: 35→65% */}
         <path
           d={`M ${P35.x} ${P35.y} A ${R} ${R} 0 0 1 ${P65.x} ${P65.y}`}
           fill="none" stroke="#f59e0b" strokeWidth="13" opacity="0.35"
         />
-        {/* Buy zone: 65→100% */}
         <path
           d={`M ${P65.x} ${P65.y} A ${R} ${R} 0 0 1 ${P100.x} ${P100.y}`}
           fill="none" stroke="#22c55e" strokeWidth="13" opacity="0.35"
         />
 
-        {/* ── Active arc (solid, from edge to needle) ── */}
-        {/* From right (buy side) going left to current position — shows buy portion */}
+        {/* ── Active arc ── */}
         {pct > 50 && (
           <path
             d={`M ${P100.x} ${P100.y} A ${R} ${R} 0 ${pct > 50 ? 0 : 1} 0 ${arcPoint(displayed).x} ${arcPoint(displayed).y}`}
@@ -151,7 +148,6 @@ function Gauge({ buyPct }: { buyPct: number }) {
             strokeLinecap="round"
           />
         )}
-        {/* From left (sell side) going right to current position — shows sell portion */}
         {pct <= 50 && (
           <path
             d={`M ${P0.x} ${P0.y} A ${R} ${R} 0 0 1 ${arcPoint(displayed).x} ${arcPoint(displayed).y}`}
@@ -179,29 +175,21 @@ function Gauge({ buyPct }: { buyPct: number }) {
         />
         <circle cx={CX} cy={CY} r="4.5" fill="#1e293b" className="dark:fill-zinc-200" />
 
-        {/* ── Center text ── */}
-        <text
-          x={CX} y={CY - 18}
-          textAnchor="middle"
-          fontSize="26" fontWeight="800"
-          className="fill-zinc-900 dark:fill-zinc-50"
-        >
-          {pct}%
-        </text>
-        <text
-          x={CX} y={CY - 4}
-          textAnchor="middle"
-          fontSize="9"
-          className="fill-zinc-500"
-        >
-          {v.label}
-        </text>
-
-        {/* ── Axis labels ── */}
+        {/* ── Axis labels (sides only — no center text to avoid needle overlap) ── */}
         <text x="16"  y={CY + 16} textAnchor="middle" fontSize="9" fontWeight="700" fill="#ef4444">売り</text>
         <text x="100" y="14"      textAnchor="middle" fontSize="9" fontWeight="600" fill="#a1a1aa">中立</text>
         <text x="184" y={CY + 16} textAnchor="middle" fontSize="9" fontWeight="700" fill="#22c55e">買い</text>
       </svg>
+
+      {/* ── Center readout (HTML, below SVG) — avoids needle overlap ── */}
+      <div className="-mt-5 text-center pointer-events-none select-none z-10 relative">
+        <div className="text-2xl font-black tabular-nums leading-none text-zinc-900 dark:text-zinc-50">
+          {pct}%
+        </div>
+        <div className={`text-[11px] font-bold mt-0.5 ${v.color}`}>
+          {v.label}
+        </div>
+      </div>
     </div>
   );
 }
