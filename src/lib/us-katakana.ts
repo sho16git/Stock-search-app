@@ -330,6 +330,7 @@ export const US_KATAKANA: Record<string, string> = {
   MRVL:  "マーベル・テクノロジー",
   MCHP:  "マイクロチップ・テクノロジー",
   MPWR:  "モノリシック・パワー・システムズ",
+  COHR:  "コヒレント",
   NXPI:  "NXPセミコンダクターズ",
   ON:    "オン・セミコンダクター",
   QRVO:  "コルボ",
