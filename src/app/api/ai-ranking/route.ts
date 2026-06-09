@@ -2,6 +2,11 @@
  * /api/ai-ranking — AI投資予想ランキング（個人投資家向け）
  * Query: period = "1y" | "5y" | "10y"
  * revalidate = 0 → 毎回リアルタイム取得
+ *
+ * v2 改善点:
+ *  - ユニバースを全11 GICSセクター・日米バランスで約95銘柄に拡張
+ *  - セクター多様性制約（セクターあたり最大2銘柄）でトップ8を選出
+ *  - 「高配当」「割安」「成長」「日本株」の視点別TOP5ランキングを追加
  */
 import { NextRequest, NextResponse } from "next/server";
 import yahooFinance from "@/lib/yfinance";
@@ -11,53 +16,127 @@ import { getUsKatakana } from "@/lib/us-katakana";
 export const runtime  = "nodejs";
 export const revalidate = 0; // キャッシュなし → 常にリアルタイム
 
-// ── 分析対象ユニバース ──────────────────────────────────────────────
+// ── 分析対象ユニバース（全11 GICSセクター・日米バランス約95銘柄）──────
 const UNIVERSE = [
-  // 🇺🇸 AI / 半導体
-  { symbol: "NVDA",   market: "US", theme: "AI半導体",            sector: "情報技術" },
-  { symbol: "AMD",    market: "US", theme: "AI半導体",            sector: "情報技術" },
-  { symbol: "AVGO",   market: "US", theme: "AI半導体",            sector: "情報技術" },
-  { symbol: "ARM",    market: "US", theme: "AI半導体",            sector: "情報技術" },
-  { symbol: "SMCI",   market: "US", theme: "AIサーバー",          sector: "情報技術" },
-  // 🇺🇸 テック大手
-  { symbol: "MSFT",   market: "US", theme: "クラウド",            sector: "情報技術" },
-  { symbol: "GOOGL",  market: "US", theme: "広告・AI",            sector: "コミュニケーション" },
-  { symbol: "META",   market: "US", theme: "SNS・AI",             sector: "コミュニケーション" },
-  { symbol: "AMZN",   market: "US", theme: "EC・クラウド",        sector: "一般消費財" },
-  { symbol: "AAPL",   market: "US", theme: "ハードウェア",        sector: "情報技術" },
-  // 🇺🇸 グロース
-  { symbol: "TSLA",   market: "US", theme: "EV・自動運転",        sector: "一般消費財" },
-  { symbol: "PLTR",   market: "US", theme: "防衛・政府DX",        sector: "情報技術" },
-  { symbol: "CRWD",   market: "US", theme: "サイバーセキュリティ", sector: "情報技術" },
-  { symbol: "SHOP",   market: "US", theme: "EC支援",              sector: "情報技術" },
-  { symbol: "MELI",   market: "US", theme: "南米EC",              sector: "一般消費財" },
-  { symbol: "COIN",   market: "US", theme: "暗号資産",            sector: "金融" },
-  { symbol: "RKLB",   market: "US", theme: "宇宙ビジネス",        sector: "資本財" },
-  { symbol: "IONQ",   market: "US", theme: "量子コンピュータ",    sector: "情報技術" },
-  // 🇺🇸 バリュー・高配当
-  { symbol: "BRK-B",  market: "US", theme: "コングロマリット",    sector: "金融" },
-  { symbol: "JPM",    market: "US", theme: "大手銀行",            sector: "金融" },
-  { symbol: "JNJ",    market: "US", theme: "ヘルスケア",          sector: "ヘルスケア" },
-  { symbol: "KO",     market: "US", theme: "生活必需品",          sector: "生活必需品" },
-  { symbol: "VZ",     market: "US", theme: "通信・高配当",        sector: "通信" },
-  // 🇯🇵 テック・成長
-  { symbol: "6920.T", market: "JP", theme: "半導体露光",          sector: "情報技術" },
+  // ── 🇺🇸 情報技術 ────────────────────────────────────────────
+  { symbol: "NVDA",  market: "US", theme: "AI半導体",             sector: "情報技術" },
+  { symbol: "MSFT",  market: "US", theme: "クラウド・AI",         sector: "情報技術" },
+  { symbol: "AAPL",  market: "US", theme: "ハードウェア・エコシステム", sector: "情報技術" },
+  { symbol: "AVGO",  market: "US", theme: "半導体・ネットワーク", sector: "情報技術" },
+  { symbol: "AMD",   market: "US", theme: "AI半導体",             sector: "情報技術" },
+  { symbol: "ARM",   market: "US", theme: "半導体IP",             sector: "情報技術" },
+  { symbol: "CRM",   market: "US", theme: "企業向けAI・CRM",      sector: "情報技術" },
+  { symbol: "NOW",   market: "US", theme: "ITオートメーション",   sector: "情報技術" },
+  { symbol: "CRWD",  market: "US", theme: "サイバーセキュリティ", sector: "情報技術" },
+  { symbol: "ANET",  market: "US", theme: "AIネットワーク機器",   sector: "情報技術" },
+  { symbol: "PLTR",  market: "US", theme: "防衛・政府DX",         sector: "情報技術" },
+  { symbol: "SHOP",  market: "US", theme: "EC支援プラットフォーム",sector: "情報技術" },
+  // ── 🇺🇸 コミュニケーション ──────────────────────────────────
+  { symbol: "GOOGL", market: "US", theme: "広告・AI検索",         sector: "コミュニケーション" },
+  { symbol: "META",  market: "US", theme: "SNS・AI広告",          sector: "コミュニケーション" },
+  { symbol: "NFLX",  market: "US", theme: "動画配信",             sector: "コミュニケーション" },
+  { symbol: "DIS",   market: "US", theme: "エンタメ・テーマパーク",sector: "コミュニケーション" },
+  { symbol: "SPOT",  market: "US", theme: "音楽配信",             sector: "コミュニケーション" },
+  { symbol: "T",     market: "US", theme: "通信・高配当",         sector: "コミュニケーション" },
+  { symbol: "VZ",    market: "US", theme: "通信・高配当",         sector: "コミュニケーション" },
+  // ── 🇺🇸 一般消費財 ──────────────────────────────────────────
+  { symbol: "AMZN",  market: "US", theme: "EC・クラウド",         sector: "一般消費財" },
+  { symbol: "TSLA",  market: "US", theme: "EV・自動運転",         sector: "一般消費財" },
+  { symbol: "HD",    market: "US", theme: "住宅・DIY",            sector: "一般消費財" },
+  { symbol: "NKE",   market: "US", theme: "スポーツブランド",     sector: "一般消費財" },
+  { symbol: "SBUX",  market: "US", theme: "コーヒーチェーン",     sector: "一般消費財" },
+  { symbol: "MELI",  market: "US", theme: "南米EC・FinTech",      sector: "一般消費財" },
+  { symbol: "BKNG",  market: "US", theme: "旅行・ホテル予約",     sector: "一般消費財" },
+  // ── 🇺🇸 生活必需品 ──────────────────────────────────────────
+  { symbol: "KO",    market: "US", theme: "飲料・高配当",         sector: "生活必需品" },
+  { symbol: "PG",    market: "US", theme: "日用品・高配当",       sector: "生活必需品" },
+  { symbol: "WMT",   market: "US", theme: "小売・生活必需",       sector: "生活必需品" },
+  { symbol: "COST",  market: "US", theme: "会員制倉庫店",         sector: "生活必需品" },
+  { symbol: "MO",    market: "US", theme: "たばこ・超高配当",     sector: "生活必需品" },
+  { symbol: "PM",    market: "US", theme: "たばこ・国際高配当",   sector: "生活必需品" },
+  // ── 🇺🇸 ヘルスケア ──────────────────────────────────────────
+  { symbol: "LLY",   market: "US", theme: "肥満・糖尿病薬",       sector: "ヘルスケア" },
+  { symbol: "UNH",   market: "US", theme: "健康保険最大手",       sector: "ヘルスケア" },
+  { symbol: "JNJ",   market: "US", theme: "製薬・医療機器・高配当",sector: "ヘルスケア" },
+  { symbol: "ABBV",  market: "US", theme: "バイオ・高配当",       sector: "ヘルスケア" },
+  { symbol: "NVO",   market: "US", theme: "GLP-1肥満治療薬",      sector: "ヘルスケア" },
+  { symbol: "TMO",   market: "US", theme: "医療機器・試薬",       sector: "ヘルスケア" },
+  // ── 🇺🇸 金融 ────────────────────────────────────────────────
+  { symbol: "BRK-B", market: "US", theme: "バフェット型分散投資", sector: "金融" },
+  { symbol: "JPM",   market: "US", theme: "大手銀行",             sector: "金融" },
+  { symbol: "V",     market: "US", theme: "決済ネットワーク",     sector: "金融" },
+  { symbol: "MA",    market: "US", theme: "決済ネットワーク",     sector: "金融" },
+  { symbol: "GS",    market: "US", theme: "投資銀行",             sector: "金融" },
+  { symbol: "COIN",  market: "US", theme: "暗号資産取引所",       sector: "金融" },
+  // ── 🇺🇸 資本財 ──────────────────────────────────────────────
+  { symbol: "CAT",   market: "US", theme: "建設機械・インフラ",   sector: "資本財" },
+  { symbol: "RTX",   market: "US", theme: "防衛・航空宇宙",       sector: "資本財" },
+  { symbol: "HON",   market: "US", theme: "産業自動化・航空",     sector: "資本財" },
+  { symbol: "GEV",   market: "US", theme: "エネルギー転換・発電", sector: "資本財" },
+  { symbol: "RKLB",  market: "US", theme: "宇宙ロケット新興",     sector: "資本財" },
+  { symbol: "PWR",   market: "US", theme: "電力インフラ工事",     sector: "資本財" },
+  // ── 🇺🇸 エネルギー ──────────────────────────────────────────
+  { symbol: "XOM",   market: "US", theme: "石油メジャー・高配当", sector: "エネルギー" },
+  { symbol: "CVX",   market: "US", theme: "石油・LNG・高配当",    sector: "エネルギー" },
+  { symbol: "COP",   market: "US", theme: "独立系石油会社",       sector: "エネルギー" },
+  // ── 🇺🇸 素材 ────────────────────────────────────────────────
+  { symbol: "LIN",   market: "US", theme: "産業ガス世界首位",     sector: "素材" },
+  { symbol: "APD",   market: "US", theme: "産業ガス・水素",       sector: "素材" },
+  { symbol: "NEM",   market: "US", theme: "金採掘",               sector: "素材" },
+  { symbol: "FCX",   market: "US", theme: "銅採掘",               sector: "素材" },
+  // ── 🇺🇸 公益事業 ────────────────────────────────────────────
+  { symbol: "NEE",   market: "US", theme: "再生可能エネルギー",   sector: "公益事業" },
+  { symbol: "DUK",   market: "US", theme: "電力・高配当",         sector: "公益事業" },
+  { symbol: "SO",    market: "US", theme: "原子力・電力・高配当", sector: "公益事業" },
+  // ── 🇺🇸 不動産 ──────────────────────────────────────────────
+  { symbol: "PLD",   market: "US", theme: "物流REIT・EC関連",     sector: "不動産" },
+  { symbol: "AMT",   market: "US", theme: "通信タワーREIT",       sector: "不動産" },
+  { symbol: "EQIX",  market: "US", theme: "データセンターREIT",   sector: "不動産" },
+  { symbol: "O",     market: "US", theme: "月次配当REIT",         sector: "不動産" },
+  // ── 🇯🇵 情報技術 ────────────────────────────────────────────
+  { symbol: "6920.T", market: "JP", theme: "半導体露光装置",      sector: "情報技術" },
   { symbol: "8035.T", market: "JP", theme: "半導体製造装置",      sector: "情報技術" },
   { symbol: "6857.T", market: "JP", theme: "半導体テスト",        sector: "情報技術" },
   { symbol: "6758.T", market: "JP", theme: "エンタメ・半導体",    sector: "情報技術" },
-  { symbol: "9984.T", market: "JP", theme: "AI・VC",              sector: "コミュニケーション" },
-  { symbol: "6861.T", market: "JP", theme: "FA・センサー",        sector: "資本財" },
-  { symbol: "4063.T", market: "JP", theme: "半導体材料",          sector: "素材" },
+  { symbol: "6861.T", market: "JP", theme: "FA・センサー",        sector: "情報技術" },
   { symbol: "6098.T", market: "JP", theme: "HR・DX",              sector: "情報技術" },
-  // 🇯🇵 バリュー・高配当・安定
-  { symbol: "7203.T", market: "JP", theme: "EV・自動車",          sector: "一般消費財" },
-  { symbol: "8306.T", market: "JP", theme: "メガバンク",          sector: "金融" },
-  { symbol: "9432.T", market: "JP", theme: "通信・高配当",        sector: "通信" },
+  { symbol: "4385.T", market: "JP", theme: "フリマアプリ",        sector: "情報技術" },
+  // ── 🇯🇵 コミュニケーション ──────────────────────────────────
+  { symbol: "9984.T", market: "JP", theme: "AI・VC投資",          sector: "コミュニケーション" },
   { symbol: "7974.T", market: "JP", theme: "ゲーム・IP",          sector: "コミュニケーション" },
-  { symbol: "4519.T", market: "JP", theme: "製薬",                sector: "ヘルスケア" },
+  { symbol: "9432.T", market: "JP", theme: "通信・高配当",        sector: "コミュニケーション" },
+  { symbol: "9697.T", market: "JP", theme: "ゲーム開発・IP",      sector: "コミュニケーション" },
+  // ── 🇯🇵 一般消費財 ──────────────────────────────────────────
+  { symbol: "7203.T", market: "JP", theme: "自動車・EV",          sector: "一般消費財" },
   { symbol: "4661.T", market: "JP", theme: "テーマパーク",        sector: "一般消費財" },
+  { symbol: "9843.T", market: "JP", theme: "家具・インテリア",    sector: "一般消費財" },
+  // ── 🇯🇵 生活必需品 ──────────────────────────────────────────
+  { symbol: "2914.T", market: "JP", theme: "たばこ・高配当",      sector: "生活必需品" },
+  { symbol: "2802.T", market: "JP", theme: "調味料・食品",        sector: "生活必需品" },
+  { symbol: "2587.T", market: "JP", theme: "飲料メーカー",        sector: "生活必需品" },
+  // ── 🇯🇵 ヘルスケア ──────────────────────────────────────────
+  { symbol: "4519.T", market: "JP", theme: "製薬・高成長",        sector: "ヘルスケア" },
+  { symbol: "4568.T", market: "JP", theme: "がん治療薬",          sector: "ヘルスケア" },
+  { symbol: "4502.T", market: "JP", theme: "製薬・グローバル",    sector: "ヘルスケア" },
+  { symbol: "6869.T", market: "JP", theme: "医療機器・検査",      sector: "ヘルスケア" },
+  // ── 🇯🇵 金融 ────────────────────────────────────────────────
+  { symbol: "8306.T", market: "JP", theme: "メガバンク",          sector: "金融" },
+  { symbol: "8411.T", market: "JP", theme: "メガバンク",          sector: "金融" },
+  { symbol: "8591.T", market: "JP", theme: "リース・総合金融",    sector: "金融" },
+  { symbol: "8750.T", market: "JP", theme: "生命保険",            sector: "金融" },
+  // ── 🇯🇵 資本財 ──────────────────────────────────────────────
   { symbol: "9020.T", market: "JP", theme: "鉄道・インフラ",      sector: "資本財" },
-  { symbol: "8802.T", market: "JP", theme: "不動産",              sector: "不動産" },
+  { symbol: "6301.T", market: "JP", theme: "建設機械",            sector: "資本財" },
+  { symbol: "7011.T", market: "JP", theme: "防衛・重工業",        sector: "資本財" },
+  // ── 🇯🇵 素材 ────────────────────────────────────────────────
+  { symbol: "4063.T", market: "JP", theme: "半導体材料",          sector: "素材" },
+  { symbol: "5401.T", market: "JP", theme: "鉄鋼",                sector: "素材" },
+  // ── 🇯🇵 公益事業 ────────────────────────────────────────────
+  { symbol: "9503.T", market: "JP", theme: "電力・高配当",        sector: "公益事業" },
+  // ── 🇯🇵 不動産 ──────────────────────────────────────────────
+  { symbol: "8802.T", market: "JP", theme: "オフィス不動産",      sector: "不動産" },
+  { symbol: "8801.T", market: "JP", theme: "総合不動産",          sector: "不動産" },
+  { symbol: "3003.T", market: "JP", theme: "オフィスビル",        sector: "不動産" },
 ] as const;
 
 type UniverseItem = { symbol: string; market: string; theme: string; sector: string };
@@ -368,13 +447,49 @@ function buildMarketNote(
 
   if (period === "1y") {
     return bullish
-      ? `アナリスト推奨の平均は「買い」${avgBuy.toFixed(0)}%と強気。${upsideStr}。AI・半導体・DXへの機関投資家の注目が継続しています。短期は決算とFOMCに注意しながら分割購入が有効です。`
-      : `アナリスト推奨平均「買い」${avgBuy.toFixed(0)}%と慎重な状況。${upsideStr}。金利・地政学リスクが高い局面では分散投資と損切りルールの徹底が重要です。`;
+      ? `アナリスト推奨の平均は「買い」${avgBuy.toFixed(0)}%と強気。${upsideStr}。AI・半導体・DXへの機関投資家の注目が継続しています。日米全11セクターから多角的に銘柄を分析。短期は決算とFOMCに注意しながら分割購入が有効です。`
+      : `アナリスト推奨平均「買い」${avgBuy.toFixed(0)}%と慎重な状況。${upsideStr}。金利・地政学リスクが高い局面では高配当・割安株への分散が有効です。`;
   } else if (period === "5y") {
-    return `5年の中期視点では、AI・クラウド・半導体の構造成長と、日本株の割安・高配当銘柄に注目。${upsideStr ? upsideStr + "程度が想定されます。" : ""}成長株と高配当株を組み合わせた分散ポートフォリオが安定的なリターンを狙えます。`;
+    return `5年の中期視点では、AI・クラウド・半導体の構造成長と、エネルギー転換・ヘルスケア・高配当株に注目。${upsideStr ? upsideStr + "程度が想定されます。" : ""}成長株と高配当株を組み合わせた分散ポートフォリオが安定的なリターンを狙えます。`;
   } else {
-    return `10年超の長期投資では、ROE・財務健全性・配当の継続性が高い企業への積立が有効です。複利効果を最大化するため配当再投資と長期保有が鍵。暴落局面での追加購入が長期リターンを大きく高めます。`;
+    return `10年超の長期投資では、ROE・財務健全性・配当の継続性が高い企業への積立が有効です。公益・不動産REIT・生活必需品など景気耐性の高いセクターを核に、成長株を組み合わせると複利効果を最大化できます。`;
   }
+}
+
+// ── セクター多様性を確保したTOP N選出 ─────────────────────────────
+// 1セクターあたり最大 MAX_PER_SECTOR 銘柄に制限し、有名銘柄の独占を防ぐ
+type ScoredItem = {
+  sector: string;
+  bullScore: number;
+  bearScore: number;
+};
+
+function diverseTopN<T extends ScoredItem>(
+  stocks: T[],
+  n: number,
+  key: "bullScore" | "bearScore",
+): T[] {
+  const sorted = [...stocks].sort((a, b) => b[key] - a[key]);
+  const result: T[] = [];
+  const sectorCount = new Map<string, number>();
+  const MAX_PER_SECTOR = 2;
+
+  for (const stock of sorted) {
+    if (result.length >= n) break;
+    const cnt = sectorCount.get(stock.sector) ?? 0;
+    if (cnt < MAX_PER_SECTOR) {
+      result.push(stock);
+      sectorCount.set(stock.sector, cnt + 1);
+    }
+  }
+  // 多様性制約で埋まらない場合は残りをスコア順で補充
+  if (result.length < n) {
+    for (const stock of sorted) {
+      if (result.length >= n) break;
+      if (!result.includes(stock)) result.push(stock);
+    }
+  }
+  return result;
 }
 
 // ── メインハンドラ ──────────────────────────────────────────────────
@@ -398,13 +513,21 @@ export async function GET(req: NextRequest) {
     }
   } catch { /* ignore */ }
 
-  // ② quoteSummary を上位25銘柄で取得（財務データ）
+  // ② quoteSummary を主要40銘柄で取得（財務データ）
+  // 全11セクター・日米からバランスよく選定
   const prioritySymbols = [
-    ...symbols.slice(0, 12),
-    "6920.T", "8035.T", "6857.T", "6758.T", "9984.T",
-    "6861.T", "7203.T", "8306.T", "9432.T", "7974.T",
-    "4063.T", "4519.T", "KO", "JNJ",
-  ].filter((s, i, a) => a.indexOf(s) === i).slice(0, 25);
+    // US 情報技術・コミュニケーション
+    "NVDA","MSFT","AAPL","AVGO","AMD","CRM","NOW","CRWD","GOOGL","META","NFLX",
+    // US 一般消費財・生活必需品
+    "AMZN","TSLA","HD","BKNG","KO","PG","WMT","COST","MO","PM",
+    // US ヘルスケア・金融・資本財
+    "LLY","UNH","JNJ","ABBV","BRK-B","JPM","V","MA","CAT","RTX","GEV",
+    // US エネルギー・素材・公益・不動産
+    "XOM","CVX","LIN","NEE","PLD","EQIX",
+    // JP 代表銘柄
+    "6920.T","8035.T","6857.T","6758.T","6861.T","9984.T","7203.T",
+    "8306.T","4519.T","4568.T","2914.T","9503.T","8802.T",
+  ].filter((s, i, a) => a.indexOf(s) === i).slice(0, 40);
 
   await Promise.allSettled(
     prioritySymbols.map(async (sym) => {
@@ -426,10 +549,11 @@ export async function GET(req: NextRequest) {
     const s = statMap.get(u.symbol)   ?? {};
     const d = detailMap.get(u.symbol) ?? {};
 
-    const curPrice = raw(q.regularMarketPrice) ?? 100;
-    const hi52     = raw(q.fiftyTwoWeekHigh);
-    const lo52     = raw(q.fiftyTwoWeekLow);
-    const mktCap   = raw(q.marketCap);
+    const curPrice     = raw(q.regularMarketPrice) ?? 100;
+    const changePercent = raw(q.regularMarketChangePercent);
+    const hi52         = raw(q.fiftyTwoWeekHigh);
+    const lo52         = raw(q.fiftyTwoWeekLow);
+    const mktCap       = raw(q.marketCap);
 
     const tMean  = raw(f.targetMeanPrice);
     const upside = tMean && curPrice > 0
@@ -496,7 +620,8 @@ export async function GET(req: NextRequest) {
       sector: u.sector,
       bullScore,
       bearScore,
-      currentPrice: curPrice,
+      currentPrice:  curPrice,
+      changePercent,
       currency: (q.currency as string) ?? (u.market === "JP" ? "JPY" : "USD"),
       riskLevel,
       investStyle,
@@ -513,7 +638,7 @@ export async function GET(req: NextRequest) {
     };
   });
 
-  // ④ ランキング生成
+  // ④ ランキング生成ヘルパー
   const toEntry = (
     s: (typeof scored)[number],
     i: number,
@@ -528,6 +653,7 @@ export async function GET(req: NextRequest) {
     sector:         s.sector,
     score,
     currentPrice:   s.currentPrice,
+    changePercent:  s.changePercent,
     currency:       s.currency,
     riskLevel:      s.riskLevel,
     investStyle:    s.investStyle,
@@ -538,34 +664,82 @@ export async function GET(req: NextRequest) {
     risks:          buildRisks(dir, s.metrics, s.theme),
   });
 
-  const bullRanking = [...scored]
-    .sort((a, b) => b.bullScore - a.bullScore)
-    .slice(0, 8)
+  const toScanEntry = (
+    s: (typeof scored)[number],
+    i: number,
+    dir: "bull" | "bear",
+    score: number,
+  ) => ({
+    rank:           i + 1,
+    symbol:         s.symbol,
+    name:           s.name,
+    market:         s.market,
+    theme:          s.theme,
+    sector:         s.sector,
+    score,
+    currentPrice:   s.currentPrice,
+    changePercent:  s.changePercent,
+    currency:       s.currency,
+    riskLevel:      s.riskLevel,
+    investStyle:    s.investStyle,
+    keyMetrics:     s.keyMetrics,
+    expectedReturn: calcExpectedReturn(period, dir, score, s.metrics),
+  });
+
+  // ⑤ メインランキング（セクター多様性制約あり）
+  const bullRanking = diverseTopN(scored, 8, "bullScore")
     .map((s, i) => toEntry(s, i, "bull", s.bullScore));
 
-  const bearRanking = [...scored]
-    .sort((a, b) => b.bearScore - a.bearScore)
-    .slice(0, 8)
+  const bearRanking = diverseTopN(scored, 8, "bearScore")
     .map((s, i) => toEntry(s, i, "bear", s.bearScore));
 
-  // ⑤ 全銘柄スキャナー（bullスコア降順）
+  // ⑥ 全銘柄スキャナー（bullスコア降順）
   const allRanking = [...scored]
     .sort((a, b) => b.bullScore - a.bullScore)
-    .map((s, i) => ({
-      rank:           i + 1,
-      symbol:         s.symbol,
-      name:           s.name,
-      market:         s.market,
-      theme:          s.theme,
-      sector:         s.sector,
-      score:          s.bullScore,
-      riskLevel:      s.riskLevel,
-      investStyle:    s.investStyle,
-      keyMetrics:     s.keyMetrics,
-      expectedReturn: calcExpectedReturn(period, "bull", s.bullScore, s.metrics),
-    }));
+    .map((s, i) => toScanEntry(s, i, "bull", s.bullScore));
 
-  // ⑥ AIセンチメントスコア (0〜100)
+  // ⑦ 視点別ランキング（perspectives）
+  // 📈 成長株 TOP5 — 売上成長率の高い順
+  const topGrowth = [...scored]
+    .filter(s => s.metrics.rg != null)
+    .sort((a, b) => (b.metrics.rg ?? 0) - (a.metrics.rg ?? 0))
+    .slice(0, 5)
+    .map((s, i) => toScanEntry(s, i, "bull", s.bullScore));
+
+  // 💰 高配当 TOP5 — 配当利回りの高い順
+  const topDividend = [...scored]
+    .filter(s => s.metrics.dividendYield != null && s.metrics.dividendYield > 0)
+    .sort((a, b) => (b.metrics.dividendYield ?? 0) - (a.metrics.dividendYield ?? 0))
+    .slice(0, 5)
+    .map((s, i) => toScanEntry(s, i, "bull", s.bullScore));
+
+  // 💎 割安株 TOP5 — PER低い・buyPct高いを総合 (PER < 25 かつ ROE高)
+  const topValue = [...scored]
+    .filter(s => s.metrics.pe != null && s.metrics.pe > 0 && s.metrics.pe < 25)
+    .sort((a, b) => {
+      // PEが低い × buyPctが高い × ROEが高い を総合評価
+      const scoreA = (25 - (a.metrics.pe ?? 25)) * 2 + a.metrics.buyPct * 0.3 + (a.metrics.roe ?? 0) * 100;
+      const scoreB = (25 - (b.metrics.pe ?? 25)) * 2 + b.metrics.buyPct * 0.3 + (b.metrics.roe ?? 0) * 100;
+      return scoreB - scoreA;
+    })
+    .slice(0, 5)
+    .map((s, i) => toScanEntry(s, i, "bull", s.bullScore));
+
+  // 🇯🇵 日本株特選 TOP5
+  const topJP = [...scored]
+    .filter(s => s.market === "JP")
+    .sort((a, b) => b.bullScore - a.bullScore)
+    .slice(0, 5)
+    .map((s, i) => toScanEntry(s, i, "bull", s.bullScore));
+
+  // 🇺🇸 米国株特選 TOP5
+  const topUS = [...scored]
+    .filter(s => s.market === "US")
+    .sort((a, b) => b.bullScore - a.bullScore)
+    .slice(0, 5)
+    .map((s, i) => toScanEntry(s, i, "bull", s.bullScore));
+
+  // ⑧ AIセンチメントスコア (0〜100)
   const avgScore  = scored.reduce((s, x) => s + x.bullScore, 0) / scored.length;
   const maxScore  = Math.max(...scored.map(x => x.bullScore));
   const sentiment = Math.min(100, Math.max(0, Math.round((avgScore / Math.max(maxScore, 1)) * 100)));
@@ -575,12 +749,75 @@ export async function GET(req: NextRequest) {
     scored.map(s => ({ buyPct: s.metrics.buyPct, upside: s.metrics.upside })),
   );
 
+  // ⑨ 投資シグナルボード（4カテゴリー）
+  // 🎯 アナリスト強推奨: buyPct ≥ 65 かつ upside ≥ 10
+  const sigStrongBuy = [...scored]
+    .filter(s => s.metrics.buyPct >= 65 && (s.metrics.upside ?? 0) >= 10)
+    .sort((a, b) => b.metrics.buyPct - a.metrics.buyPct)
+    .slice(0, 4)
+    .map((s, i) => toScanEntry(s, i, "bull", s.bullScore));
+
+  // 🚀 目標株価まで大幅上昇余地: upside ≥ 20%
+  const sigHighUpside = [...scored]
+    .filter(s => (s.metrics.upside ?? 0) >= 20)
+    .sort((a, b) => (b.metrics.upside ?? 0) - (a.metrics.upside ?? 0))
+    .slice(0, 4)
+    .map((s, i) => toScanEntry(s, i, "bull", s.bullScore));
+
+  // ⬆️ 上昇モメンタム: 52週高値から-10%以内 かつ 当日プラス
+  const sigMomentum = [...scored]
+    .filter(s => (s.metrics.posFromHi ?? -99) >= -10 && (s.changePercent ?? 0) > 0)
+    .sort((a, b) => (b.metrics.posFromHi ?? -99) - (a.metrics.posFromHi ?? -99))
+    .slice(0, 4)
+    .map((s, i) => toScanEntry(s, i, "bull", s.bullScore));
+
+  // ↩️ 急落後の逆張り候補: 52週高値から-25%以上下落 かつ bullScore ≥ 35
+  const sigContrarian = [...scored]
+    .filter(s => (s.metrics.posFromHi ?? 0) < -25 && s.bullScore >= 35)
+    .sort((a, b) => (a.metrics.posFromHi ?? 0) - (b.metrics.posFromHi ?? 0))
+    .slice(0, 4)
+    .map((s, i) => toScanEntry(s, i, "bull", s.bullScore));
+
+  const signals = {
+    strongBuy:  sigStrongBuy,
+    highUpside: sigHighUpside,
+    momentum:   sigMomentum,
+    contrarian: sigContrarian,
+  };
+
+  // ⑩ セクタースコアボード
+  const sectorMap = new Map<string, { scores: number[]; topScore: number; topSymbol: string }>();
+  for (const s of scored) {
+    const e = sectorMap.get(s.sector) ?? { scores: [], topScore: 0, topSymbol: s.symbol };
+    e.scores.push(s.bullScore);
+    if (s.bullScore > e.topScore) { e.topScore = s.bullScore; e.topSymbol = s.symbol; }
+    sectorMap.set(s.sector, e);
+  }
+  const sectorScores = [...sectorMap.entries()]
+    .map(([sector, { scores, topSymbol }]) => ({
+      sector,
+      avgScore: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
+      count:    scores.length,
+      topSymbol,
+    }))
+    .sort((a, b) => b.avgScore - a.avgScore);
+
   return NextResponse.json({
     period,
     updatedAt: new Date().toISOString(),
+    universeSize: scored.length,
     bull: bullRanking,
     bear: bearRanking,
     all: allRanking,
+    perspectives: {
+      growth:   topGrowth,
+      dividend: topDividend,
+      value:    topValue,
+      jp:       topJP,
+      us:       topUS,
+    },
+    signals,
+    sectorScores,
     sentiment,
     marketNote,
   });

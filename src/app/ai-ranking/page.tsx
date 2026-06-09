@@ -6,7 +6,6 @@ import {
   Sparkles, RefreshCw, Loader2, ChevronDown, ChevronUp,
   TrendingUp, Shield, BarChart2, AlertTriangle, Search, Layers,
 } from "lucide-react";
-import { formatNumber } from "@/lib/format";
 
 // ── Types ──────────────────────────────────────────────────────────
 type RiskLevel   = "low" | "mid" | "high";
@@ -31,6 +30,7 @@ type RankEntry = {
   sector:         string;
   score:          number;
   currentPrice:   number;
+  changePercent:  number | null;
   currency:       string;
   riskLevel:      RiskLevel;
   investStyle:    InvestStyle;
@@ -49,20 +49,49 @@ type ScanEntry = {
   theme:          string;
   sector:         string;
   score:          number;
+  currentPrice:   number;
+  changePercent:  number | null;
+  currency:       string;
   riskLevel:      RiskLevel;
   investStyle:    InvestStyle;
   keyMetrics:     KeyMetrics;
   expectedReturn: string;
 };
 
+type Perspectives = {
+  growth:   ScanEntry[];
+  dividend: ScanEntry[];
+  value:    ScanEntry[];
+  jp:       ScanEntry[];
+  us:       ScanEntry[];
+};
+
+type Signals = {
+  strongBuy:  ScanEntry[];
+  highUpside: ScanEntry[];
+  momentum:   ScanEntry[];
+  contrarian: ScanEntry[];
+};
+
+type SectorScore = {
+  sector:    string;
+  avgScore:  number;
+  count:     number;
+  topSymbol: string;
+};
+
 type RankingResp = {
-  period:     string;
-  updatedAt:  string;
-  bull:       RankEntry[];
-  bear:       RankEntry[];
-  all:        ScanEntry[];
-  sentiment:  number;
-  marketNote: string;
+  period:       string;
+  updatedAt:    string;
+  universeSize: number;
+  bull:         RankEntry[];
+  bear:         RankEntry[];
+  all:          ScanEntry[];
+  perspectives: Perspectives;
+  signals:      Signals;
+  sectorScores: SectorScore[];
+  sentiment:    number;
+  marketNote:   string;
 };
 
 type Period       = "1y" | "5y" | "10y";
@@ -107,6 +136,26 @@ const SECTOR_META: Record<string, { emoji: string }> = {
   "不動産":             { emoji: "🏢" },
   "生活必需品":         { emoji: "🛒" },
 };
+
+// ── 株価フォーマット ───────────────────────────────────────────────
+function fmtPrice(price: number, currency: string): string {
+  if (currency === "JPY") {
+    if (price >= 10_000) return `¥${(price / 10_000).toFixed(1)}万`;
+    return `¥${Math.round(price).toLocaleString("ja-JP")}`;
+  }
+  if (price >= 1_000) return `$${price.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  return `$${price.toFixed(2)}`;
+}
+
+function ChangePct({ value }: { value: number | null }) {
+  if (value == null) return null;
+  const up = value >= 0;
+  return (
+    <span className={`font-mono text-[11px] font-semibold ${up ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500 dark:text-rose-400"}`}>
+      {up ? "▲" : "▼"}{Math.abs(value).toFixed(2)}%
+    </span>
+  );
+}
 
 // ── Score Ring (SVG) ───────────────────────────────────────────────
 function ScoreRing({ score }: { score: number }) {
@@ -225,7 +274,15 @@ function RankCard({
           </span>
         </div>
 
-        {/* Return + metrics */}
+        {/* 現在株価 + 前日比 */}
+        <div className="flex items-center justify-between mb-2">
+          <span className="font-mono font-black text-sm text-zinc-800 dark:text-zinc-100">
+            {fmtPrice(entry.currentPrice, entry.currency)}
+          </span>
+          <ChangePct value={entry.changePercent} />
+        </div>
+
+        {/* 予想リターン + 指標 */}
         <div className="flex items-center justify-between gap-2">
           <ReturnBadge value={entry.expectedReturn} />
           {metricLine.length > 0 && (
@@ -289,10 +346,7 @@ function RankCard({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between pt-1 border-t border-zinc-100 dark:border-zinc-800">
-            <span className="text-xs text-zinc-400">
-              現在価格: <span className="font-mono font-semibold text-zinc-600 dark:text-zinc-300">{formatNumber(entry.currentPrice)} {entry.currency}</span>
-            </span>
+          <div className="flex items-center justify-end pt-1 border-t border-zinc-100 dark:border-zinc-800">
             <Link
               href={`/stock/${encodeURIComponent(entry.symbol)}`}
               className="text-xs font-semibold text-blue-500 hover:text-blue-600 dark:hover:text-blue-400"
@@ -306,67 +360,277 @@ function RankCard({
   );
 }
 
-// ── Scanner Row ────────────────────────────────────────────────────
-function ScanRow({ entry, rank }: { entry: ScanEntry; rank: number }) {
-  const risk  = RISK_CFG[entry.riskLevel];
-  const style = STYLE_CFG[entry.investStyle];
-  const km    = entry.keyMetrics;
+// ── Perspective Mini List ──────────────────────────────────────────
+const PERSPECTIVE_CFG = [
+  { key: "growth",   label: "成長株",   icon: "📈", desc: "売上成長率が高い銘柄",       color: "from-violet-400 to-fuchsia-400" },
+  { key: "dividend", label: "高配当",   icon: "💰", desc: "配当利回りが高い銘柄",       color: "from-amber-400 to-yellow-400"  },
+  { key: "value",    label: "割安株",   icon: "💎", desc: "PER低水準・高ROE銘柄",      color: "from-blue-400 to-cyan-400"     },
+  { key: "jp",       label: "日本株",   icon: "🇯🇵", desc: "日本株AIスコアTOP",        color: "from-rose-400 to-pink-400"     },
+  { key: "us",       label: "米国株",   icon: "🇺🇸", desc: "米国株AIスコアTOP",        color: "from-emerald-400 to-teal-400"  },
+] as const;
+
+function PerspectivePanel({ perspectives }: { perspectives: Perspectives }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="w-1 h-4 rounded-full bg-gradient-to-b from-amber-400 to-orange-500 shrink-0" />
+        <h2 className="text-sm font-bold text-zinc-800 dark:text-zinc-100">🔍 視点別注目銘柄 TOP5</h2>
+        <span className="text-[10px] text-zinc-400 ml-1">— 成長・配当・割安・日本株・米国株の角度から分析</span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+        {PERSPECTIVE_CFG.map(({ key, label, icon, desc, color }) => {
+          const entries = perspectives[key] ?? [];
+          return (
+            <div key={key} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
+              {/* Header */}
+              <div className={`bg-gradient-to-r ${color} p-0.5`}>
+                <div className="bg-white dark:bg-zinc-900 mx-0.5 mb-0.5 rounded-t-xl px-3 py-2.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-base leading-none">{icon}</span>
+                    <div>
+                      <div className="font-bold text-sm text-zinc-800 dark:text-zinc-100">{label} TOP5</div>
+                      <div className="text-[10px] text-zinc-400 leading-tight">{desc}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Entries */}
+              <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                {entries.map((entry, i) => {
+                  const km = entry.keyMetrics;
+                  let metricVal = "";
+                  if (key === "growth" && km.revenueGrowth != null)
+                    metricVal = `成長 ${km.revenueGrowth > 0 ? "+" : ""}${km.revenueGrowth}%`;
+                  else if (key === "dividend" && km.dividendYield != null)
+                    metricVal = `配当 ${km.dividendYield}%`;
+                  else if (key === "value" && km.pe != null)
+                    metricVal = `PER ${km.pe}x`;
+                  else if (km.upside != null)
+                    metricVal = `余地 ${km.upside > 0 ? "+" : ""}${km.upside}%`;
+
+                  return (
+                    <Link
+                      key={entry.symbol}
+                      href={`/stock/${encodeURIComponent(entry.symbol)}`}
+                      className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors"
+                    >
+                      <span className="w-4 shrink-0 text-[10px] font-black text-zinc-400 text-center">
+                        {i < 3 ? MEDAL[i] : i + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-mono font-bold text-xs text-blue-600 dark:text-blue-400 truncate leading-tight">
+                          {entry.symbol}
+                        </div>
+                        <div className="text-[10px] text-zinc-400 truncate leading-tight">{entry.name}</div>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <div className="font-mono font-bold text-xs text-zinc-700 dark:text-zinc-200 leading-tight">
+                          {fmtPrice(entry.currentPrice, entry.currency)}
+                        </div>
+                        <ChangePct value={entry.changePercent} />
+                        {metricVal && (
+                          <div className="text-[9px] text-zinc-400 font-mono mt-0.5">{metricVal}</div>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
+                {entries.length === 0 && (
+                  <div className="py-4 text-center text-xs text-zinc-400">データなし</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Signal Board ───────────────────────────────────────────────────
+const SIGNAL_CFG = [
+  {
+    key:      "strongBuy"  as const,
+    icon:     "🎯",
+    label:    "アナリスト強推奨",
+    desc:     "推奨率65%以上 + 目標まで10%超",
+    gradient: "from-emerald-400 to-teal-500",
+    metricFn: (km: KeyMetrics) => km.buyPct ? `推奨 ${km.buyPct}%` : null,
+  },
+  {
+    key:      "highUpside" as const,
+    icon:     "🚀",
+    label:    "目標まで大幅上昇余地",
+    desc:     "コンセンサス目標株価まで+20%以上",
+    gradient: "from-violet-400 to-fuchsia-500",
+    metricFn: (km: KeyMetrics) => km.upside != null ? `余地 +${km.upside}%` : null,
+  },
+  {
+    key:      "momentum"   as const,
+    icon:     "⬆️",
+    label:    "上昇モメンタム",
+    desc:     "52週高値-10%以内かつ当日プラス",
+    gradient: "from-sky-400 to-blue-500",
+    metricFn: (km: KeyMetrics) => km.upside != null ? `余地 ${km.upside > 0 ? "+" : ""}${km.upside}%` : null,
+  },
+  {
+    key:      "contrarian" as const,
+    icon:     "↩️",
+    label:    "急落後の逆張り候補",
+    desc:     "52週高値から-25%超も基礎力あり",
+    gradient: "from-amber-400 to-orange-500",
+    metricFn: (km: KeyMetrics) => km.pe != null ? `PER ${km.pe}x` : null,
+  },
+] as const;
+
+function SignalBoard({ signals }: { signals: Signals }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-1 h-4 rounded-full bg-gradient-to-b from-orange-400 to-rose-500 shrink-0" />
+        <h2 className="text-sm font-bold text-zinc-800 dark:text-zinc-100">📡 投資シグナルボード</h2>
+        <span className="text-[10px] text-zinc-400 ml-1">— リアルタイム指標から自動抽出</span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {SIGNAL_CFG.map(({ key, icon, label, desc, gradient, metricFn }) => {
+          const entries = signals[key] ?? [];
+          return (
+            <div key={key} className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
+              {/* カラーバー + ヘッダー */}
+              <div className={`h-0.5 bg-gradient-to-r ${gradient}`} />
+              <div className="px-3.5 pt-3 pb-2.5">
+                <div className="flex items-start gap-2">
+                  <span className="text-xl leading-none mt-0.5">{icon}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm text-zinc-800 dark:text-zinc-100">{label}</div>
+                    <div className="text-[10px] text-zinc-400 leading-tight mt-0.5">{desc}</div>
+                  </div>
+                  <span className="text-[10px] font-bold text-zinc-400 shrink-0 mt-0.5">{entries.length}銘柄</span>
+                </div>
+              </div>
+
+              {/* 銘柄リスト */}
+              <div className="border-t border-zinc-100 dark:border-zinc-800 divide-y divide-zinc-100 dark:divide-zinc-800/50">
+                {entries.length === 0 ? (
+                  <div className="py-5 text-center text-xs text-zinc-400">
+                    現在このシグナルに該当する銘柄なし
+                  </div>
+                ) : (
+                  entries.map((entry, i) => {
+                    const metric = metricFn(entry.keyMetrics);
+                    return (
+                      <Link
+                        key={entry.symbol}
+                        href={`/stock/${encodeURIComponent(entry.symbol)}`}
+                        className="flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors"
+                      >
+                        <span className="w-4 shrink-0 text-[10px] font-black text-zinc-400 text-center">
+                          {i < 3 ? MEDAL[i] : i + 1}
+                        </span>
+                        {/* Symbol + name */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-sm text-blue-600 dark:text-blue-400">{entry.symbol}</span>
+                            <span className="text-xs leading-none">{entry.market === "JP" ? "🇯🇵" : "🇺🇸"}</span>
+                          </div>
+                          <div className="text-[10px] text-zinc-400 truncate">{entry.name}</div>
+                        </div>
+                        {/* 株価 + metric + 予想リターン */}
+                        <div className="shrink-0 text-right">
+                          <div className="font-mono font-bold text-xs text-zinc-700 dark:text-zinc-200">
+                            {fmtPrice(entry.currentPrice, entry.currency)}
+                          </div>
+                          <div className="flex items-center gap-1.5 justify-end mt-0.5">
+                            <ChangePct value={entry.changePercent} />
+                            {metric && (
+                              <span className="text-[9px] text-zinc-400 font-mono">{metric}</span>
+                            )}
+                          </div>
+                          <div className="mt-0.5">
+                            <ReturnBadge value={entry.expectedReturn} />
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Sector Score Board ─────────────────────────────────────────────
+const SECTOR_SCORE_EMOJI: Record<string, string> = {
+  "情報技術":           "💻",
+  "コミュニケーション": "📡",
+  "一般消費財":         "🛍️",
+  "生活必需品":         "🛒",
+  "ヘルスケア":         "💊",
+  "金融":               "🏦",
+  "資本財":             "🏭",
+  "エネルギー":         "⛽",
+  "素材":               "🪨",
+  "公益事業":           "⚡",
+  "不動産":             "🏢",
+};
+
+function SectorScoreBoard({ sectorScores }: { sectorScores: SectorScore[] }) {
+  const maxScore = Math.max(...sectorScores.map(s => s.avgScore), 1);
 
   return (
-    <Link
-      href={`/stock/${encodeURIComponent(entry.symbol)}`}
-      className="flex items-center gap-2.5 px-3 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors"
-    >
-      {/* Rank */}
-      <span className="w-6 shrink-0 text-center text-xs font-black text-zinc-400">
-        {rank <= 3 ? MEDAL[rank - 1] : rank}
-      </span>
-
-      {/* Symbol + name */}
-      <div className="w-24 shrink-0">
-        <div className="font-mono font-bold text-sm text-blue-600 dark:text-blue-400 truncate">{entry.symbol}</div>
-        <div className="text-[10px] text-zinc-400 flex items-center gap-1">{entry.market === "JP" ? "🇯🇵" : "🇺🇸"} {entry.theme}</div>
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-1 h-4 rounded-full bg-gradient-to-b from-sky-400 to-indigo-500 shrink-0" />
+        <h2 className="text-sm font-bold text-zinc-800 dark:text-zinc-100">🏆 セクター別 AIスコアランキング</h2>
+        <span className="text-[10px] text-zinc-400 ml-1">— 平均スコアが高いほど強気評価</span>
       </div>
 
-      {/* Name */}
-      <div className="flex-1 min-w-0 hidden sm:block">
-        <div className="text-xs text-zinc-700 dark:text-zinc-300 truncate">{entry.name}</div>
-      </div>
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
+        <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
+          {sectorScores.map((s, i) => {
+            const pct   = (s.avgScore / maxScore) * 100;
+            const color = s.avgScore >= 50 ? "from-emerald-400 to-emerald-500"
+                        : s.avgScore >= 38 ? "from-amber-400 to-amber-500"
+                        : "from-rose-400 to-rose-500";
+            const emoji = SECTOR_SCORE_EMOJI[s.sector] ?? "📊";
+            const medal = i < 3 ? MEDAL[i] : `${i + 1}`;
 
-      {/* Style + risk badges */}
-      <div className="hidden md:flex items-center gap-1 shrink-0">
-        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-semibold ${style.badge}`}>
-          {style.icon} {style.label}
-        </span>
-        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-semibold inline-flex items-center gap-0.5 ${risk.badge}`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${risk.dot}`} />
-          {risk.label}
-        </span>
-      </div>
-
-      {/* Score bar */}
-      <div className="w-16 shrink-0 hidden sm:flex items-center gap-1.5">
-        <div className="flex-1 h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-violet-500"
-            style={{ width: `${Math.min(100, entry.score)}%` }}
-          />
+            return (
+              <div key={s.sector} className="flex items-center gap-3 px-4 py-3">
+                {/* Rank */}
+                <span className="w-5 shrink-0 text-[10px] font-black text-zinc-400 text-center">{medal}</span>
+                {/* Emoji */}
+                <span className="text-xl leading-none shrink-0">{emoji}</span>
+                {/* Name + top */}
+                <div className="w-28 shrink-0">
+                  <div className="text-xs font-semibold text-zinc-700 dark:text-zinc-200 truncate">{s.sector}</div>
+                  <div className="text-[10px] text-zinc-400 truncate font-mono">{s.topSymbol} · {s.count}銘柄</div>
+                </div>
+                {/* Bar */}
+                <div className="flex-1 flex items-center gap-2">
+                  <div className="flex-1 h-2.5 rounded-full bg-zinc-100 dark:bg-zinc-800 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full bg-gradient-to-r ${color} transition-all duration-700`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <span className="w-7 text-right text-xs font-mono font-black text-zinc-600 dark:text-zinc-300 shrink-0">
+                    {s.avgScore}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
-        <span className="text-xs font-mono font-bold text-zinc-500 w-6 text-right">{entry.score.toFixed(0)}</span>
       </div>
-
-      {/* Return */}
-      <div className="shrink-0">
-        <ReturnBadge value={entry.expectedReturn} />
-      </div>
-
-      {/* Key metric */}
-      {km.pe != null && (
-        <div className="shrink-0 hidden lg:block text-xs font-mono text-zinc-400 w-16 text-right">
-          PER {km.pe}x
-        </div>
-      )}
-    </Link>
+    </div>
   );
 }
 
@@ -597,7 +861,7 @@ export default function AiRankingPage() {
           AI投資予想ランキング
         </h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
-          財務データ・アナリスト推奨・テクニカルをAIが総合スコアリング。個人投資家向けに注目ポイントとリスク要因を可視化します。
+          日米全11 GICSセクター・約95銘柄を財務データ・アナリスト推奨・テクニカルでAIスコアリング。成長・高配当・割安など多角的な視点でランキング。
         </p>
       </header>
 
@@ -757,54 +1021,26 @@ export default function AiRankingPage() {
                 )}
               </section>
 
-              {/* ── 全銘柄スキャナー ── */}
-              <section>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-1 h-4 rounded-full bg-gradient-to-b from-blue-400 to-indigo-500 shrink-0" />
-                  <h2 className="text-sm font-bold text-zinc-800 dark:text-zinc-100 flex-1">
-                    🔍 全銘柄AIスキャナー
-                  </h2>
-                  <span className="text-xs text-zinc-400">{scanEntries.length}銘柄</span>
-                </div>
+              {/* ── 視点別注目銘柄 ── */}
+              {data.perspectives && (
+                <section>
+                  <PerspectivePanel perspectives={data.perspectives} />
+                </section>
+              )}
 
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden shadow-sm">
-                  {/* Search bar */}
-                  <div className="px-3 py-2.5 border-b border-zinc-100 dark:border-zinc-800">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                      <input
-                        type="text"
-                        value={scanSearch}
-                        onChange={e => setScanSearch(e.target.value)}
-                        placeholder="銘柄名・コード・テーマ・セクターで絞り込み…"
-                        className="w-full pl-9 pr-3 py-2 text-sm rounded-lg bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-violet-400/40"
-                      />
-                    </div>
-                  </div>
+              {/* ── 投資シグナルボード ── */}
+              {data.signals && (
+                <section>
+                  <SignalBoard signals={data.signals} />
+                </section>
+              )}
 
-                  {/* Column header */}
-                  <div className="flex items-center gap-2.5 px-3 py-2 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-800/30">
-                    <div className="w-6 shrink-0" />
-                    <div className="w-24 shrink-0 text-[10px] font-bold uppercase tracking-wider text-zinc-400">銘柄</div>
-                    <div className="flex-1 min-w-0 hidden sm:block text-[10px] font-bold uppercase tracking-wider text-zinc-400">名称</div>
-                    <div className="hidden md:block text-[10px] font-bold uppercase tracking-wider text-zinc-400 w-32">スタイル・リスク</div>
-                    <div className="hidden sm:block text-[10px] font-bold uppercase tracking-wider text-zinc-400 w-16">スコア</div>
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">予想</div>
-                    <div className="hidden lg:block text-[10px] font-bold uppercase tracking-wider text-zinc-400 w-16 text-right">PER</div>
-                  </div>
-
-                  {/* Rows */}
-                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50 max-h-[560px] overflow-y-auto">
-                    {scanEntries.length === 0 ? (
-                      <div className="py-8 text-center text-sm text-zinc-400">該当銘柄なし</div>
-                    ) : (
-                      scanEntries.map((entry, i) => (
-                        <ScanRow key={entry.symbol} entry={entry} rank={i + 1} />
-                      ))
-                    )}
-                  </div>
-                </div>
-              </section>
+              {/* ── セクタースコアランキング ── */}
+              {data.sectorScores && data.sectorScores.length > 0 && (
+                <section>
+                  <SectorScoreBoard sectorScores={data.sectorScores} />
+                </section>
+              )}
             </>
           )}
 

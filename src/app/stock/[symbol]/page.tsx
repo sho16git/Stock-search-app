@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import SearchBox from "@/components/SearchBox";
 import QuoteHeader from "@/components/QuoteHeader";
+import { CurrencyProvider } from "@/lib/currency-context";
 import StockChart from "@/components/StockChart";
 import FundamentalsTable from "@/components/FundamentalsTable";
 import AnalystRecommendations from "@/components/AnalystRecommendations";
@@ -26,6 +27,7 @@ export default async function StockPage({
   const symbol = decodeURIComponent(raw);
 
   return (
+    <CurrencyProvider>
     <div className="space-y-3.5 sm:space-y-4">
       <RecentViewedTracker symbol={symbol} />
       <div className="flex items-center gap-3 animate-fade-up">
@@ -56,5 +58,6 @@ export default async function StockPage({
       <div className="animate-slide-up delay-500"><StockGeopoliticalNews symbol={symbol} /></div>
       <div className="animate-slide-up delay-500"><PeerStocks symbol={symbol} /></div>
     </div>
+    </CurrencyProvider>
   );
 }

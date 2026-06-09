@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { Target, TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { formatNumber } from "@/lib/format";
+import { formatNumber, formatJpy } from "@/lib/format";
 import { translateGrade } from "@/lib/i18n";
+import { useCurrency } from "@/lib/currency-context";
 
 type TrendPoint = {
   period: string;
@@ -69,6 +70,8 @@ export default function AnalystRecommendations({ symbol }: { symbol: string }) {
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const { showJpy, jpyRate } = useCurrency();
+
   useEffect(() => {
     const ctrl = new AbortController();
     setLoading(true);
@@ -101,6 +104,18 @@ export default function AnalystRecommendations({ symbol }: { symbol: string }) {
   }
 
   const rec = recommendationStyle(data.recommendationKey);
+
+  const isUsd   = data.currency === "USD";
+  const jpyMode = isUsd && showJpy && jpyRate != null;
+
+  /** 株価・目標株価の表示フォーマット */
+  const fmtPrice = (v: number | null | undefined): string => {
+    if (v == null) return "—";
+    if (jpyMode) return formatJpy(v * jpyRate!);
+    if (data.currency === "JPY") return formatJpy(v);
+    return formatNumber(v);
+  };
+
   const current = data.currentPrice ?? 0;
   const upside =
     data.targetMean && current
@@ -169,9 +184,11 @@ export default function AnalystRecommendations({ symbol }: { symbol: string }) {
           {data.targetMean !== null ? (
             <div className="flex items-baseline gap-2">
               <div className="font-mono text-2xl font-bold tabular-nums">
-                {formatNumber(data.targetMean)}
+                {fmtPrice(data.targetMean)}
               </div>
-              <div className="text-xs text-slate-500">{data.currency}</div>
+              {!jpyMode && data.currency !== "JPY" && (
+                <div className="text-xs text-slate-500">{data.currency}</div>
+              )}
               {upside !== null && (
                 <div
                   className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-xs font-semibold ${
@@ -195,7 +212,7 @@ export default function AnalystRecommendations({ symbol }: { symbol: string }) {
           )}
           <div className="flex gap-3 text-xs text-slate-500 mt-2">
             <span>
-              高値: <span className="font-mono">{formatNumber(data.targetHigh)}</span>
+              高値: <span className="font-mono">{fmtPrice(data.targetHigh)}</span>
               {upsideHigh !== null && (
                 <span className="ml-1 text-emerald-600 dark:text-emerald-400">
                   ({upsideHigh >= 0 ? "+" : ""}
@@ -204,7 +221,7 @@ export default function AnalystRecommendations({ symbol }: { symbol: string }) {
               )}
             </span>
             <span>
-              安値: <span className="font-mono">{formatNumber(data.targetLow)}</span>
+              安値: <span className="font-mono">{fmtPrice(data.targetLow)}</span>
               {upsideLow !== null && (
                 <span
                   className={`ml-1 ${
@@ -336,7 +353,7 @@ export default function AnalystRecommendations({ symbol }: { symbol: string }) {
                         {h.currentPriceTarget ? (
                           <span className="inline-flex items-center justify-end gap-1">
                             <TargetIcon className="w-3 h-3 shrink-0" />
-                            {formatNumber(h.currentPriceTarget)}
+                            {fmtPrice(h.currentPriceTarget)}
                           </span>
                         ) : (
                           <span className="text-slate-400">—</span>

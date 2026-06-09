@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatLargeNumber, formatNumber, formatPercent } from "@/lib/format";
+import { formatLargeNumber, formatNumber, formatPercent, formatJpy } from "@/lib/format";
+import { useCurrency } from "@/lib/currency-context";
 
 type YearRow = {
   year: number;
@@ -35,6 +36,9 @@ export default function FundamentalsTable({ symbol }: { symbol: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // ページ共通の通貨コンテキスト
+  const { showJpy, jpyRate } = useCurrency();
+
   useEffect(() => {
     const ctrl = new AbortController();
     setLoading(true);
@@ -60,6 +64,26 @@ export default function FundamentalsTable({ symbol }: { symbol: string }) {
     return () => ctrl.abort();
   }, [symbol]);
 
+  const isUsd       = current?.currency === "USD";
+  const isNativeJpy = current?.currency === "JPY";
+  const jpyMode     = isUsd && showJpy && jpyRate != null;
+
+  /** 金額 (EPS / 株価ベース) */
+  const fmtMoney = (v: number | null | undefined): string => {
+    if (v == null) return "—";
+    if (jpyMode) return formatJpy(v * jpyRate!);
+    if (isNativeJpy) return formatJpy(v);
+    return formatNumber(v);
+  };
+
+  /** 大きな金額 (市場規模, 売上等) */
+  const fmtBig = (v: number | null | undefined): string => {
+    if (v == null) return "—";
+    if (jpyMode) return formatJpy(v * jpyRate!);
+    if (isNativeJpy) return formatJpy(v);
+    return formatLargeNumber(v);
+  };
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 space-y-6 shadow-sm">
       <div>
@@ -73,39 +97,15 @@ export default function FundamentalsTable({ symbol }: { symbol: string }) {
             <Metric label="PER (実績)" value={formatNumber(current.trailingPE)} />
             <Metric label="PER (予想)" value={formatNumber(current.forwardPE)} />
             <Metric label="PBR" value={formatNumber(current.priceToBook)} />
-            <Metric
-              label="ROE"
-              value={formatPercent(current.returnOnEquity)}
-            />
-            <Metric
-              label="EPS (実績)"
-              value={formatNumber(current.trailingEps)}
-            />
-            <Metric
-              label="EPS (予想)"
-              value={formatNumber(current.forwardEps)}
-            />
-            <Metric
-              label="配当利回り"
-              value={formatPercent(current.dividendYield)}
-            />
-            <Metric
-              label="時価総額"
-              value={formatLargeNumber(current.marketCap)}
-            />
-            <Metric
-              label="ROA"
-              value={formatPercent(current.returnOnAssets)}
-            />
-            <Metric
-              label="利益率"
-              value={formatPercent(current.profitMargins)}
-            />
-            <Metric
-              label="D/E比率"
-              value={formatNumber(current.debtToEquity)}
-            />
-            <Metric label="通貨" value={current.currency ?? "—"} />
+            <Metric label="ROE" value={formatPercent(current.returnOnEquity)} />
+            <Metric label="EPS (実績)" value={fmtMoney(current.trailingEps)} />
+            <Metric label="EPS (予想)" value={fmtMoney(current.forwardEps)} />
+            <Metric label="配当利回り" value={formatPercent(current.dividendYield)} />
+            <Metric label="時価総額"   value={fmtBig(current.marketCap)} />
+            <Metric label="ROA"       value={formatPercent(current.returnOnAssets)} />
+            <Metric label="利益率"    value={formatPercent(current.profitMargins)} />
+            <Metric label="D/E比率"   value={formatNumber(current.debtToEquity)} />
+            <Metric label="通貨"      value={jpyMode ? "JPY (換算)" : (current.currency ?? "—")} />
           </div>
         )}
       </div>
@@ -137,27 +137,18 @@ export default function FundamentalsTable({ symbol }: { symbol: string }) {
                     className="border-b border-slate-100 dark:border-slate-800"
                   >
                     <td className="py-2 pr-3 font-medium">{r.year}</td>
-                    <td className="py-2 pr-3 text-right font-mono">
-                      {formatLargeNumber(r.revenue)}
-                    </td>
-                    <td className="py-2 pr-3 text-right font-mono">
-                      {formatLargeNumber(r.netIncome)}
-                    </td>
-                    <td className="py-2 pr-3 text-right font-mono">
-                      {formatLargeNumber(r.equity)}
-                    </td>
-                    <td className="py-2 pr-3 text-right font-mono">
-                      {formatNumber(r.eps)}
-                    </td>
-                    <td className="py-2 pr-3 text-right font-mono">
-                      {formatPercent(r.roe)}
-                    </td>
+                    <td className="py-2 pr-3 text-right font-mono">{fmtBig(r.revenue)}</td>
+                    <td className="py-2 pr-3 text-right font-mono">{fmtBig(r.netIncome)}</td>
+                    <td className="py-2 pr-3 text-right font-mono">{fmtBig(r.equity)}</td>
+                    <td className="py-2 pr-3 text-right font-mono">{fmtMoney(r.eps)}</td>
+                    <td className="py-2 pr-3 text-right font-mono">{formatPercent(r.roe)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <p className="text-xs text-slate-400 mt-2">
               ※ Yahoo Financeは直近4年分の年次データを提供しています
+              {jpyMode && ` · 金額は1USD=¥${jpyRate!.toFixed(0)}で換算`}
             </p>
           </div>
         )}

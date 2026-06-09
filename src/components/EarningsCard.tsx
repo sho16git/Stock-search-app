@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Calendar, Coins, TrendingUp, TrendingDown } from "lucide-react";
-import { formatNumber, formatPercent, formatLargeNumber } from "@/lib/format";
+import { formatNumber, formatPercent, formatLargeNumber, formatJpy } from "@/lib/format";
+import { useCurrency } from "@/lib/currency-context";
 
 type EarningsRow = {
   quarter: string | null;
@@ -29,42 +30,64 @@ type Data = {
   recentEarnings: EarningsRow[];
 };
 
+/** コンパクト表示 (通貨対応) */
+function fmtAmount(n: number, isJpyMode: boolean): string {
+  if (isJpyMode) {
+    // 円単位 (小数なし)
+    const abs = Math.abs(n);
+    if (abs >= 1e8)  return `¥${(n / 1e8).toFixed(1)}億`;
+    if (abs >= 1e4)  return `¥${(n / 1e4).toFixed(1)}万`;
+    return `¥${Math.round(n).toLocaleString("ja-JP")}`;
+  }
+  // USD / その他
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (abs >= 10_000)    return `${(n / 1_000).toFixed(1)}K`;
+  return n.toLocaleString("ja-JP", { maximumFractionDigits: 2 });
+}
+
 function DividendCell({
   shares,
   dividendRate,
   currency,
   highlight,
+  showJpy,
   jpyRate,
 }: {
   shares: number;
   dividendRate: number;
   currency: string | null;
   highlight?: boolean;
-  jpyRate?: number | null;
+  showJpy: boolean;
+  jpyRate: number | null;
 }) {
-  const amount    = dividendRate * shares;
-  const jpyAmount = jpyRate ? amount * jpyRate : null;
+  const isNativeJpy = currency === "JPY";
+  const isJpyMode   = isNativeJpy || (showJpy && jpyRate != null);
+  const baseAmount  = dividendRate * shares;
+  const dispAmount  = isNativeJpy ? baseAmount
+    : showJpy && jpyRate ? baseAmount * jpyRate
+    : baseAmount;
+
+  const mainStr     = fmtAmount(dispAmount, isJpyMode);
+  const mainCurr    = isJpyMode ? "" : (currency ?? "");
 
   return (
     <div
-      className={`p-3 rounded-xl border ${
+      className={`p-2.5 rounded-xl border overflow-hidden ${
         highlight
           ? "bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900"
           : "bg-slate-50 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800/60"
       }`}
     >
-      <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-0.5">
+      <div className="text-[9px] uppercase tracking-wider text-slate-500 mb-0.5 truncate">
         {shares.toLocaleString("ja-JP")} 株
       </div>
-      <div className="font-mono font-bold text-base tabular-nums">
-        {formatNumber(amount)}
-        <span className="text-[10px] font-normal text-slate-400 ml-1">{currency ?? ""}</span>
+      <div className="font-mono font-bold text-sm tabular-nums leading-tight truncate">
+        {mainStr}
+        {mainCurr && (
+          <span className="text-[9px] font-normal text-slate-400 ml-0.5">{mainCurr}</span>
+        )}
       </div>
-      {jpyAmount != null && (
-        <div className="text-[11px] font-mono text-rose-600 dark:text-rose-400 font-semibold mt-0.5">
-          ≈ ¥{Math.round(jpyAmount).toLocaleString("ja-JP")}
-        </div>
-      )}
     </div>
   );
 }
@@ -90,7 +113,9 @@ function daysUntil(iso: string | null): number | null {
 export default function EarningsCard({ symbol }: { symbol: string }) {
   const [data, setData]       = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
-  const [jpyRate, setJpyRate] = useState<number | null>(null);
+
+  // ページ共通の通貨コンテキスト
+  const { showJpy, jpyRate } = useCurrency();
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -105,18 +130,6 @@ export default function EarningsCard({ symbol }: { symbol: string }) {
       .finally(() => setLoading(false));
     return () => ctrl.abort();
   }, [symbol]);
-
-  // USD銘柄のときのみ為替レートを取得
-  useEffect(() => {
-    if (data?.currency !== "USD") return;
-    fetch("/api/quote?symbol=JPY%3DX")
-      .then(r => r.json())
-      .then(j => {
-        const rate = j.quote?.regularMarketPrice as number | undefined;
-        if (rate) setJpyRate(rate);
-      })
-      .catch(() => {});
-  }, [data?.currency]);
 
   if (loading) {
     return (
@@ -134,7 +147,25 @@ export default function EarningsCard({ symbol }: { symbol: string }) {
     data.recentEarnings.length > 0;
   if (!hasAnything) return null;
 
-  const dUntil = daysUntil(data.nextEarningsDate);
+  const dUntil      = daysUntil(data.nextEarningsDate);
+  const isUsd       = data.currency === "USD";
+  const isNativeJpy = data.currency === "JPY";
+  const isJpyMode   = isNativeJpy || (isUsd && showJpy && jpyRate != null);
+
+  /** EPS などの小さな金額を表示 */
+  const fmtEps = (v: number | null | undefined) => {
+    if (v == null) return "—";
+    if (isUsd && showJpy && jpyRate) return formatJpy(v * jpyRate);
+    if (isNativeJpy) return formatJpy(v);
+    return formatNumber(v);
+  };
+
+  /** 大きな金額 (売上予想等) を表示 */
+  const fmtRevenue = (v: number | null | undefined) => {
+    if (v == null) return "—";
+    if (isUsd && showJpy && jpyRate) return formatJpy(v * jpyRate);
+    return formatLargeNumber(v);
+  };
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-5">
@@ -161,11 +192,11 @@ export default function EarningsCard({ symbol }: { symbol: string }) {
               <div className="text-xs text-slate-500 mt-2">
                 EPS予想:{" "}
                 <span className="font-mono font-semibold text-slate-900 dark:text-slate-200">
-                  {formatNumber(data.epsEstimateAverage)}
+                  {fmtEps(data.epsEstimateAverage)}
                 </span>
                 <span className="ml-1 text-slate-400">
-                  ({formatNumber(data.epsEstimateLow)}–
-                  {formatNumber(data.epsEstimateHigh)})
+                  ({fmtEps(data.epsEstimateLow)}–
+                  {fmtEps(data.epsEstimateHigh)})
                 </span>
               </div>
             )}
@@ -173,7 +204,7 @@ export default function EarningsCard({ symbol }: { symbol: string }) {
               <div className="text-xs text-slate-500">
                 売上予想:{" "}
                 <span className="font-mono font-semibold text-slate-900 dark:text-slate-200">
-                  {formatLargeNumber(data.revenueEstimateAverage)}
+                  {fmtRevenue(data.revenueEstimateAverage)}
                 </span>
               </div>
             )}
@@ -199,7 +230,9 @@ export default function EarningsCard({ symbol }: { symbol: string }) {
                 <span>
                   1株配当:{" "}
                   <span className="font-mono font-semibold">
-                    {formatNumber(data.dividendRate)} {data.currency}
+                    {isJpyMode
+                      ? formatJpy(isNativeJpy ? data.dividendRate : data.dividendRate * (jpyRate ?? 1))
+                      : `${formatNumber(data.dividendRate)} ${data.currency}`}
                   </span>
                 </span>
               )}
@@ -223,22 +256,53 @@ export default function EarningsCard({ symbol }: { symbol: string }) {
 
       {data.dividendRate !== null && (
         <div>
-          <h3 className="text-xs uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
-            予想配当金額 (年間 · 税引前)
-            {jpyRate && data.currency === "USD" && (
-              <span className="text-[10px] normal-case text-rose-500 font-normal bg-rose-50 dark:bg-rose-950/30 px-1.5 py-0.5 rounded-full">
-                🇯🇵 円換算付き (1USD=¥{jpyRate.toFixed(2)})
+          <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+            <h3 className="text-xs uppercase tracking-wider text-slate-500">
+              予想配当金額 (年間 · 税引前)
+            </h3>
+            {isNativeJpy && (
+              <span className="text-[10px] normal-case text-blue-600 font-normal bg-blue-50 dark:bg-blue-950/30 px-1.5 py-0.5 rounded-full">
+                🇯🇵 日本株 · 100株単位
               </span>
             )}
-          </h3>
-          <div className="grid grid-cols-3 gap-2">
-            <DividendCell shares={1}    dividendRate={data.dividendRate} currency={data.currency} jpyRate={jpyRate} />
-            <DividendCell shares={100}  dividendRate={data.dividendRate} currency={data.currency} jpyRate={jpyRate} highlight />
-            <DividendCell shares={1000} dividendRate={data.dividendRate} currency={data.currency} jpyRate={jpyRate} />
+            {isUsd && (
+              <span className="text-[10px] normal-case text-slate-400 font-normal bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">
+                {showJpy && jpyRate
+                  ? `🇯🇵 円換算 (1USD≈¥${jpyRate.toFixed(0)})`
+                  : "🇺🇸 米株 · 1株単位"}
+              </span>
+            )}
           </div>
 
-          {/* 米株追加情報 */}
-          {data.currency === "USD" && data.fiveYearAvgDividendYield != null && (
+          {/* 日本株: 1株 / 100株（単元株）/ 1000株 */}
+          {isNativeJpy && (
+            <div className="grid grid-cols-3 gap-2">
+              <DividendCell shares={1}    dividendRate={data.dividendRate} currency={data.currency} showJpy={false} jpyRate={null} />
+              <DividendCell shares={100}  dividendRate={data.dividendRate} currency={data.currency} showJpy={false} jpyRate={null} highlight />
+              <DividendCell shares={1000} dividendRate={data.dividendRate} currency={data.currency} showJpy={false} jpyRate={null} />
+            </div>
+          )}
+
+          {/* 米株: 1株 / 10株 / 100株 — ページ共通トグルで通貨切り替え */}
+          {isUsd && (
+            <div className="grid grid-cols-3 gap-2">
+              <DividendCell shares={1}   dividendRate={data.dividendRate} currency={data.currency} showJpy={showJpy} jpyRate={jpyRate} />
+              <DividendCell shares={10}  dividendRate={data.dividendRate} currency={data.currency} showJpy={showJpy} jpyRate={jpyRate} highlight />
+              <DividendCell shares={100} dividendRate={data.dividendRate} currency={data.currency} showJpy={showJpy} jpyRate={jpyRate} />
+            </div>
+          )}
+
+          {/* その他通貨 */}
+          {!isNativeJpy && !isUsd && (
+            <div className="grid grid-cols-3 gap-2">
+              <DividendCell shares={1}    dividendRate={data.dividendRate} currency={data.currency} showJpy={false} jpyRate={null} />
+              <DividendCell shares={100}  dividendRate={data.dividendRate} currency={data.currency} showJpy={false} jpyRate={null} highlight />
+              <DividendCell shares={1000} dividendRate={data.dividendRate} currency={data.currency} showJpy={false} jpyRate={null} />
+            </div>
+          )}
+
+          {/* 米株: 5年平均利回り */}
+          {isUsd && data.fiveYearAvgDividendYield != null && (
             <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
               <span>5年平均利回り:</span>
               <span className="font-mono font-semibold text-amber-600 dark:text-amber-400">
@@ -256,9 +320,11 @@ export default function EarningsCard({ symbol }: { symbol: string }) {
           )}
 
           <p className="text-[10px] text-slate-400 mt-2">
-            ※ 直近予想配当 ({formatNumber(data.dividendRate)} {data.currency}) に基づく試算。実際の配当は変動する可能性があります。
-            {data.currency === "JPY" && " 日本株は100株単位 (単元株) での購入が一般的です。"}
-            {data.currency === "USD" && jpyRate && " 円換算は取得時点の為替レートによります。"}
+            ※ 直近予想配当 ({isJpyMode
+              ? formatJpy(isNativeJpy ? data.dividendRate : data.dividendRate * (jpyRate ?? 1))
+              : `${formatNumber(data.dividendRate)} ${data.currency}`}) に基づく試算。実際の配当は変動する可能性があります。
+            {isNativeJpy && " 日本株は通常100株単位（単元株）での購入。"}
+            {isUsd && " 米国株は1株から購入可能。"}
           </p>
         </div>
       )}
@@ -299,10 +365,10 @@ export default function EarningsCard({ symbol }: { symbol: string }) {
                             : "—"}
                         </td>
                         <td className="py-2 px-2 text-right font-mono">
-                          {formatNumber(e.epsActual)}
+                          {fmtEps(e.epsActual)}
                         </td>
                         <td className="py-2 px-2 text-right font-mono text-slate-500">
-                          {formatNumber(e.epsEstimate)}
+                          {fmtEps(e.epsEstimate)}
                         </td>
                         <td
                           className={`py-2 px-2 text-right font-mono font-semibold ${

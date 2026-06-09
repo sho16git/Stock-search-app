@@ -1,17 +1,16 @@
 /**
  * /api/screener — Stock screener with financial metric filters.
  *
- * Speed improvements (v2):
- *  - TSE_NAMES removed from universe (3,800→~900 stocks); screener is for
- *    curated stocks with sector data. Browse page covers the full TSE list.
- *  - Quote batches now run in PARALLEL (Promise.all) instead of sequential.
- *  - Batch size increased from 100 → 200.
- *  - validateResult:false prevents schema-validation errors from killing a batch.
- *  - Cache TTL raised to 10 min.
+ * Universe (v3): mirrors the browse page —
+ *  - JP: full TSE list via getFullJpBrowseList() (~3,000 stocks)
+ *  - US: curated catalog + US_STOCKS_SUPPLEMENT
+ *  - ETFs: from curated catalog
+ * Quote fetching uses parallel 200-symbol batches with a 10-min cache.
  */
 import { NextRequest, NextResponse } from "next/server";
 import yahooFinance from "@/lib/yfinance";
 import { getAllStocks } from "@/lib/stocks-catalog";
+import { getFullJpBrowseList } from "@/lib/jp-stocks";
 import { GICS_SECTORS, type GicsSectorId } from "@/lib/gics";
 import { getCompanyNameJa } from "@/lib/translate-name";
 import { US_STOCKS_SUPPLEMENT } from "@/lib/us-stocks-list";
@@ -21,8 +20,10 @@ import { JP_SECTOR_MAP } from "@/lib/jp-sector-supplement";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// ── Quote cache: 10-min TTL ───────────────────────────────────────────────
-let cachedQuotes: { at: number; map: Map<string, RawQuote> } | null = null;
+// ── Symbol-level quote cache: 10-min TTL ────────────────────────────────
+// Each fetched symbol is cached individually so repeated requests reuse results
+// without re-fetching the entire universe.
+const symbolCache = new Map<string, { at: number; quote: RawQuote }>();
 const CACHE_TTL_MS = 10 * 60_000;
 
 type RawQuote = {
@@ -48,33 +49,51 @@ type UniverseEntry = {
   type: string;
 };
 
-// ── Cached universe (built once) ─────────────────────────────────────────
+// ── Cached universe (TTL 30 min to pick up catalog changes) ──────────────
 let _universe: UniverseEntry[] | null = null;
+let _universeAt = 0;
+const UNIVERSE_TTL_MS = 30 * 60_000;
 
 /**
- * Build screener universe: curated catalog + US supplement.
- * TSE_NAMES deliberately excluded — they have no sector/financial data and
- * would cause 30+ sequential API calls to Yahoo Finance.
- * The Browse page covers the full TSE list.
+ * Build screener universe — mirrors the browse page:
+ *  - JP: full TSE list (curated catalog JP stocks + TSE supplement ~3,000 total)
+ *        Sector resolved via JP_SECTOR_MAP for supplement stocks.
+ *  - US + ETF: curated catalog US stocks, all ETFs, plus US_STOCKS_SUPPLEMENT.
+ * Cache TTL: 30 min.
  */
 function getScreenerUniverse(): UniverseEntry[] {
-  if (_universe) return _universe;
+  if (_universe && Date.now() - _universeAt < UNIVERSE_TTL_MS) return _universe;
 
-  const curated = getAllStocks(true).map((s) => ({
+  // ── JP stocks: full browse list (curated + TSE supplement) ────────────
+  const jpStocks: UniverseEntry[] = getFullJpBrowseList().map((s) => ({
     symbol: s.symbol,
     name:   s.name,
-    market: s.market as "JP" | "US",
-    sector: s.sector as GicsSectorId,
-    type:   s.type ?? "stock",
+    market: "JP" as const,
+    sector: ((s.sector ?? JP_SECTOR_MAP[s.symbol]) as GicsSectorId) ?? null,
+    type:   "stock" as const,
   }));
-  const seen = new Set(curated.map((s) => s.symbol));
+  const seen = new Set(jpStocks.map((s) => s.symbol));
 
-  // US supplement stocks (exclude delisted / ETF duplicates)
+  // ── US stocks + ETFs from curated catalog ─────────────────────────────
+  const usAndEtf: UniverseEntry[] = getAllStocks(true)
+    .filter((s) => s.market === "US" || s.type === "etf")
+    .map((s) => ({
+      symbol: s.symbol,
+      name:   s.name,
+      market: s.market as "JP" | "US",
+      sector: s.sector as GicsSectorId,
+      type:   s.type ?? "stock",
+    }))
+    .filter((s) => !seen.has(s.symbol));
+  for (const s of usAndEtf) seen.add(s.symbol);
+
+  // ── US supplement stocks not already in curated catalog ───────────────
+  const usSuppl: UniverseEntry[] = [];
   for (const [sym, name] of US_STOCKS_SUPPLEMENT) {
     if (seen.has(sym)) continue;
     if (name.includes("廃止") || name.includes("delisted")) continue;
     seen.add(sym);
-    curated.push({
+    usSuppl.push({
       symbol: sym,
       name,
       market: "US",
@@ -83,8 +102,9 @@ function getScreenerUniverse(): UniverseEntry[] {
     });
   }
 
-  _universe = curated;
-  return curated;
+  _universe   = [...jpStocks, ...usAndEtf, ...usSuppl];
+  _universeAt = Date.now();
+  return _universe;
 }
 
 // ── Fetch quotes for a list of symbols ───────────────────────────────────
@@ -107,36 +127,44 @@ async function fetchQuoteChunk(symbols: string[]): Promise<RawQuote[]> {
 }
 
 /**
- * Load/return cached quotes for the entire screener universe.
- * Uses parallel batch fetching (Promise.all) with 200-symbol chunks.
+ * Fetch quotes for only the requested symbols.
+ * - Symbols already in symbolCache (< 10 min old) are returned from cache.
+ * - The remainder are batch-fetched in parallel (200 per chunk) and cached.
+ * This avoids loading the full ~3,800-symbol universe on every request.
  */
-async function loadQuotes(): Promise<Map<string, RawQuote>> {
-  const now = Date.now();
-  if (cachedQuotes && now - cachedQuotes.at < CACHE_TTL_MS) {
-    return cachedQuotes.map;
-  }
+async function loadQuotesForSymbols(symbols: string[]): Promise<Map<string, RawQuote>> {
+  const now     = Date.now();
+  const result  = new Map<string, RawQuote>();
+  const toFetch: string[] = [];
 
-  const symbols = getScreenerUniverse().map((s) => s.symbol);
-  const BATCH = 200;
-
-  // Build chunks
-  const chunks: string[][] = [];
-  for (let i = 0; i < symbols.length; i += BATCH) {
-    chunks.push(symbols.slice(i, i + BATCH));
-  }
-
-  // Fetch all chunks in parallel
-  const chunkResults = await Promise.all(chunks.map(fetchQuoteChunk));
-
-  const map = new Map<string, RawQuote>();
-  for (const quotes of chunkResults) {
-    for (const q of quotes) {
-      if (q.symbol) map.set(q.symbol, q);
+  for (const sym of symbols) {
+    const cached = symbolCache.get(sym);
+    if (cached && now - cached.at < CACHE_TTL_MS) {
+      result.set(sym, cached.quote);
+    } else {
+      toFetch.push(sym);
     }
   }
 
-  cachedQuotes = { at: now, map };
-  return map;
+  if (toFetch.length > 0) {
+    const BATCH = 200;
+    const chunks: string[][] = [];
+    for (let i = 0; i < toFetch.length; i += BATCH) {
+      chunks.push(toFetch.slice(i, i + BATCH));
+    }
+
+    const chunkResults = await Promise.all(chunks.map(fetchQuoteChunk));
+    for (const quotes of chunkResults) {
+      for (const q of quotes) {
+        if (q.symbol) {
+          symbolCache.set(q.symbol, { at: now, quote: q });
+          result.set(q.symbol, q);
+        }
+      }
+    }
+  }
+
+  return result;
 }
 
 function parseNum(v: string | null): number | null {
@@ -176,8 +204,8 @@ export async function GET(req: NextRequest) {
     return true;
   });
 
-  // ── Step 2: load/get cached quotes ────────────────────────────────────
-  const quotes = await loadQuotes();
+  // ── Step 2: fetch quotes for the pre-filtered set only ───────────────
+  const quotes = await loadQuotesForSymbols(universe.map((s) => s.symbol));
 
   const between = (
     v: number | undefined,

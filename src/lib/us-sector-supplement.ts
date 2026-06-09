@@ -578,6 +578,15 @@ export const US_SECTOR_MAP: Record<string, GicsSectorId> = {
   GOEV:"consumer-discretionary",
   HEN3:"consumer-staples",
   PW:"real-estate",
+
+  // ─── 新規カタログ銘柄のセクター補完 (2026-06追加) ────────────────────────
+  STLD:"materials",
+  LYV:"communication-services", WMG:"communication-services",
+  HAS:"consumer-discretionary", MAT:"consumer-discretionary",
+  KDP:"consumer-staples", CELH:"consumer-staples", BJ:"consumer-staples",
+  GEV:"industrials", BLDR:"industrials",
+  SW:"materials",
+  INVH:"real-estate", DOC:"real-estate",
 };
 
 /**

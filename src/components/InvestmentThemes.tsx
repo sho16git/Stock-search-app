@@ -60,15 +60,26 @@ export default function InvestmentThemes() {
 
   const rawThemes = themes[market];
 
-  // Sort stocks within each theme by changePercent
-  const current = rawThemes === null ? null : rawThemes.map(t => ({
-    ...t,
-    quotes: [...t.quotes].sort((a, b) =>
-      stockSort === "gainers"
-        ? (b.changePercent ?? -Infinity) - (a.changePercent ?? -Infinity)
-        : (a.changePercent ?? Infinity)  - (b.changePercent ?? Infinity)
-    ),
-  }));
+  // Sort stocks within each theme, then sort themes by their average changePercent
+  const themeAvg = (quotes: ThemeStock[]) =>
+    quotes.length
+      ? quotes.reduce((s, q) => s + (q.changePercent ?? 0), 0) / quotes.length
+      : 0;
+
+  const current = rawThemes === null ? null : rawThemes
+    .map(t => ({
+      ...t,
+      quotes: [...t.quotes].sort((a, b) =>
+        stockSort === "gainers"
+          ? (b.changePercent ?? -Infinity) - (a.changePercent ?? -Infinity)
+          : (a.changePercent ?? Infinity)  - (b.changePercent ?? Infinity)
+      ),
+    }))
+    .sort((a, b) => {
+      const avgA = themeAvg(a.quotes);
+      const avgB = themeAvg(b.quotes);
+      return stockSort === "gainers" ? avgB - avgA : avgA - avgB;
+    });
 
   return (
     <section>

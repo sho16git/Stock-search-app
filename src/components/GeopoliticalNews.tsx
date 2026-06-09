@@ -110,14 +110,14 @@ export default function GeopoliticalNews({ sector }: { sector?: string | null })
         </div>
       ) : (
         <div className="space-y-2">
-          {items.slice(0, 6).map((n) => {
+          {items.slice(0, 6).map((n, i) => {
             const title = n.titleJa ?? n.title;
             const isExpanded = expanded.has(n.uuid);
             const tagColor = TAG_COLORS[n.tag] ?? "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400";
 
             return (
               <div
-                key={n.uuid}
+                key={`geo-${i}-${n.uuid}`}
                 className={`p-3 rounded-xl border bg-white dark:bg-slate-900 transition-all ${
                   isExpanded
                     ? "border-rose-300 dark:border-rose-700 shadow-md"

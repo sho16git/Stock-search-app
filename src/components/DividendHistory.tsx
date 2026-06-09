@@ -2,24 +2,29 @@
 
 import { useEffect, useState } from "react";
 import type { DividendHistoryData, YearlyDividend } from "@/app/api/dividend-history/route";
+import { useCurrency } from "@/lib/currency-context";
 
 /* ── Helpers ── */
-function fmtAmt(v: number, currency: string | null): string {
-  if (currency === "JPY") return "¥" + Math.round(v).toLocaleString();
+function fmtAmt(v: number, currency: string | null, showJpy: boolean, jpyRate: number | null): string {
+  const isJpy = currency === "JPY" || (currency === "USD" && showJpy && jpyRate != null);
+  const val   = currency === "USD" && showJpy && jpyRate ? v * jpyRate : v;
+  if (isJpy) return "¥" + Math.round(val).toLocaleString("ja-JP");
   const sym = currency === "USD" ? "$" : currency ? currency + " " : "";
-  return sym + v.toFixed(2);
+  return sym + val.toFixed(2);
 }
 function fmtPct(v: number | null, sign = true): string {
   if (v === null) return "—";
   const s = sign && v >= 0 ? "+" : "";
   return `${s}${v.toFixed(1)}%`;
 }
-function fmtChg(v: number | null, currency: string | null): string {
+function fmtChg(v: number | null, currency: string | null, showJpy: boolean, jpyRate: number | null): string {
   if (v === null) return "—";
-  const sym = currency === "JPY" ? "¥" : currency === "USD" ? "$" : "";
-  const s = v >= 0 ? "+" : "";
-  if (currency === "JPY") return `${s}${sym}${Math.round(v).toLocaleString()}`;
-  return `${s}${sym}${v.toFixed(2)}`;
+  const isJpy = currency === "JPY" || (currency === "USD" && showJpy && jpyRate != null);
+  const val   = currency === "USD" && showJpy && jpyRate ? v * jpyRate : v;
+  const sym   = isJpy ? "¥" : currency === "USD" ? "$" : "";
+  const s     = val >= 0 ? "+" : "";
+  if (isJpy) return `${s}${sym}${Math.round(Math.abs(val)).toLocaleString("ja-JP")}`;
+  return `${s}${sym}${val.toFixed(2)}`;
 }
 
 /* Sparkline SVG — bars for each year's dividend total */
@@ -114,6 +119,9 @@ export default function DividendHistory({ symbol }: { symbol: string }) {
   const [loading, setLoading] = useState(true);
   const [tableOpen, setTableOpen] = useState(false);
 
+  // ページ共通の通貨コンテキスト
+  const { showJpy, jpyRate } = useCurrency();
+
   useEffect(() => {
     setLoading(true);
     fetch(`/api/dividend-history?symbol=${encodeURIComponent(symbol)}`)
@@ -189,7 +197,7 @@ export default function DividendHistory({ symbol }: { symbol: string }) {
                 <div className="px-2.5 py-1 rounded-lg bg-white/70 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
                   <div className="text-[9px] text-slate-400 uppercase tracking-wider">最新年間配当</div>
                   <div className="text-sm font-mono font-bold text-slate-800 dark:text-slate-100">
-                    {fmtAmt(latest.total, currency)}
+                    {fmtAmt(latest.total, currency, showJpy, jpyRate)}
                     <span className="text-[10px] text-slate-400 font-sans ml-1">×{latest.count}</span>
                   </div>
                 </div>
@@ -267,11 +275,11 @@ export default function DividendHistory({ symbol }: { symbol: string }) {
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-right font-mono font-semibold tabular-nums text-slate-800 dark:text-slate-100 whitespace-nowrap">
-                      {fmtAmt(row.total, currency)}
+                      {fmtAmt(row.total, currency, showJpy, jpyRate)}
                       <span className="text-[10px] text-slate-400 ml-1 font-sans">×{row.count}</span>
                     </td>
                     <td className={`px-3 py-2.5 text-right font-mono tabular-nums whitespace-nowrap text-sm hidden sm:table-cell ${isUp ? "text-emerald-600 dark:text-emerald-400" : isDown ? "text-rose-500 dark:text-rose-400" : "text-slate-400"}`}>
-                      {fmtChg(row.change, currency)}
+                      {fmtChg(row.change, currency, showJpy, jpyRate)}
                     </td>
                     <td className="px-3 py-2.5 text-right whitespace-nowrap">
                       {row.changePct !== null ? (

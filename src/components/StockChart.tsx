@@ -6,6 +6,8 @@ import {
   ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from "recharts";
 import { Maximize2, X, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
+import { formatJpy } from "@/lib/format";
+import { useCurrency } from "@/lib/currency-context";
 
 /* ─── Types ─── */
 type Point = {
@@ -76,11 +78,12 @@ function fmtVol(v: number): string {
 
 /* ─── Candlestick SVG canvas ─── */
 function CandleChart({
-  data, height, range,
+  data, height, range, fmt: fmtFn,
 }: {
   data: Point[];
   height: number;
   range: RangeKey;
+  fmt?: (v: number) => string;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hover, setHover] = useState<{ idx: number; x: number; y: number } | null>(null);
@@ -185,7 +188,7 @@ function CandleChart({
               ["終値", hp.close],
             ].map(([label, val], i) => (
               <text key={i} x={left + 8} y={top + 28 + i * 12} fontSize={10} fill="#1e293b">
-                <tspan fill="#64748b">{label} </tspan>{val != null ? fmtPrice(Number(val)) : "—"}
+                <tspan fill="#64748b">{label} </tspan>{val != null ? (fmtFn ?? fmtPrice)(Number(val)) : "—"}
               </text>
             ))}
           </g>
@@ -248,12 +251,13 @@ function RangeTabs({ range, onChange }: { range: RangeKey; onChange: (r: RangeKe
 
 /* ─── Recharts line + volume chart ─── */
 function LineVolumeChart({
-  data, range, first, height = 240,
+  data, range, first, height = 240, fmt: fmtFn,
 }: {
   data: Point[];
   range: RangeKey;
   first: number;
   height?: number;
+  fmt?: (v: number) => string;
 }) {
   const allVals = data.map(d => d.close).filter(Boolean) as number[];
   const min     = allVals.length ? Math.min(...allVals) : 0;
@@ -279,7 +283,7 @@ function LineVolumeChart({
           yAxisId="price"
           domain={[min - pad, max + pad]}
           tick={{ fontSize: 10, fill: "#94a3b8" }}
-          tickFormatter={fmtPrice}
+          tickFormatter={fmtFn ?? fmtPrice}
           width={60}
           axisLine={false}
           tickLine={false}
@@ -299,7 +303,7 @@ function LineVolumeChart({
         <Tooltip
           formatter={(v, name) => {
             if (name === "volume") return [fmtVol(Number(v)), "出来高"];
-            return [`${fmtPrice(Number(v))}`, "終値"];
+            return [`${(fmtFn ?? fmtPrice)(Number(v))}`, "終値"];
           }}
           labelFormatter={(l) => fmtDate(String(l), range)}
           contentStyle={{ fontSize: 11, borderRadius: 8, border: "1px solid #e2e8f0", background: "rgba(255,255,255,0.97)" }}
@@ -330,7 +334,7 @@ function LineVolumeChart({
 
 /* ─── Expanded modal ─── */
 function ExpandedModal({
-  symbol, currency, data, loading, range, setRange, chartType, setChartType, first, onClose,
+  symbol, currency, data, loading, range, setRange, chartType, setChartType, first, fmt, onClose,
 }: {
   symbol: string;
   currency?: string | null;
@@ -341,6 +345,7 @@ function ExpandedModal({
   chartType: ChartType;
   setChartType: (t: ChartType) => void;
   first: number;
+  fmt: (v: number) => string;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -370,7 +375,7 @@ function ExpandedModal({
           )}
           {last > 0 && (
             <span className="text-sm font-mono text-slate-600 dark:text-slate-400">
-              {fmtPrice(last)} {currency}
+              {fmt(last)}{currency && ` ${currency}`}
             </span>
           )}
         </div>
@@ -414,10 +419,10 @@ function ExpandedModal({
           <div className="flex items-center justify-center h-full text-slate-400 text-sm">データなし</div>
         ) : chartType === "candle" ? (
           <div className="w-full h-full">
-            <CandleChart data={data} height={window.innerHeight - 200} range={range} />
+            <CandleChart data={data} height={window.innerHeight - 200} range={range} fmt={fmt} />
           </div>
         ) : (
-          <LineVolumeChart data={data} range={range} first={first} height={window.innerHeight - 200} />
+          <LineVolumeChart data={data} range={range} first={first} height={window.innerHeight - 200} fmt={fmt} />
         )}
       </div>
 
@@ -426,10 +431,10 @@ function ExpandedModal({
         const d = data[data.length - 1];
         return (
           <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-800/70 shrink-0 flex gap-4 text-xs font-mono text-slate-500 dark:text-slate-400">
-            {d.open  != null && <span>始値 <strong className="text-slate-700 dark:text-slate-200">{fmtPrice(d.open)}</strong></span>}
-            {d.high  != null && <span>高値 <strong className="text-emerald-600 dark:text-emerald-400">{fmtPrice(d.high)}</strong></span>}
-            {d.low   != null && <span>安値 <strong className="text-rose-600 dark:text-rose-400">{fmtPrice(d.low)}</strong></span>}
-            <span>終値 <strong className="text-slate-700 dark:text-slate-200">{fmtPrice(d.close)}</strong></span>
+            {d.open  != null && <span>始値 <strong className="text-slate-700 dark:text-slate-200">{fmt(d.open)}</strong></span>}
+            {d.high  != null && <span>高値 <strong className="text-emerald-600 dark:text-emerald-400">{fmt(d.high)}</strong></span>}
+            {d.low   != null && <span>安値 <strong className="text-rose-600 dark:text-rose-400">{fmt(d.low)}</strong></span>}
+            <span>終値 <strong className="text-slate-700 dark:text-slate-200">{fmt(d.close)}</strong></span>
             {d.volume != null && <span>出来高 <strong>{fmtVol(d.volume)}</strong></span>}
           </div>
         );
@@ -440,11 +445,11 @@ function ExpandedModal({
 
 /* ─── Auto-refresh intervals for intraday ranges (ms) ─── */
 const REFRESH_MS: Partial<Record<RangeKey, number>> = {
-  "1min":  15_000,   // 15 s — new candle every minute
-  "5min":  30_000,   // 30 s
+  "1min":  10_000,   // 10 s — keep chart data fresh
+  "5min":  20_000,   // 20 s
   "10min": 30_000,   // 30 s
   "1h":    60_000,   // 1 min
-  "1d":    30_000,   // 30 s — during-session view
+  "1d":    20_000,   // 20 s — during-session view
   "1wk":   120_000,  // 2 min
 };
 
@@ -453,6 +458,18 @@ function fmtUpdatedAt(d: Date): string {
   const m = d.getMinutes().toString().padStart(2, "0");
   const s = d.getSeconds().toString().padStart(2, "0");
   return `${h}:${m}:${s}`;
+}
+
+/** Format a "YYYY-MM-DD" string for display (e.g. "6/6 (金)") */
+function fmtTradingDate(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00Z");
+  const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
+  return `${d.getUTCMonth() + 1}/${d.getUTCDate()} (${dayNames[d.getUTCDay()]})`;
+}
+
+/** True if "YYYY-MM-DD" is today in UTC */
+function isToday(dateStr: string): boolean {
+  return new Date().toISOString().slice(0, 10) === dateStr;
 }
 
 /* ─── Main StockChart component ─── */
@@ -465,16 +482,36 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
   const [refreshTick, setRefreshTick] = useState(0);
   const [updatedAt, setUpdatedAt]   = useState<Date | null>(null);
   const [spinning, setSpinning]     = useState(false);
+  /** Populated only for singleDay ranges (1min / 1d) — the date of the data */
+  const [tradingDate, setTradingDate] = useState<string | null>(null);
+  /** Latest real-time price for injecting a "live" bar into the 1-min chart */
+  const [livePoint, setLivePoint]   = useState<{ price: number; ts: number } | null>(null);
+
+  // Track the previous fetch key to avoid showing the loading skeleton during auto-refresh
+  const prevFetchKey = useRef('');
+
+  const { showJpy, jpyRate } = useCurrency();
+  const jpyMode = showJpy && jpyRate != null;
 
   const isIntraday = useMemo(() => RANGES.find(r => r.key === range)?.group === "intraday", [range]);
 
   useEffect(() => {
     const r = RANGES.find(r => r.key === range)!;
+    const fetchKey = `${symbol}-${range}`;
+    // Only show loading skeleton on initial load or when symbol/range changes.
+    // Background auto-refreshes (same fetchKey) update silently.
+    const isAutoRefresh = prevFetchKey.current === fetchKey;
+    prevFetchKey.current = fetchKey;
+
     const ctrl = new AbortController();
-    setLoading(true);
+    if (!isAutoRefresh) setLoading(true);
     fetch(`/api/chart?symbol=${encodeURIComponent(symbol)}&range=${r.apiRange}`, { signal: ctrl.signal })
       .then(res => res.json())
-      .then(j => { setData((j.data ?? []) as Point[]); setUpdatedAt(new Date()); })
+      .then(j => {
+        setData((j.data ?? []) as Point[]);
+        setTradingDate(j.tradingDate ?? null);
+        setUpdatedAt(new Date());
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
     return () => ctrl.abort();
@@ -488,14 +525,89 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
     return () => clearInterval(id);
   }, [symbol, range]);
 
+  // Live price polling for 1-min chart: fetch /api/quote every 10 s and
+  // inject the latest price as the "current forming bar" at the chart tail.
+  useEffect(() => {
+    if (range !== "1min") { setLivePoint(null); return; }
+    const fetchLive = () => {
+      fetch(`/api/quote?symbol=${encodeURIComponent(symbol)}`)
+        .then(r => r.json())
+        .then(j => {
+          const q = j.quote;
+          if (q?.regularMarketPrice == null) return;
+          // regularMarketTime comes as a serialised ISO string or Unix ms
+          const raw = q.regularMarketTime;
+          const ts  = raw
+            ? (typeof raw === "number" ? raw * 1000 : new Date(raw).getTime())
+            : Date.now();
+          setLivePoint({ price: Number(q.regularMarketPrice), ts });
+        })
+        .catch(() => {});
+    };
+    fetchLive();
+    const id = setInterval(fetchLive, 10_000);
+    return () => clearInterval(id);
+  }, [symbol, range]);
+
   const handleManualRefresh = () => {
     setSpinning(true);
     setRefreshTick(t => t + 1);
     setTimeout(() => setSpinning(false), 800);
   };
 
-  const first = data[0]?.close ?? 0;
-  const last  = data[data.length - 1]?.close ?? 0;
+  /**
+   * Merge the live quote price into the raw chart data as the last bar.
+   * - If the live price timestamp is newer than the last chart bar → append a new bar.
+   * - If it falls within the same minute as the last bar → update that bar's close.
+   * This ensures the 1-min chart always reflects the most recent price.
+   */
+  const dataWithLive = useMemo(() => {
+    if (!livePoint || range !== "1min" || !data.length) return data;
+    const lastBar   = data[data.length - 1];
+    const lastBarTs = new Date(lastBar.date).getTime();
+    // Only append if the live price is genuinely newer
+    if (livePoint.ts <= lastBarTs) return data;
+
+    const minuteTs     = Math.floor(livePoint.ts   / 60_000) * 60_000;
+    const lastMinuteTs = Math.floor(lastBarTs       / 60_000) * 60_000;
+
+    if (minuteTs > lastMinuteTs) {
+      // A new minute has started — append a brand-new bar
+      return [...data, {
+        date:   new Date(minuteTs).toISOString(),
+        close:  livePoint.price,
+        open:   lastBar.close,   // best-effort: previous close as open
+        high:   null,
+        low:    null,
+        volume: null,
+      }];
+    } else {
+      // Still in the same minute — update the last bar's closing price
+      return [...data.slice(0, -1), { ...lastBar, close: livePoint.price }];
+    }
+  }, [data, livePoint, range]);
+
+  /** 円換算時は O/H/L/C をすべて jpyRate 倍に変換したデータを使う */
+  const displayData = useMemo(() => {
+    if (!jpyMode || !jpyRate) return dataWithLive;
+    return dataWithLive.map(d => ({
+      ...d,
+      close: d.close * jpyRate,
+      open:   d.open   != null ? d.open   * jpyRate : null,
+      high:   d.high   != null ? d.high   * jpyRate : null,
+      low:    d.low    != null ? d.low    * jpyRate : null,
+    }));
+  }, [dataWithLive, jpyMode, jpyRate]);
+
+  /** True when a live price bar is actively tracking the current minute */
+  const isLive = livePoint != null && range === "1min" &&
+    Date.now() - livePoint.ts < 5 * 60_000; // within last 5 minutes
+
+  /** 価格フォーマット — JPY モードは円単位 */
+  const fmtDisplay = (v: number) => jpyMode ? formatJpy(v) : fmtPrice(v);
+
+  const first = displayData[0]?.close ?? 0;
+  const last  = displayData[displayData.length - 1]?.close ?? 0;
   const pct   = first ? ((last - first) / first) * 100 : 0;
   const up    = pct >= 0;
 
@@ -514,9 +626,20 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
                   {up ? "+" : ""}{pct.toFixed(2)}%
                 </div>
               )}
+              {isIntraday && !loading && tradingDate && !isToday(tradingDate) && (
+                <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/40 font-medium">
+                  {fmtTradingDate(tradingDate)}
+                </span>
+              )}
               {isIntraday && updatedAt && !loading && (
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 tabular-nums">
                   {fmtUpdatedAt(updatedAt)} 更新
+                </span>
+              )}
+              {isLive && !loading && (
+                <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/40 font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                  LIVE
                 </span>
               )}
             </div>
@@ -573,11 +696,11 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
             <div className="flex items-center justify-center h-64 text-sm text-slate-400">データなし</div>
           ) : chartType === "candle" ? (
             <div className="touch-pan-y select-none" style={{ height: 264 }}>
-              <CandleChart data={data} height={264} range={range} />
+              <CandleChart data={displayData} height={264} range={range} fmt={fmtDisplay} />
             </div>
           ) : (
             <div className="touch-pan-y select-none">
-              <LineVolumeChart data={data} range={range} first={first} height={264} />
+              <LineVolumeChart data={displayData} range={range} first={first} height={264} fmt={fmtDisplay} />
             </div>
           )}
         </div>
@@ -595,13 +718,14 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
         <ExpandedModal
           symbol={symbol}
           currency={currency}
-          data={data}
+          data={displayData}
           loading={loading}
           range={range}
           setRange={setRange}
           chartType={chartType}
           setChartType={setChartType}
           first={first}
+          fmt={fmtDisplay}
           onClose={() => setExpanded(false)}
         />
       )}

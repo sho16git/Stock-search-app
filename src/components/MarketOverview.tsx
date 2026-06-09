@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { formatNumber } from "@/lib/format";
+import { SYMBOL_TO_INDEX_ID } from "@/lib/index-components";
 
 type Index = {
   symbol: string;
@@ -103,12 +105,10 @@ export default function MarketOverview() {
                 ? idx.price > prevPrice ? "flash-up" : "flash-down"
                 : "";
             const accent = ACCENT[idx.symbol] ?? DEFAULT_ACCENT;
+            const indexPageId = SYMBOL_TO_INDEX_ID[idx.symbol];
 
-            return (
-              <div
-                key={idx.symbol}
-                className={`card-hover shrink-0 min-w-[144px] lg:min-w-0 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-white/[0.07] overflow-hidden hover:border-zinc-300 dark:hover:border-white/[0.14] ${flashClass}`}
-              >
+            const cardContent = (
+              <>
                 {/* Color accent bar */}
                 <div
                   className="h-[2px]"
@@ -134,7 +134,31 @@ export default function MarketOverview() {
                       ? Math.abs(idx.changePercent).toFixed(2) + "%"
                       : "—"}
                   </div>
+
+                  {/* Constituent link hint */}
+                  {indexPageId && (
+                    <div className="mt-1.5 text-[9px] text-zinc-400 dark:text-zinc-600 font-medium tracking-wide">
+                      構成銘柄を見る →
+                    </div>
+                  )}
                 </div>
+              </>
+            );
+
+            return indexPageId ? (
+              <Link
+                key={idx.symbol}
+                href={`/market-index/${indexPageId}`}
+                className={`card-hover shrink-0 min-w-[144px] lg:min-w-0 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-white/[0.07] overflow-hidden hover:border-zinc-300 dark:hover:border-white/[0.14] ${flashClass} block`}
+              >
+                {cardContent}
+              </Link>
+            ) : (
+              <div
+                key={idx.symbol}
+                className={`card-hover shrink-0 min-w-[144px] lg:min-w-0 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-white/[0.07] overflow-hidden hover:border-zinc-300 dark:hover:border-white/[0.14] ${flashClass}`}
+              >
+                {cardContent}
               </div>
             );
           })}

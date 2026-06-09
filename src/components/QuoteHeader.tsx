@@ -5,7 +5,7 @@ import {
   TrendingUp, TrendingDown, Users, MapPin, Globe,
   Briefcase, ChevronDown, ChevronUp, Building2,
 } from "lucide-react";
-import { formatNumber, formatLargeNumber } from "@/lib/format";
+import { formatNumber, formatLargeNumber, formatJpy } from "@/lib/format";
 import { getJpName } from "@/lib/jp-stocks";
 import {
   translateExchange, translateMarketState,
@@ -14,6 +14,7 @@ import {
 import WatchlistButton from "@/components/WatchlistButton";
 import HoldingButton from "@/components/HoldingButton";
 import SectorBadge from "@/components/SectorBadge";
+import { useCurrency } from "@/lib/currency-context";
 
 /* ─── Types ─── */
 type Quote = {
@@ -34,12 +35,6 @@ type Profile = {
 };
 
 /* ─── Helpers ─── */
-function fmtJpy(v: number): string {
-  if (v >= 100_000_000) return `¥${(v / 100_000_000).toFixed(2)}億`;
-  if (v >= 10_000) return `¥${(v / 10_000).toFixed(1)}万`;
-  return `¥${Math.round(v).toLocaleString("ja-JP")}`;
-}
-
 function hostname(url: string) {
   try { return new URL(url).hostname.replace("www.", ""); } catch { return url; }
 }
@@ -49,12 +44,13 @@ export default function QuoteHeader({ symbol }: { symbol: string }) {
   const [quote, setQuote]       = useState<Quote | null>(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState<string | null>(null);
-  const [jpyRate, setJpyRate]   = useState<number | null>(null);
-  const [showJpy, setShowJpy]   = useState(false);
   const [profile, setProfile]   = useState<Profile | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
   const [summaryExpanded, setSummaryExpanded] = useState(false);
+
+  // コンテキストから通貨状態を取得・設定
+  const { showJpy, setShowJpy, jpyRate, setJpyRate } = useCurrency();
 
   const load = () => {
     fetch(`/api/quote?symbol=${encodeURIComponent(symbol)}`)
@@ -82,13 +78,14 @@ export default function QuoteHeader({ symbol }: { symbol: string }) {
     return () => ctrl.abort();
   }, [symbol]);
 
+  // USD銘柄のときのみ為替レートを取得してコンテキストに保存
   useEffect(() => {
     if (quote?.currency !== "USD") return;
     fetch("/api/quote?symbol=JPY%3DX")
       .then(r => r.json())
       .then(j => { const rate = j.quote?.regularMarketPrice as number | undefined; if (rate) setJpyRate(rate); })
       .catch(() => {});
-  }, [quote?.currency]);
+  }, [quote?.currency]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const jpName = getJpName(symbol);
   const name = jpName ?? quote?.nameJa ?? quote?.longName ?? quote?.shortName ?? quote?.displayName ?? symbol;
@@ -98,16 +95,21 @@ export default function QuoteHeader({ symbol }: { symbol: string }) {
   const up = (change ?? 0) >= 0;
   const Arrow = up ? TrendingUp : TrendingDown;
 
-  const isUsd = quote?.currency === "USD";
+  const isUsd     = quote?.currency === "USD";
+  const isJpy     = quote?.currency === "JPY";
   const canToggle = isUsd && jpyRate != null;
-  const dispPrice = canToggle && showJpy && price != null ? price * jpyRate! : price;
-  const dispCurrency = canToggle && showJpy ? "JPY" : quote?.currency;
 
-  const fmtStat = (v: number | undefined) => {
+  /** 価格・金額の表示フォーマット (通貨対応) */
+  const fmtMoney = (v: number | null | undefined): string => {
     if (v == null) return "—";
-    if (canToggle && showJpy) return fmtJpy(v * jpyRate!);
+    if (canToggle && showJpy) return formatJpy(v * jpyRate!);
+    if (isJpy) return formatJpy(v);
     return formatNumber(v);
   };
+
+  // dispPrice は fmtMoney に渡さない — fmtMoney が内部で jpyRate 変換するため二重換算になる
+  // dispCurrency は通貨ラベル表示専用
+  const dispCurrency = canToggle && showJpy ? "JPY" : quote?.currency;
 
   /* Profile helpers */
   const location = profile
@@ -170,9 +172,9 @@ export default function QuoteHeader({ symbol }: { symbol: string }) {
               <div className="flex flex-wrap items-end gap-3">
                 <div className="font-mono font-bold tracking-tight tabular-nums">
                   <span className="text-4xl md:text-5xl">
-                    {canToggle && showJpy && dispPrice != null ? fmtJpy(dispPrice) : formatNumber(dispPrice)}
+                    {fmtMoney(price)}
                   </span>
-                  {!(canToggle && showJpy) && (
+                  {!(canToggle && showJpy) && !isJpy && (
                     <span className="ml-2 text-base text-slate-500 font-medium">{dispCurrency}</span>
                   )}
                 </div>
@@ -182,9 +184,7 @@ export default function QuoteHeader({ symbol }: { symbol: string }) {
                     : "bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300"
                 }`}>
                   <Arrow className="w-4 h-4" />
-                  {canToggle && showJpy && change != null
-                    ? fmtJpy(Math.abs(change) * jpyRate!)
-                    : formatNumber(Math.abs(change ?? 0))}{" "}
+                  {fmtMoney(Math.abs(change ?? 0))}{" "}
                   ({formatNumber(Math.abs(changePct ?? 0))}%)
                 </div>
                 {canToggle && (
@@ -206,7 +206,7 @@ export default function QuoteHeader({ symbol }: { symbol: string }) {
                 <div className="text-xs text-slate-400 font-mono">
                   {showJpy
                     ? `1 USD = ¥${jpyRate!.toFixed(2)} · 元値 ${formatNumber(price)} USD`
-                    : `≈ ${price != null ? fmtJpy(price * jpyRate!) : "—"} （1USD=¥${jpyRate!.toFixed(2)}）`}
+                    : `≈ ${price != null ? formatJpy(price * jpyRate!) : "—"} （1USD=¥${jpyRate!.toFixed(2)}）`}
                 </div>
               )}
             </div>
@@ -217,12 +217,12 @@ export default function QuoteHeader({ symbol }: { symbol: string }) {
           <>
             {/* ── 株価統計 ── */}
             <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mt-4">
-              <Stat label="前日終値" value={fmtStat(quote.regularMarketPreviousClose)} />
-              <Stat label="高値"     value={fmtStat(quote.regularMarketDayHigh)} />
-              <Stat label="安値"     value={fmtStat(quote.regularMarketDayLow)} />
+              <Stat label="前日終値" value={fmtMoney(quote.regularMarketPreviousClose)} />
+              <Stat label="高値"     value={fmtMoney(quote.regularMarketDayHigh)} />
+              <Stat label="安値"     value={fmtMoney(quote.regularMarketDayLow)} />
               <Stat label="出来高"   value={(quote.regularMarketVolume ?? 0).toLocaleString("ja-JP")} />
-              <Stat label="52週高値" value={fmtStat(quote.fiftyTwoWeekHigh)} />
-              <Stat label="52週安値" value={fmtStat(quote.fiftyTwoWeekLow)} />
+              <Stat label="52週高値" value={fmtMoney(quote.fiftyTwoWeekHigh)} />
+              <Stat label="52週安値" value={fmtMoney(quote.fiftyTwoWeekLow)} />
             </div>
 
             {/* ── 購入シミュレーション ── */}
@@ -233,10 +233,10 @@ export default function QuoteHeader({ symbol }: { symbol: string }) {
               <div className="grid grid-cols-4 gap-1.5">
                 {[1, 100, 500, 1000].map(shares => {
                   const amt = price != null ? price * shares : null;
-                  const dispAmt = canToggle && showJpy && amt != null
-                    ? fmtJpy(amt * jpyRate!)
-                    : amt != null ? formatNumber(amt) : "—";
-                  const hi = shares === 100;
+                  const dispAmt = amt != null ? fmtMoney(amt) : "—";
+                  // US stocks (USD): highlight 1 share — traded per share, no lot system
+                  // JP stocks (JPY): highlight 100 shares — 単元株制度 (minimum trading unit)
+                  const hi = isUsd ? shares === 1 : shares === 100;
                   return (
                     <div key={shares} className={`px-1.5 py-1.5 rounded-lg border text-center min-w-0 ${
                       hi
@@ -247,7 +247,7 @@ export default function QuoteHeader({ symbol }: { symbol: string }) {
                       <div className={`font-mono font-bold text-[10px] tabular-nums truncate ${
                         hi ? "text-blue-700 dark:text-blue-300" : "text-slate-800 dark:text-slate-200"
                       }`}>{dispAmt}</div>
-                      {!(canToggle && showJpy) && (
+                      {!isJpy && !(canToggle && showJpy) && (
                         <div className="text-[9px] text-slate-400">{quote.currency}</div>
                       )}
                     </div>

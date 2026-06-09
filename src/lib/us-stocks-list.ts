@@ -741,7 +741,7 @@ export const US_STOCKS_SUPPLEMENT: [string, string][] = [
   ["WPM","Wheaton Precious Metals ADR"],["FNV","Franco-Nevada ADR"],
   ["RGLD","Royal Gold"],["KGC","Kinross Gold ADR"],["AGI","Alamos Gold ADR"],
   ["PAAS","Pan American Silver ADR"],["EQX","Equinox Gold ADR"],
-  ["PKG","Packaging Corporation of America"],["WRK","WestRock (廃止→SMURFIT)"],
+  ["PKG","Packaging Corporation of America"],["SW","Smurfit WestRock"],
   ["IP","International Paper"],["CF","CF Industries"],["NUE","Nucor"],
   ["STLD","Steel Dynamics"],["RS","Reliance Steel & Aluminum"],
   ["X","United States Steel"],["CLF","Cleveland-Cliffs"],["MT","ArcelorMittal ADR"],

@@ -70,10 +70,12 @@ async function getJpUniverse(): Promise<BrowseItem[]> {
   return items;
 }
 
-// ── US + ETF universe (static, built once) ─────────────────────────
+// ── US + ETF universe (TTL 30 min to pick up catalog changes) ──────
 let _usEtfUniverse: BrowseItem[] | null = null;
+let _usEtfAt = 0;
+const US_CACHE_TTL_MS = 30 * 60_000;
 function getUsEtfUniverse(): BrowseItem[] {
-  if (_usEtfUniverse) return _usEtfUniverse;
+  if (_usEtfUniverse && Date.now() - _usEtfAt < US_CACHE_TTL_MS) return _usEtfUniverse;
 
   const usCurated = getAllStocks(false)
     .filter((s) => s.market === "US")
@@ -119,6 +121,7 @@ function getUsEtfUniverse(): BrowseItem[] {
   }
 
   _usEtfUniverse = [...usCurated, ...usSupply, ...etfs];
+  _usEtfAt       = Date.now();
   return _usEtfUniverse;
 }
 

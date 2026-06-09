@@ -18,9 +18,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const summary = await yahooFinance.quoteSummary(symbol, {
+    const summary = await (yahooFinance.quoteSummary as Function)(symbol, {
       modules: ["calendarEvents", "summaryDetail", "earningsHistory", "price"],
-    });
+    }, { validateResult: false });
     const currency = summary.price?.currency ?? null;
     const cal = summary.calendarEvents as
       | {
@@ -74,9 +74,23 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     console.error("events error", err);
-    return NextResponse.json(
-      { error: "決算・配当情報の取得に失敗しました" },
-      { status: 500 },
-    );
+    // 新規上場株などでデータが不完全な場合は空データで 200 を返す
+    return NextResponse.json({
+      currency: null,
+      nextEarningsDate: null,
+      isEarningsEstimated: null,
+      earningsCallDate: null,
+      epsEstimateAverage: null,
+      epsEstimateLow: null,
+      epsEstimateHigh: null,
+      revenueEstimateAverage: null,
+      exDividendDate: null,
+      dividendDate: null,
+      dividendRate: null,
+      dividendYield: null,
+      payoutRatio: null,
+      fiveYearAvgDividendYield: null,
+      recentEarnings: [],
+    });
   }
 }

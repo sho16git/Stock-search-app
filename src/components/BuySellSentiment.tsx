@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { formatNumber } from "@/lib/format";
+import { formatNumber, formatJpy } from "@/lib/format";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { useCurrency } from "@/lib/currency-context";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type AnalystData = {
@@ -275,6 +276,15 @@ export default function BuySellSentiment({ symbol }: { symbol: string }) {
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
 
+  const { showJpy, jpyRate } = useCurrency();
+
+  /** 目標株価の表示フォーマット (showJpy=true のとき円換算) */
+  const fmtPrice = (v: number | null | undefined): string => {
+    if (v == null) return "—";
+    if (showJpy && jpyRate != null) return formatJpy(v * jpyRate);
+    return formatNumber(v);
+  };
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -546,11 +556,11 @@ export default function BuySellSentiment({ symbol }: { symbol: string }) {
                 <div className="space-y-0.5">
                   <div className="text-[10px] uppercase tracking-wider text-zinc-400">目標株価（平均）</div>
                   <div className="font-mono font-black text-xl tabular-nums text-zinc-900 dark:text-zinc-50">
-                    {formatNumber(analyst.targetMean)}
+                    {fmtPrice(analyst.targetMean)}
                   </div>
                   {analyst.targetLow != null && analyst.targetHigh != null && (
                     <div className="text-[10px] text-zinc-400">
-                      レンジ {formatNumber(analyst.targetLow)} 〜 {formatNumber(analyst.targetHigh)}
+                      レンジ {fmtPrice(analyst.targetLow)} 〜 {fmtPrice(analyst.targetHigh)}
                     </div>
                   )}
                 </div>
