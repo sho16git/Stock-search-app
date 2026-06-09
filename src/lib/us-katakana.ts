@@ -765,7 +765,7 @@ export const US_KATAKANA: Record<string, string> = {
   // Financials
   AIG:   "AIGグループ",
   // Industrials
-  GEV:   "GEバーノバ",
+  GEV:   "GEベルノバ",
   PWR:   "クアンタ・サービシズ",
   HEI:   "ヘイコー",
   BLDR:  "ビルダーズ・ファーストソース",

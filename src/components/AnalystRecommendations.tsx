@@ -96,10 +96,16 @@ export default function AnalystRecommendations({ symbol }: { symbol: string }) {
     );
   }
 
-  if (
-    !data ||
-    (data.numberOfAnalystOpinions === null && data.trend.length === 0)
-  ) {
+  // 意味のあるデータが1つも無ければ非表示
+  const hasMeaningfulData =
+    (data?.numberOfAnalystOpinions ?? 0) > 0 ||
+    data?.targetMean != null ||
+    (data?.trend ?? []).some(
+      (t) => t.strongBuy + t.buy + t.hold + t.sell + t.strongSell > 0,
+    ) ||
+    (data?.history ?? []).length > 0;
+
+  if (!data || !hasMeaningfulData) {
     return null;
   }
 
