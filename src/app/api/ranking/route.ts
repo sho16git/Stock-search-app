@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
       fiftyTwoWeekHigh: typeof q.fiftyTwoWeekHigh === "number" ? q.fiftyTwoWeekHigh : null,
       fiftyTwoWeekLow: typeof q.fiftyTwoWeekLow === "number" ? q.fiftyTwoWeekLow : null,
       regularMarketPrice: typeof q.regularMarketPrice === "number" ? q.regularMarketPrice : null,
-      roe: null, // ROE is not in quote; handled separately
+      roe: null, // filled in for high-roe type below
     })).filter(q => q.symbol && q.price != null);
 
     let sorted: QuoteItem[] = [];
@@ -76,23 +76,50 @@ export async function GET(req: NextRequest) {
       sorted = items
         .filter(q => q.dividendYield != null && q.dividendYield > 0)
         .sort((a, b) => (b.dividendYield ?? 0) - (a.dividendYield ?? 0));
+
     } else if (type === "low-per") {
       sorted = items
         .filter(q => q.trailingPE != null && q.trailingPE > 0 && q.trailingPE < 200)
         .sort((a, b) => (a.trailingPE ?? 9999) - (b.trailingPE ?? 9999));
+
     } else if (type === "high-roe") {
-      // ROE not available in quote; use returnOnEquity from fundamentals for top items
-      // As a proxy, sort by profitability: highest price-to-book correlates, so use PER inverted
-      // Better: just sort by marketCap as fallback
+      // Fetch returnOnEquity from defaultKeyStatistics for all candidates
+      // Use batches of 10 to avoid too many concurrent requests
+      const roeMap: Record<string, number> = {};
+      const roeBatchSize = 10;
+      const symbolsToFetch = items.map(i => i.symbol);
+
+      await Promise.all(
+        Array.from({ length: Math.ceil(symbolsToFetch.length / roeBatchSize) }, (_, i) =>
+          symbolsToFetch.slice(i * roeBatchSize, (i + 1) * roeBatchSize)
+        ).map(batch =>
+          Promise.all(
+            batch.map(sym =>
+              yahooFinance.quoteSummary(sym, { modules: ["defaultKeyStatistics", "financialData"] })
+                .then(s => {
+                  const fs = s as Record<string, Record<string, unknown>>;
+                  const roe =
+                    (fs.financialData?.returnOnEquity as number | undefined) ??
+                    (fs.defaultKeyStatistics?.returnOnEquity as number | undefined);
+                  if (typeof roe === "number" && isFinite(roe)) {
+                    roeMap[sym] = roe;
+                  }
+                })
+                .catch(() => {})
+            )
+          )
+        )
+      );
+
+      // Merge ROE into items
+      for (const item of items) {
+        if (roeMap[item.symbol] != null) item.roe = roeMap[item.symbol];
+      }
+
       sorted = items
-        .filter(q => q.trailingPE != null && q.trailingPE > 0)
-        .sort((a, b) => (a.trailingPE ?? 9999) - (b.trailingPE ?? 9999))
-        .reverse()
-        .slice(0, 40);
-      // Re-sort by change percent as best available proxy for ROE momentum
-      sorted = sorted
-        .filter(q => q.changePercent != null)
-        .sort((a, b) => (b.changePercent ?? 0) - (a.changePercent ?? 0));
+        .filter(q => q.roe != null && q.roe > 0)
+        .sort((a, b) => (b.roe ?? 0) - (a.roe ?? 0));
+
     } else if (type === "52w-high") {
       sorted = items
         .filter(q => q.fiftyTwoWeekHigh != null && q.regularMarketPrice != null)

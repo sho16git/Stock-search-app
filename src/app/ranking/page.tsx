@@ -17,6 +17,7 @@ type RankItem = {
   dividendYield: number | null;
   fiftyTwoWeekHigh: number | null;
   regularMarketPrice: number | null;
+  roe: number | null;
 };
 
 const RANK_TABS: { key: RankingType; label: string; desc: string }[] = [
@@ -138,7 +139,7 @@ export default function RankingPage() {
                   <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-slate-500 dark:text-slate-400 min-w-[60px]">騰落率</th>
                   {tab === "dividend"  && <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-slate-500 dark:text-slate-400 min-w-[70px]">配当利回り</th>}
                   {tab === "low-per"   && <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-slate-500 dark:text-slate-400 min-w-[50px]">PER</th>}
-                  {tab === "high-roe"  && <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-slate-500 dark:text-slate-400 min-w-[50px]">PER</th>}
+                  {tab === "high-roe"  && <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-slate-500 dark:text-slate-400 min-w-[60px]">ROE</th>}
                   {tab === "52w-high"  && <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-slate-500 dark:text-slate-400 min-w-[70px]">52週高値比</th>}
                   <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-slate-500 dark:text-slate-400 min-w-[70px]">時価総額</th>
                 </tr>
@@ -180,8 +181,8 @@ export default function RankingPage() {
                         </td>
                       )}
                       {tab === "high-roe" && (
-                        <td className="px-3 py-2.5 text-right tabular-nums">
-                          {item.trailingPE != null ? item.trailingPE.toFixed(1) : "—"}
+                        <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-emerald-600 dark:text-emerald-400">
+                          {item.roe != null ? `${(item.roe * 100).toFixed(1)}%` : "—"}
                         </td>
                       )}
                       {tab === "52w-high" && (
