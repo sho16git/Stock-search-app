@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Library, SlidersHorizontal, Star, Sparkles, BookOpen, Calendar, Rocket } from "lucide-react";
+import { Library, SlidersHorizontal, Star, Sparkles, BookOpen, Calendar, Rocket, TrendingUp } from "lucide-react";
 import SearchBox from "@/components/SearchBox";
 import SectorHeatmap from "@/components/SectorHeatmap";
 import MarketOverview from "@/components/MarketOverview";
@@ -28,6 +28,7 @@ export default function Home() {
             <QuickLink href="/earnings"    icon={<Calendar          className="w-3.5 h-3.5" />} color="bg-amber-500 hover:bg-amber-600">決算</QuickLink>
             <QuickLink href="/ipo"         icon={<Rocket            className="w-3.5 h-3.5" />} color="bg-rose-500 hover:bg-rose-600">IPO</QuickLink>
             <QuickLink href="/learn"       icon={<BookOpen          className="w-3.5 h-3.5" />} color="bg-teal-500 hover:bg-teal-600">学習</QuickLink>
+            <QuickLink href="/ranking"    icon={<TrendingUp        className="w-3.5 h-3.5" />} color="bg-orange-500 hover:bg-orange-600">ランキング</QuickLink>
           </div>
         </div>
       </section>

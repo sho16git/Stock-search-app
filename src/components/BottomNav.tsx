@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Briefcase, Sparkles, BarChart2, Star } from "lucide-react";
+import { Home, Briefcase, Sparkles, TrendingUp, Star } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 type NavItem = {
@@ -25,9 +25,9 @@ const ITEMS: NavItem[] = [
     activeBg: "bg-emerald-50 dark:bg-emerald-500/[0.12]",
   },
   {
-    href: "/sectors",   label: "セクター", Icon: BarChart2,
-    activeFg: "text-blue-600 dark:text-blue-400",
-    activeBg: "bg-blue-50 dark:bg-blue-500/[0.12]",
+    href: "/ranking",   label: "ランキング", Icon: TrendingUp,
+    activeFg: "text-orange-600 dark:text-orange-400",
+    activeBg: "bg-orange-50 dark:bg-orange-500/[0.12]",
   },
   {
     href: "/ai-ranking", label: "AI予想",  Icon: Sparkles,

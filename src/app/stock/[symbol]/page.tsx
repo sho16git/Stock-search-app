@@ -17,6 +17,8 @@ import AIAnalysis from "@/components/AIAnalysis";
 import AiScenarios from "@/components/AiScenarios";
 import StockGeopoliticalNews from "@/components/StockGeopoliticalNews";
 import DividendHistory from "@/components/DividendHistory";
+import FinancialChart from "@/components/FinancialChart";
+import PeerComparison from "@/components/PeerComparison";
 
 export default async function StockPage({
   params,
@@ -45,6 +47,8 @@ export default async function StockPage({
 
       <div className="animate-slide-up delay-75"><QuoteHeader symbol={symbol} /></div>
       <div className="animate-slide-up delay-100"><StockChart symbol={symbol} /></div>
+      <div className="animate-slide-up delay-125"><FinancialChart symbol={symbol} /></div>
+      <div className="animate-slide-up delay-125"><PeerComparison symbol={symbol} /></div>
       <div className="animate-slide-up delay-150"><DividendHistory symbol={symbol} /></div>
       <div className="animate-slide-up delay-200"><BuySellSentiment symbol={symbol} /></div>
       <div className="animate-slide-up delay-200"><AIAnalysis symbol={symbol} /></div>

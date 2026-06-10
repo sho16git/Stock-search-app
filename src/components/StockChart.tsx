@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, CartesianGrid, ReferenceLine,
+  ResponsiveContainer, CartesianGrid, ReferenceLine, Area,
 } from "recharts";
 import { Maximize2, X, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 import { formatJpy } from "@/lib/format";
@@ -18,6 +18,78 @@ type Point = {
   low?: number | null;
   volume?: number | null;
 };
+
+type IndicatorKey = "BB" | "RSI" | "MACD";
+
+/* ─── Technical Indicator Calculations ─── */
+
+/** Bollinger Bands (20期間, 2σ) */
+function calcBB(data: Point[], period = 20, stdDev = 2): { bb_upper: number | null; bb_mid: number | null; bb_lower: number | null }[] {
+  return data.map((_, i) => {
+    if (i < period - 1) return { bb_upper: null, bb_mid: null, bb_lower: null };
+    const slice = data.slice(i - period + 1, i + 1).map(d => d.close);
+    const mean = slice.reduce((a, b) => a + b, 0) / period;
+    const variance = slice.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / period;
+    const sd = Math.sqrt(variance);
+    return { bb_upper: mean + stdDev * sd, bb_mid: mean, bb_lower: mean - stdDev * sd };
+  });
+}
+
+/** RSI (14期間) */
+function calcRSI(data: Point[], period = 14): (number | null)[] {
+  const result: (number | null)[] = Array(data.length).fill(null);
+  if (data.length < period + 1) return result;
+
+  let gainSum = 0, lossSum = 0;
+  for (let i = 1; i <= period; i++) {
+    const diff = data[i].close - data[i - 1].close;
+    if (diff >= 0) gainSum += diff; else lossSum -= diff;
+  }
+  let avgGain = gainSum / period;
+  let avgLoss = lossSum / period;
+  result[period] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+
+  for (let i = period + 1; i < data.length; i++) {
+    const diff = data[i].close - data[i - 1].close;
+    const gain = diff > 0 ? diff : 0;
+    const loss = diff < 0 ? -diff : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    result[i] = avgLoss === 0 ? 100 : 100 - 100 / (1 + avgGain / avgLoss);
+  }
+  return result;
+}
+
+/** EMA helper */
+function ema(values: number[], period: number): number[] {
+  const result: number[] = [];
+  const k = 2 / (period + 1);
+  let prev = values.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = 0; i < values.length; i++) {
+    if (i < period - 1) { result.push(NaN); continue; }
+    if (i === period - 1) { result.push(prev); continue; }
+    prev = values[i] * k + prev * (1 - k);
+    result.push(prev);
+  }
+  return result;
+}
+
+/** MACD (12, 26, 9) */
+function calcMACD(data: Point[]): { macd: number | null; signal: number | null; hist: number | null }[] {
+  const closes = data.map(d => d.close);
+  const ema12 = ema(closes, 12);
+  const ema26 = ema(closes, 26);
+  const macdLine = ema12.map((v, i) => (isNaN(v) || isNaN(ema26[i])) ? NaN : v - ema26[i]);
+  const validMacd = macdLine.map(v => isNaN(v) ? 0 : v);
+  const signalLine = ema(validMacd, 9);
+
+  return data.map((_, i) => {
+    if (isNaN(macdLine[i]) || isNaN(signalLine[i])) return { macd: null, signal: null, hist: null };
+    const m = macdLine[i];
+    const s = signalLine[i];
+    return { macd: m, signal: s, hist: m - s };
+  });
+}
 
 type RangeKey =
   | "1min" | "5min" | "10min" | "1h"           // 足種
@@ -249,15 +321,63 @@ function RangeTabs({ range, onChange }: { range: RangeKey; onChange: (r: RangeKe
   );
 }
 
+/* ─── RSI Sub-panel ─── */
+function RSIPanel({ data, range }: { data: (number | null)[]; range: RangeKey }) {
+  const chartData = data.map((rsi) => ({ rsi }));
+  return (
+    <ResponsiveContainer width="100%" height={80}>
+      <ComposedChart data={chartData} margin={{ top: 2, right: 4, left: 0, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" strokeOpacity={0.4} />
+        <XAxis dataKey="date" hide />
+        <YAxis domain={[0, 100]} tick={{ fontSize: 9, fill: "#94a3b8" }} width={28} axisLine={false} tickLine={false} ticks={[30, 50, 70]} />
+        <Tooltip formatter={(v) => [v != null ? Number(v).toFixed(1) : "—", "RSI"]} contentStyle={{ fontSize: 10, borderRadius: 6 }} />
+        <ReferenceLine y={70} stroke="#ef4444" strokeDasharray="4 3" strokeWidth={1} />
+        <ReferenceLine y={30} stroke="#10b981" strokeDasharray="4 3" strokeWidth={1} />
+        <Line type="monotone" dataKey="rsi" stroke="#8b5cf6" strokeWidth={1.5} dot={false} isAnimationActive={false} connectNulls={false} />
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
+/* ─── MACD Sub-panel ─── */
+function MACDPanel({ macdData }: { macdData: { macd: number | null; signal: number | null; hist: number | null }[] }) {
+  const chartData = macdData.map(d => ({
+    macd: d.macd,
+    signal: d.signal,
+    hist: d.hist,
+  }));
+  return (
+    <ResponsiveContainer width="100%" height={80}>
+      <ComposedChart data={chartData} margin={{ top: 2, right: 4, left: 0, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" strokeOpacity={0.4} />
+        <XAxis dataKey="date" hide />
+        <YAxis tick={{ fontSize: 9, fill: "#94a3b8" }} width={28} axisLine={false} tickLine={false} />
+        <ReferenceLine y={0} stroke="#94a3b8" strokeWidth={1} />
+        <Tooltip
+          formatter={(v, name) => {
+            const labels: Record<string, string> = { macd: "MACD", signal: "シグナル", hist: "ヒスト" };
+            return [v != null ? Number(v).toFixed(3) : "—", labels[name as string] ?? name];
+          }}
+          contentStyle={{ fontSize: 10, borderRadius: 6 }}
+        />
+        <Bar dataKey="hist" fill="#94a3b8" opacity={0.6} radius={[1, 1, 0, 0]} isAnimationActive={false} />
+        <Line type="monotone" dataKey="macd" stroke="#3b82f6" strokeWidth={1.5} dot={false} isAnimationActive={false} connectNulls={false} />
+        <Line type="monotone" dataKey="signal" stroke="#ef4444" strokeWidth={1.5} dot={false} isAnimationActive={false} connectNulls={false} />
+      </ComposedChart>
+    </ResponsiveContainer>
+  );
+}
+
 /* ─── Recharts line + volume chart ─── */
 function LineVolumeChart({
-  data, range, first, height = 240, fmt: fmtFn,
+  data, range, first, height = 240, fmt: fmtFn, showBB = false,
 }: {
   data: Point[];
   range: RangeKey;
   first: number;
   height?: number;
   fmt?: (v: number) => string;
+  showBB?: boolean;
 }) {
   const allVals = data.map(d => d.close).filter(Boolean) as number[];
   const min     = allVals.length ? Math.min(...allVals) : 0;
@@ -265,9 +385,29 @@ function LineVolumeChart({
   const pad     = (max - min) * 0.1 || max * 0.02;
   const lineColor = data.length && data[data.length - 1].close >= first ? "#10b981" : "#ef4444";
 
+  // Compute BB and merge into data
+  const bbValues = useMemo(() => showBB ? calcBB(data) : null, [data, showBB]);
+  const chartData = useMemo(() => {
+    if (!bbValues) return data;
+    return data.map((p, i) => ({ ...p, ...bbValues[i] }));
+  }, [data, bbValues]);
+
+  // Adjust domain to include BB bands
+  const priceDomain = useMemo((): [number, number] => {
+    if (!bbValues) return [min - pad, max + pad];
+    const uppers = bbValues.map(b => b.bb_upper).filter((v): v is number => v !== null);
+    const lowers = bbValues.map(b => b.bb_lower).filter((v): v is number => v !== null);
+    const bbMax = uppers.length ? Math.max(...uppers) : max;
+    const bbMin = lowers.length ? Math.min(...lowers) : min;
+    const domMax = Math.max(max, bbMax);
+    const domMin = Math.min(min, bbMin);
+    const dp = (domMax - domMin) * 0.08 || domMax * 0.02;
+    return [domMin - dp, domMax + dp];
+  }, [bbValues, min, max, pad]);
+
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <ComposedChart data={data} margin={{ top: 6, right: 4, left: 0, bottom: 0 }}>
+      <ComposedChart data={chartData} margin={{ top: 6, right: 4, left: 0, bottom: 0 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" strokeOpacity={0.6} />
         <XAxis
           dataKey="date"
@@ -281,7 +421,7 @@ function LineVolumeChart({
         {/* Price Y axis (left) */}
         <YAxis
           yAxisId="price"
-          domain={[min - pad, max + pad]}
+          domain={priceDomain}
           tick={{ fontSize: 10, fill: "#94a3b8" }}
           tickFormatter={fmtFn ?? fmtPrice}
           width={60}
@@ -303,6 +443,9 @@ function LineVolumeChart({
         <Tooltip
           formatter={(v, name) => {
             if (name === "volume") return [fmtVol(Number(v)), "出来高"];
+            if (name === "bb_upper") return [(fmtFn ?? fmtPrice)(Number(v)), "BB上限"];
+            if (name === "bb_mid")   return [(fmtFn ?? fmtPrice)(Number(v)), "BB中心"];
+            if (name === "bb_lower") return [(fmtFn ?? fmtPrice)(Number(v)), "BB下限"];
             return [`${(fmtFn ?? fmtPrice)(Number(v))}`, "終値"];
           }}
           labelFormatter={(l) => fmtDate(String(l), range)}
@@ -317,6 +460,47 @@ function LineVolumeChart({
           radius={[1, 1, 0, 0]}
           isAnimationActive={false}
         />
+        {/* Bollinger Band overlay */}
+        {showBB && (
+          <>
+            <Area
+              yAxisId="price"
+              type="monotone"
+              dataKey="bb_upper"
+              stroke="#3b82f6"
+              strokeWidth={1}
+              strokeDasharray="3 3"
+              fill="none"
+              dot={false}
+              isAnimationActive={false}
+              connectNulls={false}
+            />
+            <Area
+              yAxisId="price"
+              type="monotone"
+              dataKey="bb_lower"
+              stroke="#3b82f6"
+              strokeWidth={1}
+              strokeDasharray="3 3"
+              fill="#3b82f6"
+              fillOpacity={0.05}
+              dot={false}
+              isAnimationActive={false}
+              connectNulls={false}
+            />
+            <Line
+              yAxisId="price"
+              type="monotone"
+              dataKey="bb_mid"
+              stroke="#3b82f6"
+              strokeWidth={1}
+              strokeDasharray="6 3"
+              dot={false}
+              isAnimationActive={false}
+              connectNulls={false}
+            />
+          </>
+        )}
         {/* Price line */}
         <Line
           yAxisId="price"
@@ -472,6 +656,22 @@ function isToday(dateStr: string): boolean {
   return new Date().toISOString().slice(0, 10) === dateStr;
 }
 
+/* ─── Indicator toggle button ─── */
+function IndicatorToggle({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-2 py-0.5 text-[10px] rounded border font-semibold transition-all ${
+        active
+          ? "border-blue-400 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+          : "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-400"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
 /* ─── Main StockChart component ─── */
 export default function StockChart({ symbol, currency }: { symbol: string; currency?: string | null }) {
   const [range, setRange]           = useState<RangeKey>("3mo");
@@ -482,6 +682,19 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
   const [refreshTick, setRefreshTick] = useState(0);
   const [updatedAt, setUpdatedAt]   = useState<Date | null>(null);
   const [spinning, setSpinning]     = useState(false);
+  const [activeIndicators, setActiveIndicators] = useState<Set<IndicatorKey>>(new Set());
+
+  function toggleIndicator(key: IndicatorKey) {
+    setActiveIndicators(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+
+  const showBB   = activeIndicators.has("BB");
+  const showRSI  = activeIndicators.has("RSI");
+  const showMACD = activeIndicators.has("MACD");
   /** Populated only for singleDay ranges (1min / 1d) — the date of the data */
   const [tradingDate, setTradingDate] = useState<string | null>(null);
   /** Latest real-time price for injecting a "live" bar into the 1-min chart */
@@ -599,6 +812,10 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
     }));
   }, [dataWithLive, jpyMode, jpyRate]);
 
+  // RSI / MACD calculations (computed from displayData)
+  const rsiData  = useMemo(() => showRSI  ? calcRSI(displayData)  : [], [displayData, showRSI]);
+  const macdData = useMemo(() => showMACD ? calcMACD(displayData) : [], [displayData, showMACD]);
+
   /** True when a live price bar is actively tracking the current minute */
   const isLive = livePoint != null && range === "1min" &&
     Date.now() - livePoint.ts < 5 * 60_000; // within last 5 minutes
@@ -644,7 +861,14 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
               )}
             </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Indicator toggles */}
+            <div className="flex items-center gap-1">
+              <IndicatorToggle label="BB"   active={showBB}   onClick={() => toggleIndicator("BB")} />
+              <IndicatorToggle label="RSI"  active={showRSI}  onClick={() => toggleIndicator("RSI")} />
+              <IndicatorToggle label="MACD" active={showMACD} onClick={() => toggleIndicator("MACD")} />
+            </div>
+
             {/* Manual refresh (intraday only) */}
             {isIntraday && (
               <button
@@ -700,10 +924,34 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
             </div>
           ) : (
             <div className="touch-pan-y select-none">
-              <LineVolumeChart data={displayData} range={range} first={first} height={264} fmt={fmtDisplay} />
+              <LineVolumeChart data={displayData} range={range} first={first} height={264} fmt={fmtDisplay} showBB={showBB} />
             </div>
           )}
         </div>
+
+        {/* RSI Sub-panel */}
+        {showRSI && !loading && displayData.length > 0 && (
+          <div className="px-2 pb-1 border-t border-slate-100 dark:border-slate-800/50">
+            <div className="flex items-center gap-1.5 px-1 pt-1 pb-0.5">
+              <span className="text-[9px] font-bold text-violet-500 uppercase tracking-wider">RSI (14)</span>
+            </div>
+            <RSIPanel data={rsiData} range={range} />
+          </div>
+        )}
+
+        {/* MACD Sub-panel */}
+        {showMACD && !loading && displayData.length > 0 && (
+          <div className="px-2 pb-1 border-t border-slate-100 dark:border-slate-800/50">
+            <div className="flex items-center gap-2 px-1 pt-1 pb-0.5">
+              <span className="text-[9px] font-bold text-blue-500 uppercase tracking-wider">MACD (12,26,9)</span>
+              <span className="text-[8px] text-slate-400 flex items-center gap-1.5">
+                <span className="w-3 h-0.5 bg-blue-500 inline-block" />青=MACD
+                <span className="w-3 h-0.5 bg-red-400 inline-block" />赤=シグナル
+              </span>
+            </div>
+            <MACDPanel macdData={macdData} />
+          </div>
+        )}
 
         {/* Volume hint */}
         {!loading && data.length > 0 && data[0].volume != null && (
