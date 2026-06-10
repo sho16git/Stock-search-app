@@ -1,11 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { Bell } from "lucide-react";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import MarketTicker from "@/components/MarketTicker";
 import BottomNav from "@/components/BottomNav";
 import Sidebar from "@/components/Sidebar";
 import SwipeBack from "@/components/SwipeBack";
+import AlertChecker from "@/components/AlertChecker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -78,13 +80,20 @@ export default function RootLayout({
             {/* Desktop: サイドバーがあるので spacer のみ */}
             <div className="hidden md:block flex-1" />
 
-            {/* Mobile: クイックアクセス (スクリーナー・ウォッチのみ) */}
+            {/* Mobile: クイックアクセス (スクリーナー・ウォッチ・アラート) */}
             <div className="flex md:hidden gap-1 ml-auto items-center">
               <Link
                 href="/screener"
                 className="flex items-center justify-center w-9 h-9 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all"
               >
                 <span className="text-base">🎯</span>
+              </Link>
+              <Link
+                href="/alerts"
+                className="flex items-center justify-center w-9 h-9 rounded-xl text-zinc-500 hover:text-amber-600 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-all"
+                title="価格アラート"
+              >
+                <Bell className="w-4.5 h-4.5" />
               </Link>
               <Link
                 href="/watchlist"
@@ -119,6 +128,9 @@ export default function RootLayout({
 
         {/* ── スワイプバック (左端 → 右スワイプで前画面へ) ─────── */}
         <SwipeBack />
+
+        {/* ── アラートチェッカー (バックグラウンドで価格監視) ─── */}
+        <AlertChecker />
       </body>
     </html>
   );

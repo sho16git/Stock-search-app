@@ -13,6 +13,7 @@ import {
 } from "@/lib/i18n";
 import WatchlistButton from "@/components/WatchlistButton";
 import HoldingButton from "@/components/HoldingButton";
+import PriceAlertButton from "@/components/PriceAlertButton";
 import SectorBadge from "@/components/SectorBadge";
 import { useCurrency } from "@/lib/currency-context";
 
@@ -156,6 +157,12 @@ export default function QuoteHeader({ symbol }: { symbol: string }) {
           <div className="flex flex-wrap gap-2">
             <HoldingButton symbol={symbol} name={name} currency={quote?.currency} />
             <WatchlistButton symbol={symbol} name={name} />
+            <PriceAlertButton
+              symbol={symbol}
+              name={name}
+              currentPrice={price ?? null}
+              currency={quote?.currency ?? "USD"}
+            />
           </div>
         </div>
 

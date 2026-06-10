@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, Briefcase, SlidersHorizontal, Library,
-  BarChart2, Star, Sparkles, BookOpen, Calendar, Rocket,
+  BarChart2, Star, Sparkles, BookOpen, Calendar, Rocket, Bell,
 } from "lucide-react";
 
 type NavItem = {
@@ -54,6 +54,12 @@ const MAIN_ITEMS: NavItem[] = [
     fg: "text-pink-600 dark:text-pink-400",
     bg: "bg-pink-50 dark:bg-pink-500/10",
     dot: "bg-pink-500",
+  },
+  {
+    href: "/alerts",    label: "アラート",     Icon: Bell,
+    fg: "text-amber-600 dark:text-amber-400",
+    bg: "bg-amber-50 dark:bg-amber-500/10",
+    dot: "bg-amber-500",
   },
 ];
 
