@@ -70,10 +70,10 @@ export default function AlertChecker() {
     try {
       const res = await fetch(`/api/quotes?symbols=${encodeURIComponent(symbols.join(","))}`);
       if (!res.ok) return;
-      const data: { quotes: { symbol: string; regularMarketPrice?: number }[] } = await res.json();
+      const data: { quotes: Record<string, { price: number | null }> } = await res.json();
       const priceMap: Record<string, number> = {};
-      for (const q of data.quotes ?? []) {
-        if (q.regularMarketPrice != null) priceMap[q.symbol] = q.regularMarketPrice;
+      for (const [sym, q] of Object.entries(data.quotes ?? {})) {
+        if (q.price != null) priceMap[sym] = q.price;
       }
 
       const triggered = checkAlerts(priceMap);
