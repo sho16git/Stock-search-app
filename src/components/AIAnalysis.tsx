@@ -6,6 +6,7 @@ import {
   RefreshCw, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle,
   Zap, Gem, Tag, Building2, Users, Globe2, Landmark, BarChart2,
 } from "lucide-react";
+import { recordAiCall } from "@/lib/ai-usage-client";
 
 /* ── 型定義 ── */
 type Scores    = { growth: number; quality: number; value: number; health: number; sentiment: number };
@@ -303,7 +304,7 @@ export default function AIAnalysis({ symbol }: { symbol: string }) {
     setData(null); setLoading(true); setError(null);
     fetch(`/api/ai-analysis?symbol=${encodeURIComponent(symbol)}`)
       .then(r => r.json())
-      .then(j => { if (j.error) setError(j.error); else setData(j); })
+      .then(j => { if (j.error) setError(j.error); else { recordAiCall("ai-analysis"); setData(j); } })
       .catch(() => setError("分析に失敗しました"))
       .finally(() => setLoading(false));
   };

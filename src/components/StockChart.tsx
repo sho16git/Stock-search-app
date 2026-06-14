@@ -8,6 +8,7 @@ import {
 import { Maximize2, X, TrendingUp, TrendingDown, RefreshCw, Sparkles, ChevronDown } from "lucide-react";
 import { formatJpy } from "@/lib/format";
 import { useCurrency } from "@/lib/currency-context";
+import { recordAiCall } from "@/lib/ai-usage-client";
 
 /* ─── Types ─── */
 type Point = {
@@ -1148,6 +1149,7 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
       });
       const j = await res.json();
       if (j.error) throw new Error(j.error);
+      recordAiCall("ai-technical");
       setAiTech(j as AiTechResult);
       setAiTechStatus("done");
     } catch {

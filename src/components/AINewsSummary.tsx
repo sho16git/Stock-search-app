@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Sparkles, TrendingUp, TrendingDown, Minus, KeyRound } from "lucide-react";
+import { recordAiCall } from "@/lib/ai-usage-client";
 
 export type AISummary = {
   summary: string;
@@ -58,6 +59,7 @@ export default function AINewsSummary({
       if (!res.ok) throw new Error("api error");
       const j = await res.json();
       if (j.error) throw new Error(j.error);
+      recordAiCall("ai-news-summary");
       setData(j as AISummary);
       setStatus("done");
     } catch {

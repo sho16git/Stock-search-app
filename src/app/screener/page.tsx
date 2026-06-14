@@ -12,6 +12,7 @@ import {
   KeyRound,
 } from "lucide-react";
 import { formatNumber, formatLargeNumber, formatPercent } from "@/lib/format";
+import { recordAiCall } from "@/lib/ai-usage-client";
 import { GICS_SECTORS } from "@/lib/gics";
 import { getJpName } from "@/lib/jp-stocks";
 
@@ -135,6 +136,7 @@ export default function ScreenerPage() {
       setFilters(next);
       setSortKey(sk);
       setSortDir(sd);
+      recordAiCall("ai-screen");
       setAiInterpretation(j.interpretation ?? null);
       setAiStatus("idle");
       search(next, sk, sd);

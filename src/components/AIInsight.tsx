@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Sparkles, KeyRound } from "lucide-react";
+import { recordAiCall } from "@/lib/ai-usage-client";
 
 export type AIInsightData = {
   headline: string;
@@ -43,6 +44,7 @@ export default function AIInsight({
       if (!res.ok) throw new Error("api error");
       const j = await res.json();
       if (j.error) throw new Error(j.error);
+      recordAiCall(endpoint.replace("/api/", ""));
       setData(j as AIInsightData);
       setStatus("done");
     } catch {

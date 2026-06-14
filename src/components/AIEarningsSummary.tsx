@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Sparkles, TrendingUp, TrendingDown, Minus, KeyRound, AlertCircle } from "lucide-react";
+import { recordAiCall } from "@/lib/ai-usage-client";
 
 type EarningsAI = {
   headline: string;
@@ -55,6 +56,7 @@ export default function AIEarningsSummary({ symbol }: { symbol: string }) {
       if (!res.ok) throw new Error("api error");
       const j = await res.json();
       if (j.error) throw new Error(j.error);
+      recordAiCall("ai-earnings-summary");
       setData(j as EarningsAI);
       setStatus("done");
     } catch {

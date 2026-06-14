@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Sparkles, KeyRound, ShieldCheck, AlertTriangle, Lightbulb } from "lucide-react";
+import { recordAiCall } from "@/lib/ai-usage-client";
 import type { HoldingValuation, PortfolioSummary } from "@/lib/portfolio";
 import { getJpName } from "@/lib/jp-stocks";
 
@@ -63,6 +64,7 @@ export default function AIPortfolioDiagnosis({
       if (!res.ok) throw new Error("api error");
       const j = await res.json();
       if (j.error) throw new Error(j.error);
+      recordAiCall("ai-portfolio");
       setData(j as Diagnosis);
       setStatus("done");
     } catch {

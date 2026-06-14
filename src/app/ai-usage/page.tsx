@@ -3,33 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Sparkles, RefreshCw, Trash2, ArrowLeft, Gauge } from "lucide-react";
-
-type Summary = {
-  totalCalls: number;
-  totalIn: number;
-  totalOut: number;
-  totalCostUsd: number;
-  todayCalls: number;
-  todayCostUsd: number;
-  byModel: { model: string; calls: number; in: number; out: number; costUsd: number }[];
-  byEndpoint: { endpoint: string; calls: number; costUsd: number }[];
-  firstTs: number | null;
-  lastTs: number | null;
-};
-
-const ENDPOINT_LABEL: Record<string, string> = {
-  "ai-news-summary": "ニュース解説",
-  "ai-technical": "テクニカル分析",
-  "ai-earnings-summary": "決算サマリー",
-  "ai-portfolio": "ポートフォリオ診断",
-  "ai-predict": "AI 5年予想",
-  "ai-screen": "自然言語検索",
-  "ai-analyst": "アナリスト解説",
-  "ai-peer-verdict": "銘柄比較判定",
-  "ai-ranking-comment": "ランキング解説",
-  "ai-analysis": "AI総合分析",
-  "ai-chat": "AI投資相談",
-};
+import { readAiUsage, clearAiUsage, type AiUsageSummary } from "@/lib/ai-usage-client";
 
 const USD_JPY_FALLBACK = 155;
 
@@ -42,30 +16,34 @@ function fmtModel(m: string): string {
 }
 
 export default function AiUsagePage() {
-  const [data, setData] = useState<Summary | null>(null);
+  const [data, setData] = useState<AiUsageSummary | null>(null);
   const [rate, setRate] = useState(USD_JPY_FALLBACK);
-  const [loading, setLoading] = useState(true);
 
-  const load = useCallback(() => {
-    setLoading(true);
-    Promise.all([
-      fetch("/api/ai-usage", { cache: "no-store" }).then((r) => r.json()),
-      fetch("/api/quote?symbol=JPY%3DX")
-        .then((r) => r.json())
-        .then((j) => (j.quote?.regularMarketPrice as number | undefined) ?? USD_JPY_FALLBACK)
-        .catch(() => USD_JPY_FALLBACK),
-    ])
-      .then(([s, fx]) => { setData(s as Summary); setRate(fx > 0 ? fx : USD_JPY_FALLBACK); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+  const refresh = useCallback(() => { setData(readAiUsage()); }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    refresh();
+    fetch("/api/quote?symbol=JPY%3DX")
+      .then((r) => r.json())
+      .then((j) => {
+        const fx = (j.quote?.regularMarketPrice as number | undefined) ?? USD_JPY_FALLBACK;
+        setRate(fx > 0 ? fx : USD_JPY_FALLBACK);
+      })
+      .catch(() => {});
+    // 他タブ・他コンポーネントでの記録に追随
+    const onChange = () => refresh();
+    window.addEventListener("ai-usage:change", onChange);
+    window.addEventListener("storage", onChange);
+    return () => {
+      window.removeEventListener("ai-usage:change", onChange);
+      window.removeEventListener("storage", onChange);
+    };
+  }, [refresh]);
 
-  const reset = async () => {
-    if (!confirm("AI利用記録をすべてリセットします。よろしいですか？")) return;
-    await fetch("/api/ai-usage", { method: "DELETE" });
-    load();
+  const reset = () => {
+    if (!confirm("この端末のAI利用記録をすべてリセットします。よろしいですか？")) return;
+    clearAiUsage();
+    refresh();
   };
 
   const jpy = (usd: number) => `¥${(usd * rate).toLocaleString("ja-JP", { maximumFractionDigits: usd * rate < 100 ? 1 : 0 })}`;
@@ -83,13 +61,13 @@ export default function AiUsagePage() {
             AI利用状況
           </h1>
           <p className="text-[11px] text-slate-500 mt-1">
-            各AI機能のトークン使用量と推定コスト (USD/JPY: {rate.toFixed(1)})
+            この端末で使ったAI機能の呼び出し回数と推定コスト (USD/JPY: {rate.toFixed(1)})
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={load} disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/60 text-sm disabled:opacity-50 transition-colors shadow-sm">
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />更新
+          <button onClick={refresh}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/60 text-sm transition-colors shadow-sm">
+            <RefreshCw className="w-4 h-4" />更新
           </button>
           <button onClick={reset}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-900 bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-sm transition-colors shadow-sm">
@@ -98,9 +76,7 @@ export default function AiUsagePage() {
         </div>
       </header>
 
-      {loading && !data ? (
-        <div className="text-sm text-slate-400">読み込み中…</div>
-      ) : !data || data.totalCalls === 0 ? (
+      {!data || data.totalCalls === 0 ? (
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-10 text-center shadow-sm">
           <Sparkles className="w-8 h-8 text-violet-300 mx-auto mb-3" />
           <p className="text-slate-500 text-sm">まだAI機能が使われていません</p>
@@ -115,7 +91,7 @@ export default function AiUsagePage() {
             <BigStat label="累計コスト(推定)" value={jpy(data.totalCostUsd)} sub={`$${data.totalCostUsd.toFixed(3)}`} tone="primary" />
             <BigStat label="累計呼び出し" value={`${data.totalCalls.toLocaleString()}回`} />
             <BigStat label="本日のコスト" value={jpy(data.todayCostUsd)} sub={`${data.todayCalls}回`} />
-            <BigStat label="累計トークン" value={`${((data.totalIn + data.totalOut) / 1000).toFixed(1)}K`} sub={`入${(data.totalIn/1000).toFixed(0)}K / 出${(data.totalOut/1000).toFixed(0)}K`} />
+            <BigStat label="1回あたり平均" value={jpy(data.totalCostUsd / data.totalCalls)} sub={`全${data.byEndpoint.length}機能`} />
           </div>
 
           {/* 機能別 */}
@@ -128,7 +104,7 @@ export default function AiUsagePage() {
                 <div key={e.endpoint}>
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="font-medium text-slate-700 dark:text-slate-200">
-                      {ENDPOINT_LABEL[e.endpoint] ?? e.endpoint}
+                      {e.label}
                       <span className="text-slate-400 font-normal ml-1.5">{e.calls}回</span>
                     </span>
                     <span className="font-mono font-semibold text-violet-600 dark:text-violet-400">{jpy(e.costUsd)}</span>
@@ -151,8 +127,6 @@ export default function AiUsagePage() {
                   <tr className="text-left text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-200 dark:border-slate-800">
                     <th className="py-2 pr-3 font-medium">モデル</th>
                     <th className="py-2 px-3 text-right font-medium">呼び出し</th>
-                    <th className="py-2 px-3 text-right font-medium">入力</th>
-                    <th className="py-2 px-3 text-right font-medium">出力</th>
                     <th className="py-2 pl-3 text-right font-medium">コスト</th>
                   </tr>
                 </thead>
@@ -161,8 +135,6 @@ export default function AiUsagePage() {
                     <tr key={m.model} className="border-b border-slate-100 dark:border-slate-800/50 last:border-0">
                       <td className="py-2.5 pr-3 font-medium">{fmtModel(m.model)}</td>
                       <td className="py-2.5 px-3 text-right font-mono tabular-nums">{m.calls}</td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums text-slate-500">{(m.in/1000).toFixed(1)}K</td>
-                      <td className="py-2.5 px-3 text-right font-mono tabular-nums text-slate-500">{(m.out/1000).toFixed(1)}K</td>
                       <td className="py-2.5 pl-3 text-right font-mono font-semibold text-violet-600 dark:text-violet-400">{jpy(m.costUsd)}</td>
                     </tr>
                   ))}
@@ -172,9 +144,9 @@ export default function AiUsagePage() {
           </section>
 
           <p className="text-[10px] text-slate-400 text-center">
-            ※ コストは公開料金(Haiku $1/$5・Sonnet $3/$15 per 1M tokens)からの概算です。正確な請求額は
+            ※ コストは公開料金(Haiku $1/$5・Sonnet $3/$15 per 1M tokens)と機能ごとの典型的なトークン量からの概算です。正確な請求額は
             <a href="https://console.anthropic.com/settings/usage" target="_blank" rel="noreferrer" className="text-violet-500 hover:underline mx-1">console.anthropic.com</a>
-            で確認してください。記録はこの端末のサーバーにのみ保存されます。
+            で確認してください。記録はこの端末のブラウザ(localStorage)にのみ保存されます。
           </p>
         </>
       )}

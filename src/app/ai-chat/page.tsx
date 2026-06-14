@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Sparkles, Send, KeyRound, Bot, User, Trash2 } from "lucide-react";
+import { recordAiCall } from "@/lib/ai-usage-client";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -53,6 +54,7 @@ export default function AiChatPage() {
       if (!res.ok) throw new Error("api");
       const j = await res.json();
       if (j.error) throw new Error(j.error);
+      recordAiCall("ai-chat");
       setMessages((m) => [...m, { role: "assistant", content: j.reply as string }]);
       setStatus("idle");
     } catch {

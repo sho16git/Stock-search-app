@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { X, TrendingUp, TrendingDown, BarChart2, Zap, Info } from "lucide-react";
 import { formatNumber } from "@/lib/format";
+import { recordAiCall } from "@/lib/ai-usage-client";
 
 type Scenario = {
   id: "bull" | "base" | "bear" | "surprise";
@@ -285,7 +286,7 @@ export default function AiScenarios({ symbol }: { symbol: string }) {
     setLoading(true);
     fetch(`/api/ai-predict?symbol=${encodeURIComponent(symbol)}`)
       .then((r) => r.json())
-      .then(setData)
+      .then((d) => { if (d?.aiGenerated) recordAiCall("ai-predict"); setData(d); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [data, loading, symbol]);
