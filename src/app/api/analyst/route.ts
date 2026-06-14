@@ -113,7 +113,9 @@ export async function GET(req: NextRequest) {
         (fin?.numberOfAnalystOpinions as number | undefined) ?? null,
       trend,
       history,
-    });
+    }, {
+    headers: { "Cache-Control": "public, max-age=3600, stale-while-revalidate=7200" },
+  });
   } catch (err) {
     console.error("analyst error", err);
     return NextResponse.json(

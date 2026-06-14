@@ -69,7 +69,9 @@ export async function GET(req: NextRequest) {
       }))
       .reverse();
 
-    return NextResponse.json({ annual, quarterly });
+    return NextResponse.json({ annual, quarterly }, {
+    headers: { "Cache-Control": "public, max-age=300, stale-while-revalidate=600" },
+  });
   } catch (err) {
     console.error("financials error", err);
     return NextResponse.json(

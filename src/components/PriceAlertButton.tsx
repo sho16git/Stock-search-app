@@ -2,8 +2,40 @@
 
 import { useEffect, useState } from "react";
 import { Bell, BellRing, Plus, Trash2, X } from "lucide-react";
-import { addAlert, getAlertsForSymbol, removeAlert, type PriceAlert } from "@/lib/alerts";
+import { addAlert, getAlertsForSymbol, removeAlert, isEventAlert, type PriceAlert } from "@/lib/alerts";
 import { formatNumber } from "@/lib/format";
+
+const eventLabel = (a: PriceAlert) =>
+  a.kind === "earnings" ? "決算発表" : a.kind === "ex_dividend" ? "配当権利日" : "";
+const fmtMd = (iso?: string | null) =>
+  iso ? new Date(iso).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" }) : "";
+
+function AlertRow({ a, onRemove, done }: { a: PriceAlert; onRemove: () => void; done?: boolean }) {
+  return (
+    <div className={`flex items-center justify-between rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 px-3.5 py-2.5 ${done ? "opacity-60" : ""}`}>
+      <div className="flex items-center gap-2">
+        {isEventAlert(a) ? (
+          <>
+            <span className="text-xs">{done ? "✅" : a.kind === "earnings" ? "📊" : "💰"}</span>
+            <span className="text-sm font-bold text-zinc-700 dark:text-zinc-200">{eventLabel(a)}</span>
+            <span className="text-xs text-zinc-500">{fmtMd(a.eventDate)}の{a.daysBefore ?? 3}日前に通知</span>
+          </>
+        ) : (
+          <>
+            <span className={`text-xs font-bold ${a.direction === "above" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+              {done ? "✅" : a.direction === "above" ? "▲" : "▼"}
+            </span>
+            <span className="font-mono text-sm font-bold text-zinc-700 dark:text-zinc-200">{formatNumber(a.targetPrice ?? 0)}</span>
+            <span className="text-xs text-zinc-500">{a.direction === "above" ? "以上" : "以下"}</span>
+          </>
+        )}
+      </div>
+      <button onClick={onRemove} className="w-6 h-6 rounded-lg flex items-center justify-center text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors">
+        <Trash2 className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
 
 // ── Modal to set / view alerts ────────────────────────────────────────────────
 function AlertModal({
@@ -24,9 +56,23 @@ function AlertModal({
   const [dir,    setDir]    = useState<"above" | "below">("above");
   const [error,  setError]  = useState("");
 
+  const [events, setEvents] = useState<{ nextEarningsDate: string | null; exDividendDate: string | null } | null>(null);
+
   useEffect(() => {
     setAlerts(getAlertsForSymbol(symbol));
+    fetch(`/api/events?symbol=${encodeURIComponent(symbol)}`)
+      .then((r) => r.json())
+      .then((j) => setEvents({ nextEarningsDate: j.nextEarningsDate ?? null, exDividendDate: j.exDividendDate ?? null }))
+      .catch(() => setEvents({ nextEarningsDate: null, exDividendDate: null }));
   }, [symbol]);
+
+  const addEventAlert = (kind: "earnings" | "ex_dividend", eventDate: string) => {
+    const added = addAlert({ symbol, name, kind, eventDate, daysBefore: 3 });
+    setAlerts((prev) => [added, ...prev]);
+    if (typeof Notification !== "undefined" && Notification.permission === "default") Notification.requestPermission();
+  };
+  const hasEventAlert = (kind: "earnings" | "ex_dividend") =>
+    alerts.some((a) => a.kind === kind && !a.triggered);
 
   // Keyboard close
   useEffect(() => {
@@ -149,6 +195,29 @@ function AlertModal({
             {error && <p className="text-xs text-rose-600 dark:text-rose-400">{error}</p>}
           </div>
 
+          {/* Event alerts (earnings / ex-dividend) */}
+          {events && (events.nextEarningsDate || events.exDividendDate) && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">日付アラート（3日前に通知）</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => events.nextEarningsDate && addEventAlert("earnings", events.nextEarningsDate.slice(0, 10))}
+                  disabled={!events.nextEarningsDate || hasEventAlert("earnings")}
+                  className="flex flex-col items-start gap-0.5 px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:border-violet-400 disabled:opacity-50 disabled:hover:border-zinc-200 transition-colors text-left">
+                  <span className="text-xs font-bold flex items-center gap-1">📊 決算発表</span>
+                  <span className="text-[10px] text-zinc-400">{events.nextEarningsDate ? `${fmtMd(events.nextEarningsDate)}予定${hasEventAlert("earnings") ? "・設定済" : ""}` : "予定なし"}</span>
+                </button>
+                <button
+                  onClick={() => events.exDividendDate && addEventAlert("ex_dividend", events.exDividendDate.slice(0, 10))}
+                  disabled={!events.exDividendDate || hasEventAlert("ex_dividend")}
+                  className="flex flex-col items-start gap-0.5 px-3 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:border-violet-400 disabled:opacity-50 disabled:hover:border-zinc-200 transition-colors text-left">
+                  <span className="text-xs font-bold flex items-center gap-1">💰 配当権利日</span>
+                  <span className="text-[10px] text-zinc-400">{events.exDividendDate ? `${fmtMd(events.exDividendDate)}${hasEventAlert("ex_dividend") ? "・設定済" : ""}` : "予定なし"}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Active alerts */}
           {activeAlerts.length > 0 && (
             <div className="space-y-2">
@@ -156,25 +225,7 @@ function AlertModal({
                 有効なアラート ({activeAlerts.length})
               </p>
               {activeAlerts.map(alert => (
-                <div key={alert.id} className="flex items-center justify-between rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 px-3.5 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-bold ${alert.direction === "above" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-                      {alert.direction === "above" ? "▲" : "▼"}
-                    </span>
-                    <span className="font-mono text-sm font-bold text-zinc-800 dark:text-zinc-200">
-                      {formatNumber(alert.targetPrice)}
-                    </span>
-                    <span className="text-xs text-zinc-500">
-                      {alert.direction === "above" ? "以上" : "以下"}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => handleRemove(alert.id)}
-                    className="w-6 h-6 rounded-lg flex items-center justify-center text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                <AlertRow key={alert.id} a={alert} onRemove={() => handleRemove(alert.id)} />
               ))}
             </div>
           )}
@@ -182,28 +233,9 @@ function AlertModal({
           {/* Triggered alerts */}
           {triggeredAlerts.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                発動済みアラート
-              </p>
+              <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">発動済みアラート</p>
               {triggeredAlerts.map(alert => (
-                <div key={alert.id} className="flex items-center justify-between rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/30 px-3.5 py-2.5 opacity-60">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs">✅</span>
-                    <span className="font-mono text-sm font-bold text-zinc-600 dark:text-zinc-400">
-                      {formatNumber(alert.targetPrice)}
-                    </span>
-                    <span className="text-xs text-zinc-400">
-                      {alert.direction === "above" ? "以上" : "以下"}
-                      {alert.triggeredAt && ` · ${new Date(alert.triggeredAt).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}`}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => handleRemove(alert.id)}
-                    className="w-6 h-6 rounded-lg flex items-center justify-center text-zinc-400 hover:text-rose-500 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                <AlertRow key={alert.id} a={alert} onRemove={() => handleRemove(alert.id)} done />
               ))}
             </div>
           )}

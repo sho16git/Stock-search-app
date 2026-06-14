@@ -49,7 +49,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         history: [], consecutive: 0, trend: "none",
         fiveYearGrowth: null, cagr: null, currency,
-      });
+      }, {
+    headers: { "Cache-Control": "public, max-age=3600, stale-while-revalidate=7200" },
+  });
     }
 
     /* ── 年ごとに集計 ── */
@@ -71,7 +73,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({
         history: [], consecutive: 0, trend: "none",
         fiveYearGrowth: null, cagr: null, currency,
-      });
+      }, {
+    headers: { "Cache-Control": "public, max-age=3600, stale-while-revalidate=7200" },
+  });
     }
 
     /* ── 昇順ソート ── */

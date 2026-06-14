@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Library, SlidersHorizontal, Star, Sparkles, BookOpen, Calendar, Rocket, TrendingUp } from "lucide-react";
+import { Library, SlidersHorizontal, Star, Sparkles, BookOpen, Calendar, Rocket, TrendingUp, Gauge, MessageCircle, GitCompareArrows, Target } from "lucide-react";
 import SearchBox from "@/components/SearchBox";
 import SectorHeatmap from "@/components/SectorHeatmap";
 import MarketOverview from "@/components/MarketOverview";
@@ -23,12 +23,16 @@ export default function Home() {
           <div className="flex flex-wrap gap-2 text-xs">
             <QuickLink href="/stocks"      icon={<Library           className="w-3.5 h-3.5" />} color="bg-blue-500 hover:bg-blue-600">全銘柄</QuickLink>
             <QuickLink href="/screener"    icon={<SlidersHorizontal className="w-3.5 h-3.5" />} color="bg-violet-500 hover:bg-violet-600">スクリーナー</QuickLink>
+            <QuickLink href="/compare"     icon={<GitCompareArrows  className="w-3.5 h-3.5" />} color="bg-blue-500 hover:bg-blue-600">銘柄比較</QuickLink>
+            <QuickLink href="/planner"     icon={<Target            className="w-3.5 h-3.5" />} color="bg-emerald-500 hover:bg-emerald-600">資産プラン</QuickLink>
             <QuickLink href="/watchlist"   icon={<Star              className="w-3.5 h-3.5" />} color="bg-pink-500 hover:bg-pink-600">ウォッチリスト</QuickLink>
             <QuickLink href="/ai-ranking"  icon={<Sparkles          className="w-3.5 h-3.5" />} color="bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600" pulse>AI予想</QuickLink>
+            <QuickLink href="/ai-chat"     icon={<MessageCircle     className="w-3.5 h-3.5" />} color="bg-gradient-to-r from-fuchsia-500 to-pink-500 hover:from-fuchsia-600 hover:to-pink-600" pulse>AI相談</QuickLink>
             <QuickLink href="/earnings"    icon={<Calendar          className="w-3.5 h-3.5" />} color="bg-amber-500 hover:bg-amber-600">決算</QuickLink>
             <QuickLink href="/ipo"         icon={<Rocket            className="w-3.5 h-3.5" />} color="bg-rose-500 hover:bg-rose-600">IPO</QuickLink>
             <QuickLink href="/learn"       icon={<BookOpen          className="w-3.5 h-3.5" />} color="bg-teal-500 hover:bg-teal-600">学習</QuickLink>
             <QuickLink href="/ranking"    icon={<TrendingUp        className="w-3.5 h-3.5" />} color="bg-orange-500 hover:bg-orange-600">ランキング</QuickLink>
+            <QuickLink href="/ai-usage"   icon={<Gauge             className="w-3.5 h-3.5" />} color="bg-slate-500 hover:bg-slate-600">AI利用</QuickLink>
           </div>
         </div>
       </section>
@@ -38,20 +42,23 @@ export default function Home() {
         <MarketOverview />
       </section>
 
-      {/* ── Movers + Sector (2-col on tablet+) ── */}
+      {/* ── Sector heatmap (browse by sector + performance) ── */}
       <section className="animate-slide-up delay-150">
+        <SectionLabel emoji="🗂️" text="セクターから探す" />
+        <SectorHeatmap />
+      </section>
+
+      {/* ── Movers ── */}
+      <section className="animate-slide-up delay-200">
         <SectionLabel emoji="📊" text="マーケット動向" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
-          <TopMovers />
-          <SectorHeatmap />
-        </div>
+        <TopMovers />
       </section>
 
       {/* ── Recent viewed ── */}
       <RecentViewed />
 
       {/* ── News + Themes (2-col on tablet+) ── */}
-      <section className="animate-slide-up delay-200">
+      <section className="animate-slide-up delay-300">
         <SectionLabel emoji="🗂️" text="ニュース・テーマ" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
           <NewsPanel />

@@ -5,6 +5,8 @@ import { Target, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { formatNumber, formatJpy } from "@/lib/format";
 import { translateGrade } from "@/lib/i18n";
 import { useCurrency } from "@/lib/currency-context";
+import AIInsight from "@/components/AIInsight";
+import { getJpName } from "@/lib/jp-stocks";
 
 type TrendPoint = {
   period: string;
@@ -371,6 +373,28 @@ export default function AnalystRecommendations({ symbol }: { symbol: string }) {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {(data.targetMean != null || data.trend.length > 0) && (
+        <div className="px-1 pt-1">
+          <AIInsight
+            label="AIでアナリスト評価を解説"
+            endpoint="/api/ai-analyst"
+            payload={{
+              symbol,
+              name: getJpName(symbol) ?? undefined,
+              currency: data.currency,
+              currentPrice: data.currentPrice,
+              targetHigh: data.targetHigh,
+              targetLow: data.targetLow,
+              targetMean: data.targetMean,
+              recommendationKey: data.recommendationKey,
+              recommendationMean: data.recommendationMean,
+              numberOfAnalystOpinions: data.numberOfAnalystOpinions,
+              trend: data.trend[0] ?? null,
+            }}
+          />
         </div>
       )}
     </div>

@@ -10,6 +10,7 @@ type Market = "JP" | "US";
 type RankItem = {
   symbol: string;
   shortName: string | null;
+  nameJa: string | null;
   price: number | null;
   changePercent: number | null;
   marketCap: number | null;
@@ -42,7 +43,7 @@ function fmtPrice(v: number | null): string {
 
 export default function RankingPage() {
   const [tab, setTab]         = useState<RankingType>("dividend");
-  const [market, setMarket]   = useState<Market>("US");
+  const [market, setMarket]   = useState<Market>("JP");
   const [items, setItems]     = useState<RankItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -79,7 +80,7 @@ export default function RankingPage() {
         <div className="flex items-center gap-2 px-4 pt-4 pb-3 border-b border-slate-100 dark:border-slate-800/60">
           <span className="text-xs text-slate-500 dark:text-slate-400 font-medium shrink-0">市場</span>
           <div className="flex gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs">
-            {(["US", "JP"] as Market[]).map(m => (
+            {(["JP", "US"] as Market[]).map(m => (
               <button
                 key={m}
                 onClick={() => setMarket(m)}
@@ -89,7 +90,7 @@ export default function RankingPage() {
                     : "text-slate-500"
                 }`}
               >
-                {m === "US" ? "米国株" : "日本株"}
+                {m === "JP" ? "🇯🇵 日本株" : "🇺🇸 米国株"}
               </button>
             ))}
           </div>
@@ -159,8 +160,8 @@ export default function RankingPage() {
                       <td className="px-3 py-2.5">
                         <Link href={`/stock/${encodeURIComponent(item.symbol)}`} className="hover:underline block">
                           <div className="font-mono font-semibold text-blue-600 dark:text-blue-400">{item.symbol}</div>
-                          {item.shortName && (
-                            <div className="text-[10px] text-slate-400 truncate max-w-[140px]">{item.shortName}</div>
+                          {(item.nameJa ?? item.shortName) && (
+                            <div className="text-[10px] text-slate-400 truncate max-w-[140px]">{item.nameJa ?? item.shortName}</div>
                           )}
                         </Link>
                       </td>

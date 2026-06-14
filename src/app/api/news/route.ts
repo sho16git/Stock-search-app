@@ -59,7 +59,9 @@ export async function GET(req: NextRequest) {
       googleSearchUrl: googleSearchUrl(n.title, n.publisher),
     }));
 
-    return NextResponse.json({ news });
+    return NextResponse.json({ news }, {
+    headers: { "Cache-Control": "public, max-age=180, stale-while-revalidate=360" },
+  });
   } catch (err) {
     console.error("news error", err);
     return NextResponse.json(

@@ -164,7 +164,16 @@ export default function TopMovers() {
                           ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400"
                           : "bg-red-50 dark:bg-red-950/30 text-red-500 dark:text-red-400"
                       }`}>
-                        {m.changePercent !== null
+                        {m.change !== null ? (
+                          <>
+                            {up ? "▲" : "▼"}{formatNumber(Math.abs(m.change))}
+                            {m.changePercent !== null && (
+                              <span className="font-normal opacity-80 ml-1">
+                                ({Math.abs(m.changePercent).toFixed(2)}%)
+                              </span>
+                            )}
+                          </>
+                        ) : m.changePercent !== null
                           ? `${up ? "▲" : "▼"}${Math.abs(m.changePercent).toFixed(2)}%`
                           : "—"}
                       </div>

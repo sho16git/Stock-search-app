@@ -19,7 +19,9 @@ export async function GET(req: NextRequest) {
       .slice(0, 8);
 
     if (symbols.length === 0) {
-      return NextResponse.json({ peers: [] });
+      return NextResponse.json({ peers: [] }, {
+    headers: { "Cache-Control": "public, max-age=3600, stale-while-revalidate=7200" },
+  });
     }
 
     const quotes = await yahooFinance.quote(symbols).catch(() => []);
@@ -58,7 +60,9 @@ export async function GET(req: NextRequest) {
     );
     const peers = base.map((p, i) => ({ ...p, nameJa: namesJa[i] }));
 
-    return NextResponse.json({ peers });
+    return NextResponse.json({ peers }, {
+    headers: { "Cache-Control": "public, max-age=3600, stale-while-revalidate=7200" },
+  });
   } catch (err) {
     console.error("peers error", err);
     return NextResponse.json(

@@ -43,10 +43,14 @@ export async function GET(req: NextRequest) {
         recommendationKey: fin?.recommendationKey         ?? null,
         targetPrice:       fin?.targetMeanPrice?.raw      ?? null,
         currentPrice:      fin?.currentPrice?.raw         ?? null,
-      });
+      }, {
+    headers: { "Cache-Control": "public, max-age=300, stale-while-revalidate=600" },
+  });
     }
 
-    return NextResponse.json({ buyPct: null, sellPct: null, holdPct: null, total: 0 });
+    return NextResponse.json({ buyPct: null, sellPct: null, holdPct: null, total: 0 }, {
+    headers: { "Cache-Control": "public, max-age=300, stale-while-revalidate=600" },
+  });
   } catch (err) {
     console.error("sentiment error", err);
     return NextResponse.json(

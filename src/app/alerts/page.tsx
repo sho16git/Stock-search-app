@@ -3,8 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Bell, BellRing, Trash2, BellOff } from "lucide-react";
-import { getAlerts, removeAlert, clearTriggeredAlerts, type PriceAlert } from "@/lib/alerts";
+import { getAlerts, removeAlert, clearTriggeredAlerts, isEventAlert, type PriceAlert } from "@/lib/alerts";
 import { formatNumber } from "@/lib/format";
+
+const evLabel = (a: PriceAlert) => a.kind === "earnings" ? "決算発表" : a.kind === "ex_dividend" ? "配当権利日" : "";
+const evMd = (iso?: string | null) => iso ? new Date(iso).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" }) : "";
+const evIcon = (a: PriceAlert) => a.kind === "earnings" ? "📊" : "💰";
 
 function fmtDate(iso: string | null) {
   if (!iso) return "";
@@ -130,13 +134,15 @@ export default function AlertsPage() {
           <div className="divide-y divide-zinc-100 dark:divide-zinc-800/50">
             {activeAlerts.map(alert => (
               <div key={alert.id} className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
-                {/* Direction icon */}
+                {/* Icon */}
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-base shrink-0 ${
-                  alert.direction === "above"
+                  isEventAlert(alert)
+                    ? "bg-violet-100 dark:bg-violet-900/30 text-violet-600"
+                    : alert.direction === "above"
                     ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600"
                     : "bg-rose-100 dark:bg-rose-900/30 text-rose-600"
                 }`}>
-                  {alert.direction === "above" ? "▲" : "▼"}
+                  {isEventAlert(alert) ? evIcon(alert) : alert.direction === "above" ? "▲" : "▼"}
                 </div>
 
                 {/* Info */}
@@ -153,10 +159,16 @@ export default function AlertsPage() {
                     )}
                   </div>
                   <div className="text-xs text-zinc-500 mt-0.5">
-                    <span className={`font-semibold ${alert.direction === "above" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-                      {formatNumber(alert.targetPrice)}
-                    </span>
-                    {" "}{alert.direction === "above" ? "以上" : "以下"}になったら通知
+                    {isEventAlert(alert) ? (
+                      <span><span className="font-semibold text-violet-600 dark:text-violet-400">{evLabel(alert)} {evMd(alert.eventDate)}</span>{" "}の{alert.daysBefore ?? 3}日前に通知</span>
+                    ) : (
+                      <>
+                        <span className={`font-semibold ${alert.direction === "above" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                          {formatNumber(alert.targetPrice ?? 0)}
+                        </span>
+                        {" "}{alert.direction === "above" ? "以上" : "以下"}になったら通知
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -215,8 +227,12 @@ export default function AlertsPage() {
                     )}
                   </div>
                   <div className="text-xs text-zinc-400 mt-0.5">
-                    <span className="font-semibold">{formatNumber(alert.targetPrice)}</span>
-                    {" "}{alert.direction === "above" ? "以上" : "以下"} · 発動: {fmtDate(alert.triggeredAt)}
+                    {isEventAlert(alert) ? (
+                      <span className="font-semibold">{evLabel(alert)} {evMd(alert.eventDate)}</span>
+                    ) : (
+                      <><span className="font-semibold">{formatNumber(alert.targetPrice ?? 0)}</span>{" "}{alert.direction === "above" ? "以上" : "以下"}</>
+                    )}
+                    {" "}· 発動: {fmtDate(alert.triggeredAt)}
                   </div>
                 </div>
                 <button

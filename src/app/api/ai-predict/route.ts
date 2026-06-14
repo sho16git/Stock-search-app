@@ -3,6 +3,8 @@
  * Yahoo Finance データを元に 強気/中立/弱気/サプライズ の4シナリオを生成
  */
 import { NextRequest, NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
+import { recordUsage } from "@/lib/ai-usage";
 import yahooFinance from "@/lib/yfinance";
 import { getJpName } from "@/lib/jp-stocks";
 
@@ -143,6 +145,82 @@ function reasons(id: string, m: M): string[] {
   return r.slice(0, 5);
 }
 
+type AiScenarioText = { headline: string; trigger: string; reasoning: string[] };
+type AiEnhance = {
+  overall: string;
+  bull: AiScenarioText;
+  base: AiScenarioText;
+  bear: AiScenarioText;
+  surprise: AiScenarioText;
+};
+
+/**
+ * Rewrites the rule-based scenario narratives into company-specific text using
+ * Claude, grounded in the real fundamentals + the deterministically computed
+ * price targets. Returns null on any failure so the caller keeps rule-based text.
+ */
+async function enhanceWithClaude(
+  name: string,
+  symbol: string,
+  sector: string,
+  currency: string,
+  m: M,
+  scenarios: { id: string; cagr: number; price5Y: number; changePercent: number }[],
+): Promise<AiEnhance | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey || apiKey.includes("xxxx")) return null;
+
+  const fmtPct = (v: number | null) => (v == null ? "N/A" : `${(v * 100).toFixed(1)}%`);
+  const sc = Object.fromEntries(scenarios.map((s) => [s.id, s]));
+  const context = `
+銘柄: ${name} (${symbol})  セクター: ${sector || "不明"}  通貨: ${currency}
+現在値: ${m.cur}
+売上成長率: ${fmtPct(m.rg)}  利益成長率: ${fmtPct(m.eg)}  ROE: ${fmtPct(m.roe)}  営業利益率: ${fmtPct(m.opm)}
+予想PER: ${m.pe ?? "N/A"}  ベータ: ${m.beta ?? "N/A"}  D/E: ${m.dte ?? "N/A"}  FCF: ${m.fcf ?? "N/A"}
+アナリスト目標株価: 高値${m.tHigh ?? "N/A"} / 平均${m.tMean ?? "N/A"} / 安値${m.tLow ?? "N/A"}
+■ 定量モデルが算出した5年後の価格目標（この数値は固定。これに整合する根拠を述べること）
+強気: ${sc.bull?.price5Y}（年率${sc.bull?.cagr}% / ${sc.bull?.changePercent}%）
+中立: ${sc.base?.price5Y}（年率${sc.base?.cagr}% / ${sc.base?.changePercent}%）
+弱気: ${sc.bear?.price5Y}（年率${sc.bear?.cagr}% / ${sc.bear?.changePercent}%）
+サプライズ: ${sc.surprise?.price5Y}（年率${sc.surprise?.cagr}% / ${sc.surprise?.changePercent}%）`.trim();
+
+  try {
+    const client = new Anthropic({ apiKey });
+    const msg = await client.messages.create({
+      model: "claude-sonnet-4-5",
+      max_tokens: 1600,
+      messages: [{
+        role: "user",
+        content: `あなたは証券アナリストです。${name}の5年後シナリオ予想について、提供データに基づき各シナリオの解説を日本語で作成してください。
+
+【ルール】
+・提供された財務数値・アナリスト目標を具体的に引用すること（汎用文言禁止）
+・価格目標は定量モデルの値で固定。それを正当化する根拠を述べること
+・セクター・事業特性に固有の論点を含めること（例: 半導体→需要サイクル）
+・各 reasoning は40字以内、5項目ちょうど
+
+${context}
+
+以下のJSON形式のみで回答（マークダウン・説明文不要）:
+{
+  "overall": "4シナリオを俯瞰した総括を2〜3文で。現在のバリュエーションと最も現実的なシナリオに言及",
+  "bull": { "headline": "強気シナリオの要約(25字以内)", "trigger": "実現条件(40字以内)", "reasoning": ["根拠1","根拠2","根拠3","根拠4","根拠5"] },
+  "base": { "headline": "中立シナリオの要約(25字以内)", "trigger": "実現条件(40字以内)", "reasoning": ["根拠1","根拠2","根拠3","根拠4","根拠5"] },
+  "bear": { "headline": "弱気シナリオの要約(25字以内)", "trigger": "実現条件(40字以内)", "reasoning": ["根拠1","根拠2","根拠3","根拠4","根拠5"] },
+  "surprise": { "headline": "サプライズシナリオの要約(25字以内)", "trigger": "実現条件(40字以内)", "reasoning": ["根拠1","根拠2","根拠3","根拠4","根拠5"] }
+}`,
+      }],
+    });
+    const rawTxt = (msg.content[0] as { type: string; text?: string })?.text ?? "";
+    recordUsage("ai-predict", "claude-sonnet-4-5", msg.usage);
+    const match = rawTxt.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    return JSON.parse(match[0]) as AiEnhance;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(req: NextRequest) {
   const symbol = req.nextUrl.searchParams.get("symbol")?.trim();
   if (!symbol) return NextResponse.json({ error: "symbol required" }, { status: 400 });
@@ -275,12 +353,27 @@ export async function GET(req: NextRequest) {
     },
   ];
 
+  // Enhance the narrative with Claude (price math stays deterministic).
+  const ai = await enhanceWithClaude(name, symbol, sector, currency, m, scenarios);
+  if (ai) {
+    for (const s of scenarios) {
+      const t = ai[s.id as "bull" | "base" | "bear" | "surprise"];
+      if (t) {
+        if (t.headline) s.headline = t.headline;
+        if (t.trigger)  s.trigger  = t.trigger;
+        if (Array.isArray(t.reasoning) && t.reasoning.length > 0) s.reasoning = t.reasoning.slice(0, 5);
+      }
+    }
+  }
+
   return NextResponse.json({
     symbol,
     name,
     currentPrice: cur,
     currency,
     scenarios,
+    aiGenerated: !!ai,
+    aiOverall: ai?.overall ?? null,
     updatedAt: new Date().toISOString(),
   });
 }

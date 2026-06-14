@@ -123,7 +123,9 @@ export async function GET(req: NextRequest) {
       currency: price?.currency ?? null,
     };
 
-    return NextResponse.json({ rows, current });
+    return NextResponse.json({ rows, current }, {
+    headers: { "Cache-Control": "public, max-age=300, stale-while-revalidate=600" },
+  });
   } catch (err) {
     console.error("fundamentals error", err);
     return NextResponse.json(

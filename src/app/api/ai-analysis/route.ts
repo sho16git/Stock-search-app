@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { recordUsage } from "@/lib/ai-usage";
 import yahooFinance from "@/lib/yfinance";
 import { getJpName } from "@/lib/jp-stocks";
 
@@ -522,6 +523,7 @@ ${context}
       });
 
       const text = (msg.content[0] as { type: string; text?: string })?.text ?? "";
+      recordUsage("ai-analysis", "claude-sonnet-4-5", msg.usage);
       const match = text.match(/\{[\s\S]*\}/);
       if (match) {
         const parsed = JSON.parse(match[0]);

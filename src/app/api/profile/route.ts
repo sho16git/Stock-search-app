@@ -67,7 +67,9 @@ export async function GET(req: NextRequest) {
       longBusinessSummary: businessSummary,
       longBusinessSummaryJa: businessSummaryJa,
       officers,
-    });
+    }, {
+    headers: { "Cache-Control": "public, max-age=86400, stale-while-revalidate=172800" },
+  });
   } catch (err) {
     console.error("profile error", err);
     // Return empty profile instead of 500 so detail page still loads
@@ -79,6 +81,8 @@ export async function GET(req: NextRequest) {
       fullTimeEmployees: null,
       longBusinessSummary: null, longBusinessSummaryJa: null,
       officers: [],
-    });
+    }, {
+    headers: { "Cache-Control": "public, max-age=86400, stale-while-revalidate=172800" },
+  });
   }
 }

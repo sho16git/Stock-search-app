@@ -23,6 +23,8 @@ type PredictResp = {
   currentPrice: number;
   currency: string;
   scenarios: Scenario[];
+  aiGenerated?: boolean;
+  aiOverall?: string | null;
   updatedAt: string;
 };
 
@@ -214,7 +216,7 @@ function ScenarioModal({
           </div>
 
           <p className="text-[9px] text-zinc-400 text-center border-t border-zinc-200 dark:border-zinc-700 pt-3">
-            ※ 本予想はルールベースAIによる試算です。実際の投資判断は自己責任でお願いします。
+            ※ 本予想はAIと定量モデルによる試算です。実際の投資判断は自己責任でお願いします。
           </p>
         </div>
       </div>
@@ -316,7 +318,14 @@ export default function AiScenarios({ symbol }: { symbol: string }) {
               🔮
             </span>
             <div className="text-left">
-              <div className="text-sm font-bold">AI 5年後シナリオ予想</div>
+              <div className="text-sm font-bold flex items-center gap-1.5">
+                AI 5年後シナリオ予想
+                {data?.aiGenerated && (
+                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white">
+                    Claude
+                  </span>
+                )}
+              </div>
               <div className="text-[10px] text-zinc-400">
                 {data ? "4シナリオ · カードをタップで詳細" : "クリックして予想を表示"}
               </div>
@@ -353,6 +362,17 @@ export default function AiScenarios({ symbol }: { symbol: string }) {
                   <span className="text-[10px] text-zinc-400">5年後 (2031年) の予想</span>
                 </div>
 
+                {/* AI overall summary */}
+                {data.aiOverall && (
+                  <div className="rounded-xl bg-gradient-to-br from-violet-50 to-fuchsia-50 dark:from-violet-950/30 dark:to-fuchsia-950/20 border border-violet-200 dark:border-violet-800/50 p-3">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="text-sm">🔮</span>
+                      <span className="text-[11px] font-bold text-violet-700 dark:text-violet-300">AIアナリスト総括</span>
+                    </div>
+                    <p className="text-xs text-zinc-700 dark:text-zinc-200 leading-relaxed">{data.aiOverall}</p>
+                  </div>
+                )}
+
                 {/* 2×2 grid */}
                 <div className="grid grid-cols-2 gap-2.5">
                   {data.scenarios.map((s) => (
@@ -366,7 +386,7 @@ export default function AiScenarios({ symbol }: { symbol: string }) {
                 </div>
 
                 <p className="text-[9px] text-zinc-400 text-center pt-1">
-                  ※ ルールベースAIによる試算。投資判断の参考情報としてご利用ください。
+                  ※ {data.aiGenerated ? "Claude AIと定量モデルによる試算" : "ルールベースAIによる試算"}。投資判断の参考情報としてご利用ください。
                 </p>
               </div>
             ) : null}

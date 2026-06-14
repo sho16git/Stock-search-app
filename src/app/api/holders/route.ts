@@ -64,7 +64,9 @@ export async function GET(req: NextRequest) {
       },
       institutions: instOwn.slice(0, 10).map(formatHolder),
       funds: fundOwn.slice(0, 10).map(formatHolder),
-    });
+    }, {
+    headers: { "Cache-Control": "public, max-age=86400, stale-while-revalidate=172800" },
+  });
   } catch (err) {
     console.error("holders error", err);
     return NextResponse.json(

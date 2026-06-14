@@ -248,7 +248,9 @@ export async function GET() {
       usItems,
       items: [...jpItems, ...usItems].sort(sortByDate).slice(0, 20),
       asOf: new Date().toISOString(),
-    });
+    }, {
+    headers: { "Cache-Control": "public, max-age=300, stale-while-revalidate=600" },
+  });
   } catch (err) {
     console.error("trend-news error", err);
     return NextResponse.json(

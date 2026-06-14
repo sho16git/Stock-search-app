@@ -8,11 +8,15 @@ import {
   Edit3,
   TrendingUp,
   TrendingDown,
+  BookText,
 } from "lucide-react";
 import { usePortfolio } from "@/lib/use-portfolio";
 import { getJpName } from "@/lib/jp-stocks";
 import { formatNumber } from "@/lib/format";
 import HoldingForm from "@/components/HoldingForm";
+import AIPortfolioDiagnosis from "@/components/AIPortfolioDiagnosis";
+import PortfolioHistory from "@/components/PortfolioHistory";
+import PortfolioRisk from "@/components/PortfolioRisk";
 
 function fmtJpy(v: number, compact = false): string {
   if (compact) {
@@ -38,14 +42,23 @@ export default function PortfolioPage() {
             所有株の評価額・損益を一覧で管理 (USD/JPY: {usdJpy.toFixed(2)})
           </p>
         </div>
-        <button
-          onClick={refresh}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/60 disabled:opacity-50 transition-colors shadow-sm text-sm"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-          更新
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/transactions"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors shadow-sm text-sm"
+          >
+            <BookText className="w-4 h-4 text-indigo-500" />
+            取引記録
+          </Link>
+          <button
+            onClick={refresh}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/60 disabled:opacity-50 transition-colors shadow-sm text-sm"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            更新
+          </button>
+        </div>
       </header>
 
       {summary && valuations.length > 0 && (
@@ -98,6 +111,18 @@ export default function PortfolioPage() {
             </div>
           )}
         </>
+      )}
+
+      {valuations.length > 0 && (
+        <PortfolioHistory valuations={valuations} usdJpy={usdJpy} summary={summary} />
+      )}
+
+      {valuations.length > 0 && (
+        <PortfolioRisk valuations={valuations} summary={summary} />
+      )}
+
+      {valuations.length > 0 && (
+        <AIPortfolioDiagnosis valuations={valuations} summary={summary} />
       )}
 
       {valuations.length === 0 ? (

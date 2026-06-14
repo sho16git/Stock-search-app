@@ -6,6 +6,9 @@
  */
 export const US_STOCKS_SUPPLEMENT: [string, string][] = [
 
+  // ── 宇宙・新規上場 ────────────────────────────────────────────────
+  ["SPCX","Space Exploration Technologies (SpaceX)"],
+
   // ── S&P 500 / 大型株 ──────────────────────────────────────────────
   // Technology
   ["MSFT","Microsoft"],["AAPL","Apple"],["NVDA","NVIDIA"],["AVGO","Broadcom"],

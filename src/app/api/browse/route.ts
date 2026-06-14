@@ -236,5 +236,7 @@ export async function GET(req: NextRequest) {
     pageSize,
     totalPages: Math.ceil(total / pageSize),
     results,
+  }, {
+    headers: { "Cache-Control": "public, max-age=300, stale-while-revalidate=600" },
   });
 }

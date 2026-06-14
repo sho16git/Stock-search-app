@@ -5,17 +5,27 @@
  */
 
 export type AlertDirection = "above" | "below";
+export type AlertKind = "price" | "earnings" | "ex_dividend";
 
 export type PriceAlert = {
   id: string;           // uuid-like
   symbol: string;
   name: string | null;
-  targetPrice: number;
-  direction: AlertDirection;
+  kind?: AlertKind;     // 省略時は "price" (後方互換)
+  // ── 価格アラート ──
+  targetPrice?: number;
+  direction?: AlertDirection;
+  // ── イベントアラート(決算日・配当権利日) ──
+  eventDate?: string | null; // YYYY-MM-DD
+  daysBefore?: number;       // 何日前に通知するか
   triggered: boolean;
   triggeredAt: string | null;
   createdAt: string;
 };
+
+export function isEventAlert(a: PriceAlert): boolean {
+  return a.kind === "earnings" || a.kind === "ex_dividend";
+}
 
 const KEY = "stockapp_alerts_v1";
 
@@ -65,6 +75,8 @@ export function checkAlerts(prices: Record<string, number>): PriceAlert[] {
 
   for (const alert of alerts) {
     if (alert.triggered) continue;
+    if (isEventAlert(alert)) continue;            // 価格アラートのみ
+    if (alert.targetPrice == null) continue;
     const price = prices[alert.symbol];
     if (price == null) continue;
     const hit =
@@ -78,6 +90,36 @@ export function checkAlerts(prices: Record<string, number>): PriceAlert[] {
     }
   }
 
+  if (changed) saveAlerts(alerts);
+  return triggered;
+}
+
+/**
+ * Check event alerts (earnings / ex-dividend). Triggers when the stored event
+ * date is within `daysBefore` days from today. No network needed — the date is
+ * captured at creation time. Returns the alerts triggered this call.
+ */
+export function checkEventAlerts(): PriceAlert[] {
+  const alerts = getAlerts();
+  const triggered: PriceAlert[] = [];
+  let changed = false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (const alert of alerts) {
+    if (alert.triggered || !isEventAlert(alert) || !alert.eventDate) continue;
+    const ev = new Date(alert.eventDate);
+    if (Number.isNaN(ev.getTime())) continue;
+    ev.setHours(0, 0, 0, 0);
+    const days = Math.round((ev.getTime() - today.getTime()) / 86_400_000);
+    const within = alert.daysBefore ?? 3;
+    if (days <= within && days >= -1) {   // 通知日 〜 当日(+1日猶予)
+      alert.triggered = true;
+      alert.triggeredAt = new Date().toISOString();
+      triggered.push(alert);
+      changed = true;
+    }
+  }
   if (changed) saveAlerts(alerts);
   return triggered;
 }

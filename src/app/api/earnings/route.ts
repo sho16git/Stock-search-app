@@ -7,8 +7,8 @@ import yahooFinance from "@/lib/yfinance";
 import { getJpName } from "@/lib/jp-stocks";
 import { getUsKatakana } from "@/lib/us-katakana";
 
-export const runtime  = "nodejs";
-export const revalidate = 1800; // 30分キャッシュ
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 // ── スキャン対象 ────────────────────────────────────────────────────
 const US_SYMBOLS = [
@@ -59,6 +59,8 @@ const JP_SYMBOLS = [
 const raw = (o: unknown): number | null => {
   if (o == null) return null;
   if (typeof o === "number") return isFinite(o) ? o : null;
+  // Yahoo Finance v2 returns Date objects for timestamp fields
+  if (o instanceof Date) return isFinite(o.getTime()) ? Math.floor(o.getTime() / 1000) : null;
   return null;
 };
 
@@ -95,14 +97,20 @@ export async function GET(req: NextRequest) {
       const sym = String(o.symbol ?? "");
       if (!sym) continue;
 
-      // 決算日候補: earningsTimestamp → earningsTimestampStart の順で取得
+      // 決算日候補: earningsTimestamp → earningsTimestampStart → earningsTimestampEnd の順
+      const tsCandidates = [
+        raw(o.earningsTimestamp),
+        raw(o.earningsTimestampStart),
+        raw((o as { earningsTimestampEnd?: unknown }).earningsTimestampEnd),
+      ].filter((v): v is number => v !== null);
+
+      // 未来のもの（または最大3日前まで）を優先
       const ts =
-        raw(o.earningsTimestamp) ??
-        raw(o.earningsTimestampStart) ??
+        tsCandidates.find(v => v >= nowTs - 3 * 86400 && v <= limitTs) ??
         null;
 
-      // 過去 or 範囲外はスキップ（1日前まで許容）
-      if (ts == null || ts < nowTs - 86400 || ts > limitTs) continue;
+      // 範囲外はスキップ
+      if (ts == null) continue;
 
       const jpName   = market === "JP" ? getJpName(sym) : null;
       const enName   = (o.longName ?? o.shortName) as string | undefined;

@@ -17,8 +17,12 @@ import AIAnalysis from "@/components/AIAnalysis";
 import AiScenarios from "@/components/AiScenarios";
 import StockGeopoliticalNews from "@/components/StockGeopoliticalNews";
 import DividendHistory from "@/components/DividendHistory";
-import FinancialChart from "@/components/FinancialChart";
+import FinancialStatements from "@/components/FinancialStatements";
+import AIEarningsSummary from "@/components/AIEarningsSummary";
 import PeerComparison from "@/components/PeerComparison";
+import QuantScore from "@/components/QuantScore";
+import TechnicalSignal from "@/components/TechnicalSignal";
+import InsiderTrading from "@/components/InsiderTrading";
 
 export default async function StockPage({
   params,
@@ -47,9 +51,13 @@ export default async function StockPage({
 
       <div className="animate-slide-up delay-75"><QuoteHeader symbol={symbol} /></div>
       <div className="animate-slide-up delay-100"><StockChart symbol={symbol} /></div>
-      <div className="animate-slide-up delay-125"><FinancialChart symbol={symbol} /></div>
+      <div className="animate-slide-up delay-125"><FinancialStatements symbol={symbol} /></div>
+      <div className="animate-slide-up delay-125"><AIEarningsSummary symbol={symbol} /></div>
       <div className="animate-slide-up delay-125"><PeerComparison symbol={symbol} /></div>
       <div className="animate-slide-up delay-150"><DividendHistory symbol={symbol} /></div>
+      <div className="animate-slide-up delay-150"><TechnicalSignal symbol={symbol} /></div>
+      <div className="animate-slide-up delay-150"><QuantScore symbol={symbol} /></div>
+      <div className="animate-slide-up delay-175"><InsiderTrading symbol={symbol} /></div>
       <div className="animate-slide-up delay-200"><BuySellSentiment symbol={symbol} /></div>
       <div className="animate-slide-up delay-200"><AIAnalysis symbol={symbol} /></div>
       <div className="animate-slide-up delay-300"><AiScenarios symbol={symbol} /></div>

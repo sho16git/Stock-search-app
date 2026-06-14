@@ -71,7 +71,9 @@ export async function GET(req: NextRequest) {
       payoutRatio: sd?.payoutRatio ?? null,
       fiveYearAvgDividendYield: sd?.fiveYearAvgDividendYield ?? null,
       recentEarnings,
-    });
+    }, {
+    headers: { "Cache-Control": "public, max-age=1800, stale-while-revalidate=3600" },
+  });
   } catch (err) {
     console.error("events error", err);
     // 新規上場株などでデータが不完全な場合は空データで 200 を返す
@@ -91,6 +93,8 @@ export async function GET(req: NextRequest) {
       payoutRatio: null,
       fiveYearAvgDividendYield: null,
       recentEarnings: [],
-    });
+    }, {
+    headers: { "Cache-Control": "public, max-age=1800, stale-while-revalidate=3600" },
+  });
   }
 }

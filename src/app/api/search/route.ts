@@ -173,12 +173,14 @@ export async function GET(req: NextRequest) {
 
   // ── Non-Japanese query (symbol / English name) ────────────────────────────
   try {
-    const [yahooData, localJp, localTse] = await Promise.all([
+    const [yahooData, localJp, localTse, localUs, localUsKana] = await Promise.all([
       yahooFinance
         .search(q, { quotesCount: 12, newsCount: 0 })
         .catch(() => ({ quotes: [] as unknown[] })),
       Promise.resolve(searchJpStocks(q, 6)),
       Promise.resolve(searchTseNames(q, 6)),
+      Promise.resolve(searchUsStocks(q, 6)),       // US list (symbol / English name)
+      Promise.resolve(searchAllUsKatakana(q, 6)),  // US katakana dict (symbol exact, e.g. SPCX)
     ]);
 
     const yahooResults: Result[] = (yahooData.quotes ?? [])
@@ -204,16 +206,20 @@ export async function GET(req: NextRequest) {
         };
       });
 
-    // Append local-only matches not already in Yahoo results
+    // Append local-only matches not already in Yahoo results (deduped)
     const seen = new Set(yahooResults.map((r) => r.symbol));
-    const localExtras = [
-      ...localJp.filter((l) => !seen.has(l.symbol)).map(jpStockToResult),
-      ...localTse.filter((l) => !seen.has(l.symbol)).map(tseNameToResult),
-    ];
+    const merged: Result[] = [...yahooResults];
+    const pushUnique = (r: Result) => {
+      if (!seen.has(r.symbol)) { seen.add(r.symbol); merged.push(r); }
+    };
+    localJp.forEach((l) => pushUnique(jpStockToResult(l)));
+    localTse.forEach((l) => pushUnique(tseNameToResult(l)));
+    localUs.forEach((l) => pushUnique(usStockToResult(l)));
+    localUsKana.forEach(({ symbol, katakana }) =>
+      pushUnique({ symbol, longname: katakana, jpName: katakana, exchange: "US", quoteType: "EQUITY", typeDisp: "Equity" }),
+    );
 
-    return NextResponse.json({
-      results: [...yahooResults, ...localExtras].slice(0, 16),
-    });
+    return NextResponse.json({ results: merged.slice(0, 16) });
   } catch (err) {
     console.error("search error", err);
     return NextResponse.json(

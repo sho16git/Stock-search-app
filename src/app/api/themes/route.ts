@@ -224,7 +224,9 @@ export async function GET(req: NextRequest) {
           return { id: theme.id, label: theme.label, emoji: theme.emoji, description: theme.description, quotes };
         }),
       );
-      return NextResponse.json({ themes: results });
+      return NextResponse.json({ themes: results }, {
+    headers: { "Cache-Control": "public, max-age=600, stale-while-revalidate=1200" },
+  });
     }
 
     /* ─ 米国株テーマを返す (スクリーナー + カスタム) ─ */
@@ -275,7 +277,9 @@ export async function GET(req: NextRequest) {
       ),
     ]);
     const results = [...screenerResults, ...customResults];
-    return NextResponse.json({ themes: results });
+    return NextResponse.json({ themes: results }, {
+    headers: { "Cache-Control": "public, max-age=600, stale-while-revalidate=1200" },
+  });
   } catch (err) {
     console.error("themes error", err);
     return NextResponse.json(

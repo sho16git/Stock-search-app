@@ -5,7 +5,7 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, ReferenceLine, Area,
 } from "recharts";
-import { Maximize2, X, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
+import { Maximize2, X, TrendingUp, TrendingDown, RefreshCw, Sparkles, ChevronDown } from "lucide-react";
 import { formatJpy } from "@/lib/format";
 import { useCurrency } from "@/lib/currency-context";
 
@@ -73,6 +73,24 @@ function ema(values: number[], period: number): number[] {
   }
   return result;
 }
+
+/** SMA (Simple Moving Average) */
+function calcSMA(data: Point[], period: number): (number | null)[] {
+  return data.map((_, i) => {
+    if (i < period - 1) return null;
+    const sum = data.slice(i - period + 1, i + 1).reduce((a, b) => a + b.close, 0);
+    return sum / period;
+  });
+}
+
+type MALine = { period: number; color: string; label: string; values: (number | null)[] };
+
+const MA_CONFIGS: { period: number; color: string; label: string }[] = [
+  { period: 5,   color: "#f59e0b", label: "MA5"  },
+  { period: 25,  color: "#06b6d4", label: "MA25" },
+  { period: 75,  color: "#8b5cf6", label: "MA75" },
+  { period: 200, color: "#ef4444", label: "MA200" },
+];
 
 /** MACD (12, 26, 9) */
 function calcMACD(data: Point[]): { macd: number | null; signal: number | null; hist: number | null }[] {
@@ -150,12 +168,13 @@ function fmtVol(v: number): string {
 
 /* ─── Candlestick SVG canvas ─── */
 function CandleChart({
-  data, height, range, fmt: fmtFn,
+  data, height, range, fmt: fmtFn, maLines,
 }: {
   data: Point[];
   height: number;
   range: RangeKey;
   fmt?: (v: number) => string;
+  maLines?: MALine[];
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hover, setHover] = useState<{ idx: number; x: number; y: number } | null>(null);
@@ -173,8 +192,16 @@ function CandleChart({
 
   const highs  = data.map(d => d.high  ?? d.close);
   const lows   = data.map(d => d.low   ?? d.close);
-  const maxH   = Math.max(...highs);
-  const minL   = Math.min(...lows);
+  let maxH   = Math.max(...highs);
+  let minL   = Math.min(...lows);
+  // Expand domain to include all active MA lines so they stay within SVG bounds
+  maLines?.forEach(ma => {
+    const valid = ma.values.filter((v): v is number => v !== null);
+    if (valid.length) {
+      maxH = Math.max(maxH, Math.max(...valid));
+      minL = Math.min(minL, Math.min(...valid));
+    }
+  });
   const pad    = (maxH - minL) * 0.08 || maxH * 0.02;
   const domMax = maxH + pad;
   const domMin = minL - pad;
@@ -228,6 +255,26 @@ function CandleChart({
               rx={1}
             />
           </g>
+        );
+      })}
+
+      {/* MA lines */}
+      {maLines?.map(ma => {
+        const d = ma.values.reduce((acc, v, i) => {
+          if (v == null) return acc;
+          const x = toX(i), y = toY(v);
+          const prevValid = ma.values.slice(0, i).reverse().find(x => x != null);
+          return acc + (prevValid == null || ma.values[i - 1] == null ? `M ${x} ${y}` : ` L ${x} ${y}`);
+        }, "");
+        return (
+          <path
+            key={ma.period}
+            d={d}
+            stroke={ma.color}
+            strokeWidth={1.5}
+            fill="none"
+            opacity={0.85}
+          />
         );
       })}
 
@@ -370,7 +417,7 @@ function MACDPanel({ macdData }: { macdData: { macd: number | null; signal: numb
 
 /* ─── Recharts line + volume chart ─── */
 function LineVolumeChart({
-  data, range, first, height = 240, fmt: fmtFn, showBB = false,
+  data, range, first, height = 240, fmt: fmtFn, showBB = false, maLines,
 }: {
   data: Point[];
   range: RangeKey;
@@ -378,6 +425,7 @@ function LineVolumeChart({
   height?: number;
   fmt?: (v: number) => string;
   showBB?: boolean;
+  maLines?: MALine[];
 }) {
   const allVals = data.map(d => d.close).filter(Boolean) as number[];
   const min     = allVals.length ? Math.min(...allVals) : 0;
@@ -385,25 +433,38 @@ function LineVolumeChart({
   const pad     = (max - min) * 0.1 || max * 0.02;
   const lineColor = data.length && data[data.length - 1].close >= first ? "#10b981" : "#ef4444";
 
-  // Compute BB and merge into data
+  // Compute BB and merge into data (with MA values)
   const bbValues = useMemo(() => showBB ? calcBB(data) : null, [data, showBB]);
   const chartData = useMemo(() => {
-    if (!bbValues) return data;
-    return data.map((p, i) => ({ ...p, ...bbValues[i] }));
-  }, [data, bbValues]);
+    let merged: Record<string, unknown>[] = data.map((p, i) => ({
+      ...p,
+      ...(bbValues ? bbValues[i] : {}),
+    }));
+    maLines?.forEach(ma => {
+      merged = merged.map((p, i) => ({ ...p, [`ma${ma.period}`]: ma.values[i] }));
+    });
+    return merged;
+  }, [data, bbValues, maLines]);
 
-  // Adjust domain to include BB bands
+  // Adjust domain to include BB bands and MA lines
   const priceDomain = useMemo((): [number, number] => {
-    if (!bbValues) return [min - pad, max + pad];
-    const uppers = bbValues.map(b => b.bb_upper).filter((v): v is number => v !== null);
-    const lowers = bbValues.map(b => b.bb_lower).filter((v): v is number => v !== null);
-    const bbMax = uppers.length ? Math.max(...uppers) : max;
-    const bbMin = lowers.length ? Math.min(...lowers) : min;
-    const domMax = Math.max(max, bbMax);
-    const domMin = Math.min(min, bbMin);
+    let domMax = max, domMin = min;
+    if (bbValues) {
+      const uppers = bbValues.map(b => b.bb_upper).filter((v): v is number => v !== null);
+      const lowers = bbValues.map(b => b.bb_lower).filter((v): v is number => v !== null);
+      if (uppers.length) domMax = Math.max(domMax, Math.max(...uppers));
+      if (lowers.length) domMin = Math.min(domMin, Math.min(...lowers));
+    }
+    maLines?.forEach(ma => {
+      const vals = ma.values.filter((v): v is number => v !== null);
+      if (vals.length) {
+        domMax = Math.max(domMax, Math.max(...vals));
+        domMin = Math.min(domMin, Math.min(...vals));
+      }
+    });
     const dp = (domMax - domMin) * 0.08 || domMax * 0.02;
     return [domMin - dp, domMax + dp];
-  }, [bbValues, min, max, pad]);
+  }, [bbValues, maLines, min, max]);
 
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -446,6 +507,8 @@ function LineVolumeChart({
             if (name === "bb_upper") return [(fmtFn ?? fmtPrice)(Number(v)), "BB上限"];
             if (name === "bb_mid")   return [(fmtFn ?? fmtPrice)(Number(v)), "BB中心"];
             if (name === "bb_lower") return [(fmtFn ?? fmtPrice)(Number(v)), "BB下限"];
+            const maMatch = String(name).match(/^ma(\d+)$/);
+            if (maMatch) return [(fmtFn ?? fmtPrice)(Number(v)), `MA${maMatch[1]}`];
             return [`${(fmtFn ?? fmtPrice)(Number(v))}`, "終値"];
           }}
           labelFormatter={(l) => fmtDate(String(l), range)}
@@ -501,6 +564,20 @@ function LineVolumeChart({
             />
           </>
         )}
+        {/* MA lines */}
+        {maLines?.map(ma => (
+          <Line
+            key={`ma${ma.period}`}
+            yAxisId="price"
+            type="monotone"
+            dataKey={`ma${ma.period}`}
+            stroke={ma.color}
+            strokeWidth={1.5}
+            dot={false}
+            isAnimationActive={false}
+            connectNulls={false}
+          />
+        ))}
         {/* Price line */}
         <Line
           yAxisId="price"
@@ -518,7 +595,7 @@ function LineVolumeChart({
 
 /* ─── Expanded modal ─── */
 function ExpandedModal({
-  symbol, currency, data, loading, range, setRange, chartType, setChartType, first, fmt, onClose,
+  symbol, currency, data, loading, range, setRange, chartType, setChartType, first, fmt, maLines, onClose,
 }: {
   symbol: string;
   currency?: string | null;
@@ -530,6 +607,7 @@ function ExpandedModal({
   setChartType: (t: ChartType) => void;
   first: number;
   fmt: (v: number) => string;
+  maLines?: MALine[];
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -542,84 +620,270 @@ function ExpandedModal({
     };
   }, [onClose]);
 
-  const last = data[data.length - 1]?.close ?? 0;
-  const pct  = first ? ((last - first) / first) * 100 : 0;
-  const up   = pct >= 0;
+  /* ── Pan / Zoom state ──
+   * visStart: how many bars from the RIGHT end are hidden (0 = showing latest)
+   * visCount: how many bars are shown (null = show all)
+   */
+  const [visStart, setVisStart] = useState(0);
+  const [visCount, setVisCount] = useState<number | null>(null);
+  const chartAreaRef = useRef<HTMLDivElement>(null);
+  const [areaH, setAreaH] = useState(500);
+
+  // Mirror the latest pan/zoom state into refs so gesture handlers can stay
+  // attached across renders and accumulate rapid wheel/drag events smoothly.
+  const visStartRef = useRef(0);
+  const visCountRef = useRef<number | null>(null);
+  useEffect(() => { visStartRef.current = visStart; visCountRef.current = visCount; });
+
+  // Track chart area height so the chart never overflows the modal
+  useEffect(() => {
+    const el = chartAreaRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(([e]) => setAreaH(e.contentRect.height));
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  const total        = data.length;
+  const effCount     = visCount ?? total;
+  const maxStart     = Math.max(0, total - effCount);
+  const clampedStart = Math.min(visStart, maxStart);
+  const visEnd       = total - clampedStart;
+  const visBeg       = Math.max(0, visEnd - effCount);
+  const visibleData    = total > 0 ? data.slice(visBeg, visEnd) : data;
+  const visibleMALines = maLines?.map(ma => ({
+    ...ma, values: ma.values.slice(visBeg, visEnd),
+  }));
+
+  // Reset view when data length or range changes
+  useEffect(() => {
+    setVisStart(0);
+    setVisCount(null);
+  }, [total, range]);
+
+  /* ── Default gestures: wheel-zoom (at cursor) · drag-pan · pinch · dbl-click ──
+   * Handlers read/write refs so they stay attached across renders and
+   * accumulate rapid events; zoom always anchors on the focal point.
+   */
+  useEffect(() => {
+    const el = chartAreaRef.current;
+    if (!el || total === 0 || loading) return;
+
+    const clampCount = (c: number) => Math.max(10, Math.min(total, Math.round(c)));
+    /** 0 (left) … 1 (right): where the focal point sits across the chart area */
+    const focalOf = (clientX: number) => {
+      const r = el.getBoundingClientRect();
+      return Math.min(1, Math.max(0, (clientX - r.left) / Math.max(1, r.width)));
+    };
+    /** Move the visible window by `deltaBars` (positive = toward older data) */
+    const panBy = (deltaBars: number) => {
+      const baseCount = visCountRef.current ?? total;
+      if (baseCount >= total || deltaBars === 0) return;
+      const maxS = Math.max(0, total - baseCount);
+      const s = Math.max(0, Math.min(maxS, (visStartRef.current ?? 0) + deltaBars));
+      visStartRef.current = s;
+      setVisStart(s);
+    };
+    /** Zoom so the focal point keeps the same on-screen position */
+    const applyZoom = (focalFrac: number, newCountRaw: number) => {
+      const baseCount = visCountRef.current ?? total;
+      const newCount  = clampCount(newCountRaw);
+      if (newCount >= total) {
+        visCountRef.current = null; visStartRef.current = 0;
+        setVisCount(null); setVisStart(0);
+        return;
+      }
+      const startNow = Math.min(visStartRef.current ?? 0, Math.max(0, total - baseCount));
+      const begNow   = Math.max(0, (total - startNow) - baseCount);
+      const idx      = begNow + focalFrac * baseCount;           // data index under focal point
+      const newBeg   = Math.max(0, Math.min(total - newCount, Math.round(idx - focalFrac * newCount)));
+      const newStart = Math.max(0, total - (newBeg + newCount));
+      visCountRef.current = newCount; visStartRef.current = newStart;
+      setVisCount(newCount); setVisStart(newStart);
+    };
+
+    const pinchMid  = (e: TouchEvent) => (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    const pinchDist = (e: TouchEvent) =>
+      Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+
+    /* --- Wheel: vertical → zoom at cursor · horizontal → pan --- */
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const baseCount = visCountRef.current ?? total;
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+        panBy(Math.max(1, Math.round(baseCount * 0.06)) * (e.deltaX > 0 ? 1 : -1));
+      } else if (e.deltaY !== 0) {
+        applyZoom(focalOf(e.clientX), baseCount * (e.deltaY < 0 ? 0.86 : 1.16));
+      }
+    };
+
+    /* --- Mouse drag → pan (desktop) --- */
+    let mDownX: number | null = null;
+    const onMouseDown = (e: MouseEvent) => { if (e.button === 0) mDownX = e.clientX; };
+    const onMouseMove = (e: MouseEvent) => {
+      if (mDownX === null) return;
+      const dx = e.clientX - mDownX;
+      if (Math.abs(dx) < 2) return;
+      mDownX = e.clientX;
+      const baseCount = visCountRef.current ?? total;
+      panBy(Math.round((-dx) * baseCount / (el.clientWidth || 360)));
+    };
+    const onMouseUp = () => { mDownX = null; };
+
+    /* --- Double-click → zoom in centered on the click --- */
+    const onDblClick = (e: MouseEvent) => {
+      e.preventDefault();
+      applyZoom(focalOf(e.clientX), (visCountRef.current ?? total) * 0.55);
+    };
+
+    /* --- Touch: single-finger drag · two-finger pinch (focal) --- */
+    let dragX: number | null = null;
+    let pinchStart: number | null = null;
+    let pinchCount: number | null = null;
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) { dragX = e.touches[0].clientX; pinchStart = null; }
+      else if (e.touches.length >= 2) {
+        e.preventDefault();
+        dragX = null; pinchStart = pinchDist(e); pinchCount = visCountRef.current ?? total;
+      }
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length >= 2) {
+        e.preventDefault();
+        if (pinchStart === null) { pinchStart = pinchDist(e); pinchCount = visCountRef.current ?? total; return; }
+        const d = pinchDist(e);
+        if (d === 0) return;
+        applyZoom(focalOf(pinchMid(e)), (pinchCount ?? (visCountRef.current ?? total)) * (pinchStart / d));
+        pinchStart = d; pinchCount = visCountRef.current ?? total;   // re-baseline → incremental
+      } else if (e.touches.length === 1 && dragX !== null) {
+        const dx = e.touches[0].clientX - dragX;
+        dragX = e.touches[0].clientX;
+        const baseCount = visCountRef.current ?? total;
+        panBy(Math.round((-dx) * baseCount / (el.clientWidth || 360)));
+      }
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length === 0) { dragX = null; pinchStart = null; pinchCount = null; }
+      else if (e.touches.length === 1) { dragX = e.touches[0].clientX; pinchStart = null; pinchCount = null; }
+    };
+
+    el.addEventListener("wheel",      onWheel,      { passive: false });
+    el.addEventListener("mousedown",  onMouseDown);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup",   onMouseUp);
+    el.addEventListener("dblclick",   onDblClick);
+    el.addEventListener("touchstart", onTouchStart, { passive: false });
+    el.addEventListener("touchmove",  onTouchMove,  { passive: false });
+    el.addEventListener("touchend",   onTouchEnd);
+
+    return () => {
+      el.removeEventListener("wheel",      onWheel);
+      el.removeEventListener("mousedown",  onMouseDown);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup",   onMouseUp);
+      el.removeEventListener("dblclick",   onDblClick);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove",  onTouchMove);
+      el.removeEventListener("touchend",   onTouchEnd);
+    };
+  }, [total, loading]);
+
+  const visFirst  = visibleData[0]?.close ?? first;
+  const visLast   = visibleData[visibleData.length - 1]?.close ?? 0;
+  const pct       = visFirst ? ((visLast - visFirst) / visFirst) * 100 : 0;
+  const up        = pct >= 0;
+  const chartH    = Math.max(100, areaH - 32);
 
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-white dark:bg-slate-950">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shrink-0">
-        <div className="flex-1 flex flex-wrap items-center gap-3">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shrink-0">
+        <div className="flex-1 flex flex-wrap items-center gap-2 min-w-0">
           <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{symbol}</span>
           {!loading && data.length > 0 && (
             <span className={`text-sm font-bold font-mono tabular-nums ${up ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
               {up ? "▲" : "▼"} {Math.abs(pct).toFixed(2)}%
             </span>
           )}
-          {last > 0 && (
-            <span className="text-sm font-mono text-slate-600 dark:text-slate-400">
-              {fmt(last)}{currency && ` ${currency}`}
+          {visLast > 0 && (
+            <span className="text-sm font-mono text-slate-500 dark:text-slate-400 tabular-nums">
+              {fmt(visLast)}{currency && ` ${currency}`}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Chart type toggle */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Chart type */}
           <div className="flex gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs">
-            <button
-              onClick={() => setChartType("line")}
-              className={`px-2 py-1 rounded-md font-semibold transition-all ${chartType === "line" ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white" : "text-slate-500"}`}
-            >
-              折れ線
-            </button>
-            <button
-              onClick={() => setChartType("candle")}
-              className={`px-2 py-1 rounded-md font-semibold transition-all ${chartType === "candle" ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white" : "text-slate-500"}`}
-            >
-              ローソク
-            </button>
+            <button onClick={() => setChartType("line")}   className={`px-2 py-1 rounded-md font-semibold transition-all ${chartType === "line"   ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white" : "text-slate-500"}`}>折れ線</button>
+            <button onClick={() => setChartType("candle")} className={`px-2 py-1 rounded-md font-semibold transition-all ${chartType === "candle" ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white" : "text-slate-500"}`}>ローソク</button>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            aria-label="閉じる"
-          >
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" aria-label="閉じる">
             <X className="w-5 h-5 text-slate-600 dark:text-slate-400" />
           </button>
         </div>
       </div>
 
-      {/* Range tabs (2 rows) */}
+      {/* Range tabs */}
       <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800/70 shrink-0 overflow-x-auto">
         <RangeTabs range={range} onChange={setRange} />
       </div>
 
-      {/* Chart area */}
-      <div className="flex-1 p-4 min-h-0">
+      {/* Chart area — touch/wheel to pan */}
+      <div
+        ref={chartAreaRef}
+        className="flex-1 px-2 pt-2 pb-6 min-h-0 relative select-none cursor-grab active:cursor-grabbing overflow-hidden"
+      >
         {loading ? (
           <div className="w-full h-full rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
         ) : data.length === 0 ? (
           <div className="flex items-center justify-center h-full text-slate-400 text-sm">データなし</div>
         ) : chartType === "candle" ? (
           <div className="w-full h-full">
-            <CandleChart data={data} height={window.innerHeight - 200} range={range} fmt={fmt} />
+            <CandleChart data={visibleData} height={chartH} range={range} fmt={fmt} maLines={visibleMALines} />
           </div>
         ) : (
-          <LineVolumeChart data={data} range={range} first={first} height={window.innerHeight - 200} fmt={fmt} />
+          <LineVolumeChart data={visibleData} range={range} first={visFirst} height={chartH} fmt={fmt} maLines={visibleMALines} />
+        )}
+
+        {/* Scroll position bar */}
+        {!loading && total > 0 && visCount !== null && (
+          <div className="absolute bottom-2 left-6 right-6 h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-400/80 rounded-full transition-all duration-75"
+              style={{
+                width:      `${(effCount / total) * 100}%`,
+                marginLeft: `${((total - clampedStart - effCount) / total) * 100}%`,
+              }}
+            />
+          </div>
+        )}
+
+        {/* Pan hint (shown when not zoomed) */}
+        {!loading && total > 0 && visCount === null && (
+          <div className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-none">
+            <span className="text-[10px] text-slate-400/80 dark:text-slate-500 select-none">
+              スクロールでズーム ／ ドラッグで移動 ／ ダブルクリック・ピンチで拡大
+            </span>
+          </div>
         )}
       </div>
 
       {/* OHLC footer */}
-      {data.length > 0 && (() => {
-        const d = data[data.length - 1];
+      {visibleData.length > 0 && (() => {
+        const d = visibleData[visibleData.length - 1];
         return (
-          <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-800/70 shrink-0 flex gap-4 text-xs font-mono text-slate-500 dark:text-slate-400">
+          <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-800/70 shrink-0 flex gap-4 text-xs font-mono text-slate-500 dark:text-slate-400 overflow-x-auto scrollbar-none">
             {d.open  != null && <span>始値 <strong className="text-slate-700 dark:text-slate-200">{fmt(d.open)}</strong></span>}
             {d.high  != null && <span>高値 <strong className="text-emerald-600 dark:text-emerald-400">{fmt(d.high)}</strong></span>}
             {d.low   != null && <span>安値 <strong className="text-rose-600 dark:text-rose-400">{fmt(d.low)}</strong></span>}
             <span>終値 <strong className="text-slate-700 dark:text-slate-200">{fmt(d.close)}</strong></span>
             {d.volume != null && <span>出来高 <strong>{fmtVol(d.volume)}</strong></span>}
+            {visCount !== null && (
+              <span className="ml-auto text-slate-400">
+                {visBeg + 1}–{visEnd} / {total}本
+              </span>
+            )}
           </div>
         );
       })()}
@@ -683,11 +947,30 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
   const [updatedAt, setUpdatedAt]   = useState<Date | null>(null);
   const [spinning, setSpinning]     = useState(false);
   const [activeIndicators, setActiveIndicators] = useState<Set<IndicatorKey>>(new Set());
+  const [activeMA, setActiveMA] = useState<Set<number>>(new Set());
+
+  type AiTechResult = {
+    headline: string;
+    trend: string;
+    comment: string;
+    signal: string;
+    watchPoint: string;
+  };
+  const [aiTech, setAiTech]         = useState<AiTechResult | null>(null);
+  const [aiTechStatus, setAiTechStatus] = useState<"idle"|"loading"|"done"|"error">("idle");
 
   function toggleIndicator(key: IndicatorKey) {
     setActiveIndicators(prev => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+
+  function toggleMA(period: number) {
+    setActiveMA(prev => {
+      const next = new Set(prev);
+      if (next.has(period)) next.delete(period); else next.add(period);
       return next;
     });
   }
@@ -812,9 +1095,14 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
     }));
   }, [dataWithLive, jpyMode, jpyRate]);
 
-  // RSI / MACD calculations (computed from displayData)
+  // RSI / MACD / MA calculations (computed from displayData)
   const rsiData  = useMemo(() => showRSI  ? calcRSI(displayData)  : [], [displayData, showRSI]);
   const macdData = useMemo(() => showMACD ? calcMACD(displayData) : [], [displayData, showMACD]);
+  const maLines  = useMemo((): MALine[] =>
+    MA_CONFIGS
+      .filter(c => activeMA.has(c.period))
+      .map(c => ({ ...c, values: calcSMA(displayData, c.period) })),
+  [displayData, activeMA]);
 
   /** True when a live price bar is actively tracking the current minute */
   const isLive = livePoint != null && range === "1min" &&
@@ -827,6 +1115,45 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
   const last  = displayData[displayData.length - 1]?.close ?? 0;
   const pct   = first ? ((last - first) / first) * 100 : 0;
   const up    = pct >= 0;
+
+  const fetchAiTech = useCallback(async () => {
+    if (displayData.length === 0) return;
+    setAiTechStatus("loading");
+    const lastPt = displayData[displayData.length - 1];
+
+    const allMA: Record<string, number | null> = {};
+    for (const cfg of MA_CONFIGS) {
+      const vals = calcSMA(displayData, cfg.period);
+      allMA[`ma${cfg.period}`] = vals[vals.length - 1] ?? null;
+    }
+    const rsiVals  = calcRSI(displayData);
+    const macdVals = calcMACD(displayData);
+    const rsiLast  = rsiVals[rsiVals.length - 1] ?? null;
+    const macdLast = macdVals[macdVals.length - 1];
+
+    try {
+      const res = await fetch("/api/ai-technical", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          symbol,
+          price: lastPt.close,
+          changePct: pct,
+          range,
+          rsi: rsiLast,
+          macd: macdLast?.macd ?? null,
+          macdSignal: macdLast?.signal ?? null,
+          ...allMA,
+        }),
+      });
+      const j = await res.json();
+      if (j.error) throw new Error(j.error);
+      setAiTech(j as AiTechResult);
+      setAiTechStatus("done");
+    } catch {
+      setAiTechStatus("error");
+    }
+  }, [displayData, symbol, range, pct]);
 
   return (
     <>
@@ -863,10 +1190,28 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
 
           <div className="flex items-center gap-1.5 flex-wrap">
             {/* Indicator toggles */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
               <IndicatorToggle label="BB"   active={showBB}   onClick={() => toggleIndicator("BB")} />
               <IndicatorToggle label="RSI"  active={showRSI}  onClick={() => toggleIndicator("RSI")} />
               <IndicatorToggle label="MACD" active={showMACD} onClick={() => toggleIndicator("MACD")} />
+              {/* MA toggles */}
+              {MA_CONFIGS.map(ma => {
+                const isOn = activeMA.has(ma.period);
+                return (
+                  <button
+                    key={ma.period}
+                    onClick={() => toggleMA(ma.period)}
+                    style={isOn ? { borderColor: ma.color, color: ma.color, backgroundColor: `${ma.color}18` } : undefined}
+                    className={`px-2 py-0.5 text-[10px] rounded border font-semibold transition-all ${
+                      isOn
+                        ? "border-current"
+                        : "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-400"
+                    }`}
+                  >
+                    {ma.label}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Manual refresh (intraday only) */}
@@ -897,6 +1242,25 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
               </button>
             </div>
 
+            {/* AI technical analysis button */}
+            {!loading && data.length > 0 && (
+              <button
+                onClick={() => {
+                  if (aiTechStatus === "idle" || aiTechStatus === "error") fetchAiTech();
+                  else if (aiTechStatus === "done") { setAiTech(null); setAiTechStatus("idle"); }
+                }}
+                title="AIテクニカル分析"
+                className={`p-1.5 rounded-lg border transition-all flex items-center gap-1 text-[10px] font-semibold ${
+                  aiTechStatus === "done"
+                    ? "border-violet-400 bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400"
+                    : "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-violet-400 hover:text-violet-500"
+                }`}
+              >
+                <Sparkles className={`w-3.5 h-3.5 ${aiTechStatus === "loading" ? "animate-pulse" : ""}`} />
+                {aiTechStatus === "loading" ? "解析中" : aiTechStatus === "done" ? "AI分析" : "AI分析"}
+              </button>
+            )}
+
             {/* Expand */}
             <button
               onClick={() => setExpanded(true)}
@@ -920,11 +1284,11 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
             <div className="flex items-center justify-center h-64 text-sm text-slate-400">データなし</div>
           ) : chartType === "candle" ? (
             <div className="touch-pan-y select-none" style={{ height: 264 }}>
-              <CandleChart data={displayData} height={264} range={range} fmt={fmtDisplay} />
+              <CandleChart data={displayData} height={264} range={range} fmt={fmtDisplay} maLines={maLines} />
             </div>
           ) : (
             <div className="touch-pan-y select-none">
-              <LineVolumeChart data={displayData} range={range} first={first} height={264} fmt={fmtDisplay} showBB={showBB} />
+              <LineVolumeChart data={displayData} range={range} first={first} height={264} fmt={fmtDisplay} showBB={showBB} maLines={maLines} />
             </div>
           )}
         </div>
@@ -959,6 +1323,26 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
             <span>最新出来高: <strong className="text-slate-600 dark:text-slate-400">{fmtVol(data[data.length - 1].volume ?? 0)}</strong></span>
           </div>
         )}
+
+        {/* AI Technical Analysis Panel */}
+        {aiTechStatus === "done" && aiTech && (
+          <div className="mx-4 mb-4 p-3 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 text-xs space-y-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+              <span className="font-bold text-violet-700 dark:text-violet-300">{aiTech.headline}</span>
+              <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                aiTech.signal.includes("買い") ? "bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300"
+                : aiTech.signal.includes("売り") ? "bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+              }`}>{aiTech.signal}</span>
+            </div>
+            <p className="text-slate-700 dark:text-slate-200 leading-relaxed">{aiTech.comment}</p>
+            <div className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 pt-0.5 border-t border-violet-100 dark:border-violet-900">
+              <ChevronDown className="w-3 h-3" />
+              <span>注目: {aiTech.watchPoint}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Expanded modal */}
@@ -974,6 +1358,7 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
           setChartType={setChartType}
           first={first}
           fmt={fmtDisplay}
+          maLines={maLines}
           onClose={() => setExpanded(false)}
         />
       )}

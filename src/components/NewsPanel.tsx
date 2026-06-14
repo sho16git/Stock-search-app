@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { Newspaper, Globe, RefreshCw, BookOpen, ChevronUp } from "lucide-react";
 import ArticleBody from "./ArticleBody";
+import AINewsSummary from "./AINewsSummary";
 
 /* ─── shared types ─── */
 type NewsItem = {
@@ -105,29 +106,32 @@ function NewsCard({
       </button>
 
       {/* Actions row */}
-      {(n.link || (n.relatedTickers && n.relatedTickers.length > 0)) && (
-        <div className="flex flex-wrap items-center gap-1.5 mt-2">
-          {n.link && (
-            <button onClick={onToggle} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] transition-colors ${readBtn}`}>
-              {isExpanded ? <><ChevronUp className="w-3 h-3" />閉じる</> : <><BookOpen className="w-3 h-3" />記事を読む</>}
-            </button>
-          )}
-          {n.relatedTickers && n.relatedTickers.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {n.relatedTickers.slice(0, 5).map((ticker) => (
-                <Link
-                  key={ticker}
-                  href={`/stock/${encodeURIComponent(ticker)}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-violet-100 hover:text-violet-700 dark:hover:bg-violet-900/40 dark:hover:text-violet-300 border border-slate-200 dark:border-slate-700 transition-colors"
-                >
-                  {ticker}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+        {n.link && (
+          <button onClick={onToggle} className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] transition-colors ${readBtn}`}>
+            {isExpanded ? <><ChevronUp className="w-3 h-3" />閉じる</> : <><BookOpen className="w-3 h-3" />記事を読む</>}
+          </button>
+        )}
+        <AINewsSummary
+          title={title}
+          symbol={n.relatedTickers?.[0]}
+          context={isGeo ? n.tag : undefined}
+        />
+        {n.relatedTickers && n.relatedTickers.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {n.relatedTickers.slice(0, 5).map((ticker) => (
+              <Link
+                key={ticker}
+                href={`/stock/${encodeURIComponent(ticker)}`}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-violet-100 hover:text-violet-700 dark:hover:bg-violet-900/40 dark:hover:text-violet-300 border border-slate-200 dark:border-slate-700 transition-colors"
+              >
+                {ticker}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
       {isExpanded && n.link && <ArticleBody link={n.link} />}
     </div>
   );

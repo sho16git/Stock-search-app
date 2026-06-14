@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Newspaper, BookOpen, ChevronUp, RefreshCw } from "lucide-react";
 import ArticleBody from "./ArticleBody";
+import AINewsSummary from "./AINewsSummary";
 
 type News = {
   uuid: string;
@@ -39,7 +40,7 @@ function relativeTime(iso: string | null): string {
 
 const NEWS_REFRESH_MS = 3 * 60 * 1000; // 3 minutes
 
-export default function NewsCard({ symbol }: { symbol: string }) {
+export default function NewsCard({ symbol, companyName }: { symbol: string; companyName?: string }) {
   const [news, setNews] = useState<News[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -182,11 +183,11 @@ export default function NewsCard({ symbol }: { symbol: string }) {
                       ))}
                     </div>
                   )}
-                  {n.link && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    {n.link && (
                       <button
                         onClick={() => toggle(n.uuid)}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
                       >
                         {isExpanded ? (
                           <>
@@ -200,8 +201,9 @@ export default function NewsCard({ symbol }: { symbol: string }) {
                           </>
                         )}
                       </button>
-                    </div>
-                  )}
+                    )}
+                    <AINewsSummary title={primaryTitle} symbol={symbol} companyName={companyName} />
+                  </div>
                 </div>
               </div>
               {isExpanded && n.link && <ArticleBody link={n.link} />}

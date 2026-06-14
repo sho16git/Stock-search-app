@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Newspaper, RefreshCw, BookOpen, ChevronUp } from "lucide-react";
 import ArticleBody from "./ArticleBody";
+import AINewsSummary from "./AINewsSummary";
 
 type News = {
   uuid: string;
@@ -92,8 +93,7 @@ function NewsItem({
         </div>
       </button>
 
-      {(n.link || (n.relatedTickers && n.relatedTickers.length > 0)) && (
-        <div className="flex flex-wrap items-center gap-1.5 mt-3">
+      <div className="flex flex-wrap items-center gap-1.5 mt-3">
           {n.link && (
             <button
               onClick={onToggle}
@@ -112,6 +112,7 @@ function NewsItem({
               )}
             </button>
           )}
+          <AINewsSummary title={title} symbol={n.relatedTickers?.[0]} />
           {n.relatedTickers && n.relatedTickers.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {n.relatedTickers.map((ticker) => (
@@ -126,8 +127,7 @@ function NewsItem({
               ))}
             </div>
           )}
-        </div>
-      )}
+      </div>
       {expanded && n.link && <ArticleBody link={n.link} />}
     </div>
   );

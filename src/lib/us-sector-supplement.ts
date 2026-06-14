@@ -313,6 +313,7 @@ export const US_SECTOR_MAP: Record<string, GicsSectorId> = {
   SQM:"materials",
 
   // ─── Industrials ───────────────────────────────────────────────────
+  SPCX:"industrials",
   RTX:"industrials", HON:"industrials",
   UPS:"industrials", CAT:"industrials",
   DE:"industrials", LMT:"industrials",

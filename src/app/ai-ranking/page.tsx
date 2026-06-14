@@ -6,6 +6,7 @@ import {
   Sparkles, RefreshCw, Loader2, ChevronDown, ChevronUp,
   TrendingUp, Shield, BarChart2, AlertTriangle, Search, Layers,
 } from "lucide-react";
+import AIInsight from "@/components/AIInsight";
 
 // ── Types ──────────────────────────────────────────────────────────
 type RiskLevel   = "low" | "mid" | "high";
@@ -995,6 +996,23 @@ export default function AiRankingPage() {
           {/* ── ランキングビュー ── */}
           {viewMode === "ranking" && (
             <>
+              {bullEntries.length > 0 && (
+                <div className="mb-4">
+                  <AIInsight
+                    label="AIでランキングを解説"
+                    endpoint="/api/ai-ranking-comment"
+                    payload={{
+                      period,
+                      market: marketFilter,
+                      marketNote: data.marketNote,
+                      entries: bullEntries.slice(0, 10).map(e => ({
+                        rank: e.rank, name: e.name, symbol: e.symbol, market: e.market,
+                        sector: e.sector, theme: e.theme, score: e.score, expectedReturn: e.expectedReturn,
+                      })),
+                    }}
+                  />
+                </div>
+              )}
               <section>
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-1 h-4 rounded-full bg-gradient-to-b from-emerald-400 to-violet-500 shrink-0" />

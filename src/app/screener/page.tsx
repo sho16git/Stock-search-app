@@ -8,6 +8,8 @@ import {
   ChevronDown,
   ArrowUpDown,
   Loader2,
+  Sparkles,
+  KeyRound,
 } from "lucide-react";
 import { formatNumber, formatLargeNumber, formatPercent } from "@/lib/format";
 import { GICS_SECTORS } from "@/lib/gics";
@@ -96,6 +98,50 @@ export default function ScreenerPage() {
   const [loading, setLoading] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("marketCap");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  // ── 自然言語検索 (AI) ──
+  const [nlQuery, setNlQuery] = useState("");
+  const [aiStatus, setAiStatus] = useState<"idle" | "loading" | "no_key" | "error">("idle");
+  const [aiInterpretation, setAiInterpretation] = useState<string | null>(null);
+
+  const runAiSearch = async () => {
+    if (!nlQuery.trim()) return;
+    setAiStatus("loading");
+    setAiInterpretation(null);
+    try {
+      const res = await fetch("/api/ai-screen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: nlQuery.trim() }),
+      });
+      if (res.status === 503) { setAiStatus("no_key"); return; }
+      if (!res.ok) throw new Error("api error");
+      const j = await res.json();
+      if (j.error) throw new Error(j.error);
+
+      // AIが返した条件を Filters(文字列) にマージ
+      const next: Filters = { ...initialFilters };
+      const af = (j.filters ?? {}) as Record<string, unknown>;
+      const keys: (keyof Filters)[] = [
+        "sector", "market", "type", "priceMin", "priceMax", "perMin", "perMax",
+        "pbrMin", "pbrMax", "epsMin", "epsMax", "yieldMin", "yieldMax", "mcapMin", "mcapMax",
+      ];
+      for (const k of keys) {
+        const v = af[k];
+        if (v !== undefined && v !== null && v !== "") next[k] = String(v);
+      }
+      const sk = (j.sortKey as SortKey) ?? "marketCap";
+      const sd = (j.sortDir as "asc" | "desc") ?? "desc";
+      setFilters(next);
+      setSortKey(sk);
+      setSortDir(sd);
+      setAiInterpretation(j.interpretation ?? null);
+      setAiStatus("idle");
+      search(next, sk, sd);
+    } catch {
+      setAiStatus("error");
+    }
+  };
 
   const search = (f: Filters, sk = sortKey, sd = sortDir) => {
     setLoading(true);
@@ -196,6 +242,64 @@ export default function ScreenerPage() {
           株価・PER・PBR・EPS・配当などの条件で銘柄を絞り込み
         </p>
       </header>
+
+      {/* AI 自然言語検索 */}
+      <div className="rounded-2xl border border-violet-200/80 dark:border-violet-800/40 bg-gradient-to-br from-violet-50/70 to-white dark:from-violet-950/20 dark:to-slate-900 p-4 shadow-sm">
+        <div className="flex items-center gap-2 mb-2.5">
+          <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-sm">
+            <Sparkles className="w-3.5 h-3.5" />
+          </span>
+          <div>
+            <div className="text-sm font-bold">AIで条件を入力</div>
+            <div className="text-[10px] text-slate-400">日本語で条件を書くとClaudeが自動でフィルター設定</div>
+          </div>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            type="text"
+            value={nlQuery}
+            onChange={(e) => setNlQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") runAiSearch(); }}
+            placeholder="例: 配当利回り4%以上の割安な日本株"
+            className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400 dark:focus:ring-violet-600 placeholder:text-slate-400"
+          />
+          <button
+            onClick={runAiSearch}
+            disabled={aiStatus === "loading" || !nlQuery.trim()}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 disabled:opacity-50 transition-colors shadow-sm shrink-0"
+          >
+            {aiStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+            AI検索
+          </button>
+        </div>
+        {/* Example chips */}
+        <div className="flex flex-wrap gap-1.5 mt-2.5">
+          {["高配当の日本株", "割安な米国ハイテク株", "PBR1倍割れの好財務株", "成長性の高い半導体株"].map((ex) => (
+            <button
+              key={ex}
+              onClick={() => { setNlQuery(ex); }}
+              className="text-[11px] px-2.5 py-1 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-violet-300 dark:hover:border-violet-600 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+            >
+              {ex}
+            </button>
+          ))}
+        </div>
+        {aiInterpretation && (
+          <div className="mt-2.5 flex items-start gap-1.5 text-[11px] text-violet-700 dark:text-violet-300 bg-violet-100/60 dark:bg-violet-950/40 rounded-lg px-3 py-2 border border-violet-200 dark:border-violet-800">
+            <Sparkles className="w-3 h-3 shrink-0 mt-0.5" />
+            <span>{aiInterpretation}</span>
+          </div>
+        )}
+        {aiStatus === "no_key" && (
+          <div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 rounded-lg px-3 py-2 border border-amber-200 dark:border-amber-800">
+            <KeyRound className="w-3 h-3 shrink-0" />
+            APIキーが未設定です（.env.local の ANTHROPIC_API_KEY）
+          </div>
+        )}
+        {aiStatus === "error" && (
+          <div className="mt-2.5 text-[11px] text-rose-500">変換に失敗しました。表現を変えて再度お試しください。</div>
+        )}
+      </div>
 
       {/* Filter form */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4">

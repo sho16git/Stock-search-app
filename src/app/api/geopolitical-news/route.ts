@@ -115,7 +115,9 @@ export async function GET(req: NextRequest) {
       titleJa: titlesJa[i] && titlesJa[i] !== n.title ? titlesJa[i] : null,
     }));
 
-    return NextResponse.json({ items, asOf: new Date().toISOString() });
+    return NextResponse.json({ items, asOf: new Date().toISOString() }, {
+    headers: { "Cache-Control": "public, max-age=300, stale-while-revalidate=600" },
+  });
   } catch (err) {
     console.error("geopolitical-news error", err);
     return NextResponse.json(

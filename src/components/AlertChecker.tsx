@@ -7,8 +7,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BellRing, X } from "lucide-react";
-import { getAlerts, checkAlerts, type PriceAlert } from "@/lib/alerts";
+import { getAlerts, checkAlerts, checkEventAlerts, isEventAlert, type PriceAlert } from "@/lib/alerts";
 import { formatNumber } from "@/lib/format";
+
+const eventLabel = (a: PriceAlert) =>
+  a.kind === "earnings" ? "決算発表" : a.kind === "ex_dividend" ? "配当権利日" : "";
+const fmtMd = (iso?: string | null) =>
+  iso ? new Date(iso).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" }) : "";
 
 // ── Toast ──────────────────────────────────────────────────────────────────────
 function AlertToast({
@@ -32,7 +37,7 @@ function AlertToast({
         <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 dark:border-amber-900/40">
           <BellRing className="w-4 h-4 text-amber-500 animate-bounce" />
           <span className="text-sm font-bold text-amber-700 dark:text-amber-300 flex-1">
-            価格アラート発動！
+            アラート発動！
           </span>
           <button onClick={onDismiss} className="text-zinc-400 hover:text-zinc-600 transition-colors">
             <X className="w-4 h-4" />
@@ -45,9 +50,15 @@ function AlertToast({
                 <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{a.symbol}</span>
                 <span className="text-zinc-500">{a.name}</span>
               </div>
-              <div className={`font-mono font-bold ${a.direction === "above" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-                {a.direction === "above" ? "▲" : "▼"} {formatNumber(a.targetPrice)} 達成
-              </div>
+              {isEventAlert(a) ? (
+                <div className="font-mono font-bold text-violet-600 dark:text-violet-400">
+                  {eventLabel(a)} {fmtMd(a.eventDate)} 接近
+                </div>
+              ) : (
+                <div className={`font-mono font-bold ${a.direction === "above" ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                  {a.direction === "above" ? "▲" : "▼"} {formatNumber(a.targetPrice ?? 0)} 達成
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -61,11 +72,27 @@ export default function AlertChecker() {
   const [toastAlerts, setToastAlerts] = useState<PriceAlert[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const runCheck = async () => {
-    const pending = getAlerts().filter(a => !a.triggered);
-    if (pending.length === 0) return;
+  const notify = (triggered: PriceAlert[]) => {
+    if (triggered.length === 0) return;
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      for (const a of triggered) {
+        const body = isEventAlert(a)
+          ? `${eventLabel(a)}が ${fmtMd(a.eventDate)} に近づいています`
+          : `${formatNumber(a.targetPrice ?? 0)} ${a.direction === "above" ? "以上" : "以下"} になりました`;
+        new Notification(`🔔 ${a.symbol}`, { body, icon: "/icon.png" });
+      }
+    } else {
+      setToastAlerts((prev) => [...prev, ...triggered]);
+    }
+  };
 
-    // Fetch prices for all pending alert symbols
+  const runCheck = async () => {
+    // ── Event alerts (date-based, no network) ──
+    notify(checkEventAlerts());
+
+    // ── Price alerts ──
+    const pending = getAlerts().filter(a => !a.triggered && !isEventAlert(a));
+    if (pending.length === 0) return;
     const symbols = [...new Set(pending.map(a => a.symbol))];
     try {
       const res = await fetch(`/api/quotes?symbols=${encodeURIComponent(symbols.join(","))}`);
@@ -75,22 +102,7 @@ export default function AlertChecker() {
       for (const [sym, q] of Object.entries(data.quotes ?? {})) {
         if (q.price != null) priceMap[sym] = q.price;
       }
-
-      const triggered = checkAlerts(priceMap);
-      if (triggered.length === 0) return;
-
-      // Browser push notification
-      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-        for (const a of triggered) {
-          new Notification(`🔔 アラート: ${a.symbol}`, {
-            body: `${formatNumber(a.targetPrice)} ${a.direction === "above" ? "以上" : "以下"} になりました`,
-            icon: "/icon.png",
-          });
-        }
-      } else {
-        // In-app toast
-        setToastAlerts(triggered);
-      }
+      notify(checkAlerts(priceMap));
     } catch {
       // silently fail
     }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import yahooFinance from "@/lib/yfinance";
 import { STOCKS_CATALOG } from "@/lib/stocks-catalog";
+import { getJpName } from "@/lib/jp-stocks";
+import { getUsKatakana } from "@/lib/us-katakana";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -45,6 +47,7 @@ export async function GET(req: NextRequest) {
     type QuoteItem = {
       symbol: string;
       shortName: string | null;
+      nameJa: string | null;
       price: number | null;
       changePercent: number | null;
       marketCap: number | null;
@@ -59,6 +62,9 @@ export async function GET(req: NextRequest) {
     const items: QuoteItem[] = allQuotes.map(q => ({
       symbol: String(q.symbol ?? ""),
       shortName: String(q.shortName ?? q.longName ?? "") || null,
+      nameJa: market === "JP"
+        ? (getJpName(String(q.symbol ?? "")) ?? null)
+        : (getUsKatakana(String(q.symbol ?? "")) ?? null),
       price: typeof q.regularMarketPrice === "number" ? q.regularMarketPrice : null,
       changePercent: typeof q.regularMarketChangePercent === "number" ? q.regularMarketChangePercent : null,
       marketCap: typeof q.marketCap === "number" ? q.marketCap : null,

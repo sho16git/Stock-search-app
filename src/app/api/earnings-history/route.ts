@@ -231,7 +231,9 @@ export async function GET(req: NextRequest) {
       const code4 = symbol.replace(".T", "").slice(0, 4);
       try {
         const history = await fetchJQHistory(code4);
-        return NextResponse.json({ symbol, currency: "JPY", history });
+        return NextResponse.json({ symbol, currency: "JPY", history }, {
+    headers: { "Cache-Control": "public, max-age=3600, stale-while-revalidate=7200" },
+  });
       } catch (jqErr) {
         console.warn(`J-Quants statements failed for ${symbol}, falling back to Yahoo:`, jqErr);
         // Fall through to Yahoo Finance
@@ -240,7 +242,9 @@ export async function GET(req: NextRequest) {
 
     // ── US stocks (or JP fallback) ─────────────────────────────────
     const { currency, history } = await fetchYahooHistory(symbol);
-    return NextResponse.json({ symbol, currency, history });
+    return NextResponse.json({ symbol, currency, history }, {
+    headers: { "Cache-Control": "public, max-age=3600, stale-while-revalidate=7200" },
+  });
   } catch (err) {
     console.error("earnings-history error", err);
     return NextResponse.json({ error: "データ取得に失敗しました" }, { status: 500 });

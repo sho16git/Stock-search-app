@@ -38,21 +38,27 @@ function getGainers(r: SectorRank, m: Market): number {
 }
 
 /* ─── Tile color based on % magnitude ─── */
-type HeatStyle = { bg: string; text: string; sub: string; bar: string };
+type HeatStyle = { bg: string; text: string; sub: string; bar: string; border: string };
 function heatStyle(pct: number | null): HeatStyle {
   if (pct === null)
-    return { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-400 dark:text-slate-500", sub: "text-slate-400 dark:text-slate-500", bar: "bg-slate-300 dark:bg-slate-600" };
-  if (pct >=  3) return { bg: "bg-emerald-700", text: "text-white", sub: "text-emerald-200", bar: "bg-white/40" };
-  if (pct >=  2) return { bg: "bg-emerald-600", text: "text-white", sub: "text-emerald-100", bar: "bg-white/40" };
-  if (pct >=  1) return { bg: "bg-emerald-500", text: "text-white", sub: "text-emerald-100", bar: "bg-white/40" };
-  if (pct >= 0.3){ return { bg: "bg-emerald-400", text: "text-white", sub: "text-emerald-50",  bar: "bg-white/40" }; }
-  if (pct >   0) return { bg: "bg-emerald-100 dark:bg-emerald-900/40", text: "text-emerald-800 dark:text-emerald-200", sub: "text-emerald-600 dark:text-emerald-400", bar: "bg-emerald-400/50" };
-  if (pct ===  0) return { bg: "bg-slate-100 dark:bg-slate-800", text: "text-slate-600 dark:text-slate-300", sub: "text-slate-400", bar: "bg-slate-400/40" };
-  if (pct >= -0.3) return { bg: "bg-rose-100 dark:bg-rose-900/40", text: "text-rose-800 dark:text-rose-200", sub: "text-rose-600 dark:text-rose-400", bar: "bg-rose-400/50" };
-  if (pct >= -1) return { bg: "bg-rose-400", text: "text-white", sub: "text-rose-50",  bar: "bg-white/40" };
-  if (pct >= -2) return { bg: "bg-rose-500", text: "text-white", sub: "text-rose-100", bar: "bg-white/40" };
-  if (pct >= -3) return { bg: "bg-rose-600", text: "text-white", sub: "text-rose-100", bar: "bg-white/40" };
-  return           { bg: "bg-rose-700",    text: "text-white", sub: "text-rose-200", bar: "bg-white/40" };
+    return {
+      bg: "bg-slate-100 dark:bg-slate-800/60",
+      text: "text-slate-400 dark:text-slate-500",
+      sub: "text-slate-400 dark:text-slate-500",
+      bar: "bg-slate-300 dark:bg-slate-600",
+      border: "border-slate-200/0 dark:border-slate-700/0",
+    };
+  if (pct >=  3) return { bg: "bg-emerald-600",                   text: "text-white",                                          sub: "text-emerald-100",                      bar: "bg-white/50",          border: "border-emerald-500/30" };
+  if (pct >=  2) return { bg: "bg-emerald-500",                   text: "text-white",                                          sub: "text-emerald-100",                      bar: "bg-white/40",          border: "border-emerald-400/30" };
+  if (pct >=  1) return { bg: "bg-emerald-400",                   text: "text-white",                                          sub: "text-emerald-50",                       bar: "bg-white/40",          border: "border-emerald-300/30" };
+  if (pct >= 0.3) return { bg: "bg-emerald-100 dark:bg-emerald-900/50", text: "text-emerald-800 dark:text-emerald-100",        sub: "text-emerald-600 dark:text-emerald-300", bar: "bg-emerald-500/60",   border: "border-emerald-200/50 dark:border-emerald-700/40" };
+  if (pct >   0) return { bg: "bg-emerald-50 dark:bg-emerald-950/40",  text: "text-emerald-700 dark:text-emerald-300",         sub: "text-emerald-500 dark:text-emerald-500", bar: "bg-emerald-400/50",   border: "border-emerald-100/60 dark:border-emerald-800/40" };
+  if (pct ===0)  return { bg: "bg-slate-100 dark:bg-slate-800/60",     text: "text-slate-600 dark:text-slate-300",             sub: "text-slate-400",                         bar: "bg-slate-400/40",     border: "border-slate-200/0 dark:border-slate-700/0" };
+  if (pct >= -0.3) return { bg: "bg-rose-50 dark:bg-rose-950/40",      text: "text-rose-700 dark:text-rose-300",               sub: "text-rose-500 dark:text-rose-500",        bar: "bg-rose-400/50",      border: "border-rose-100/60 dark:border-rose-800/40" };
+  if (pct >= -1) return { bg: "bg-rose-100 dark:bg-rose-900/50",       text: "text-rose-800 dark:text-rose-100",               sub: "text-rose-600 dark:text-rose-300",        bar: "bg-rose-500/60",      border: "border-rose-200/50 dark:border-rose-700/40" };
+  if (pct >= -2) return { bg: "bg-rose-400",                           text: "text-white",                                     sub: "text-rose-50",                            bar: "bg-white/40",          border: "border-rose-300/30" };
+  if (pct >= -3) return { bg: "bg-rose-500",                           text: "text-white",                                     sub: "text-rose-100",                           bar: "bg-white/40",          border: "border-rose-400/30" };
+  return          { bg: "bg-rose-600",                                  text: "text-white",                                     sub: "text-rose-100",                           bar: "bg-white/50",          border: "border-rose-500/30" };
 }
 
 /* ─── List badge color ─── */
@@ -123,41 +129,49 @@ export default function SectorHeatmap() {
     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
 
       {/* ════ Header ════ */}
-      <div className="px-4 pt-3.5 pb-3 border-b border-slate-100 dark:border-slate-800/60 space-y-2.5">
+      <div className="px-3.5 pt-3 pb-2.5 border-b border-slate-100 dark:border-slate-800/60">
 
-        {/* Title row */}
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <h2 className="text-base font-bold tracking-tight flex items-center gap-1.5">
+        {/* Title + controls row */}
+        <div className="flex items-center justify-between gap-2 mb-2.5">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold tracking-tight flex items-center gap-1.5 text-slate-800 dark:text-slate-100">
               <span>🔥</span><span>セクター騰落率</span>
             </h2>
-            <p className="text-[11px] text-slate-500 mt-0.5">全銘柄の平均変動率・リアルタイム</p>
+            {summary && (
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold tabular-nums">▲{summary.rising}</span>
+                <span className="text-rose-600 dark:text-rose-400 font-semibold tabular-nums">▼{summary.total - summary.rising}</span>
+                <span className={`font-mono font-bold tabular-nums ${summary.avg >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                  {summary.avg >= 0 ? "+" : ""}{summary.avg.toFixed(2)}%
+                </span>
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             {/* View toggle */}
             <div className="flex gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg">
               <button
                 onClick={() => setView("heat")}
                 title="ヒートマップ"
-                className={`p-1.5 rounded-md transition-all ${
+                className={`p-1 rounded-md transition-all ${
                   view === "heat"
                     ? "bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-white"
                     : "text-slate-400 hover:text-slate-700 dark:hover:text-white"
                 }`}
               >
-                <LayoutGrid className="w-3.5 h-3.5" />
+                <LayoutGrid className="w-3 h-3" />
               </button>
               <button
                 onClick={() => setView("list")}
                 title="一覧"
-                className={`p-1.5 rounded-md transition-all ${
+                className={`p-1 rounded-md transition-all ${
                   view === "list"
                     ? "bg-white dark:bg-slate-700 shadow-sm text-slate-800 dark:text-white"
                     : "text-slate-400 hover:text-slate-700 dark:hover:text-white"
                 }`}
               >
-                <AlignJustify className="w-3.5 h-3.5" />
+                <AlignJustify className="w-3 h-3" />
               </button>
             </div>
 
@@ -165,62 +179,43 @@ export default function SectorHeatmap() {
             <button
               onClick={load}
               disabled={loading}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all disabled:opacity-40"
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-all disabled:opacity-40"
               title="更新"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
             </button>
           </div>
         </div>
 
-        {/* Market + summary row */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          {/* Tabs */}
-          <div className="flex gap-1">
-            {(["all", "JP", "US"] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setMarket(m)}
-                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                  market === m
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white"
-                }`}
-              >
-                {m === "all" ? "全体" : m === "JP" ? "🇯🇵 日本株" : "🇺🇸 米国株"}
-              </button>
-            ))}
-          </div>
-
-          {/* Summary chip */}
-          {summary && (
-            <div className="flex items-center gap-2 text-xs text-slate-500">
-              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                ▲ {summary.rising}
-              </span>
-              <span className="text-rose-600 dark:text-rose-400 font-semibold">
-                ▼ {summary.total - summary.rising}
-              </span>
-              <span className={`font-mono font-bold ${summary.avg >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-                {summary.avg >= 0 ? "+" : ""}{summary.avg.toFixed(2)}%
-              </span>
-            </div>
-          )}
+        {/* Market tabs */}
+        <div className="flex gap-1">
+          {(["all", "JP", "US"] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => setMarket(m)}
+              className={`px-2.5 py-0.5 rounded-full text-xs font-semibold transition-all ${
+                market === m
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white"
+              }`}
+            >
+              {m === "all" ? "全体" : m === "JP" ? "🇯🇵 JP" : "🇺🇸 US"}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* ════ Heatmap view ════ */}
       {view === "heat" && (
-        <div className="p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+        <div className="p-2 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1.5">
           {displayRanks.map((rank, idx) => {
             const s = getSector(rank.id);
             if (!s) return null;
-            const pct      = getPct(rank, market);
-            const count    = getCount(rank, market);
-            const gainers  = getGainers(rank, market);
-            const losers   = count - gainers;
-            const style    = heatStyle(pct);
-            const gPct     = count > 0 ? (gainers / count) * 100 : 0;
+            const pct     = getPct(rank, market);
+            const count   = getCount(rank, market);
+            const gainers = getGainers(rank, market);
+            const gPct    = count > 0 ? (gainers / count) * 100 : 0;
+            const style   = heatStyle(pct);
             const isTop    = idx === 0 && pct !== null && pct > 0;
             const isBottom = idx === displayRanks.length - 1 && pct !== null && pct < 0;
 
@@ -228,49 +223,35 @@ export default function SectorHeatmap() {
               <Link
                 key={rank.id}
                 href={`/sector/${rank.id}`}
-                className={`relative block rounded-xl p-3.5 ${style.bg} transition-all duration-300 hover:scale-[1.03] hover:shadow-lg hover:z-10 cursor-pointer`}
+                className={`relative block rounded-xl p-2 border ${style.bg} ${style.border} transition-all duration-200 hover:scale-[1.04] hover:shadow-md hover:z-10 cursor-pointer`}
               >
-                {/* Top / Bottom badge */}
+                {/* Top/Bottom micro badge */}
                 {(isTop || isBottom) && (
-                  <div className={`absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                    isTop ? "bg-emerald-900/30 text-emerald-100" : "bg-rose-900/30 text-rose-100"
+                  <div className={`absolute top-1 right-1 text-[8px] font-black leading-none px-1 py-0.5 rounded-full ${
+                    isTop ? "bg-black/15 text-white" : "bg-black/15 text-white"
                   }`}>
-                    {isTop ? "TOP↑" : "LOW↓"}
+                    {isTop ? "↑" : "↓"}
                   </div>
                 )}
 
-                {/* Rank number */}
-                <div className={`absolute top-2 left-3 text-[10px] font-bold tabular-nums ${style.sub}`}>
-                  #{idx + 1}
+                {/* Emoji + % */}
+                <div className="flex items-center justify-between gap-1 mb-1">
+                  <span className="text-base leading-none">{s.emoji}</span>
+                  <span className={`font-mono font-bold text-xs tabular-nums leading-none ${style.text}`}>
+                    {pct !== null
+                      ? `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`
+                      : loading ? "…" : "—"}
+                  </span>
                 </div>
 
-                {/* Emoji */}
-                <div className="text-2xl mt-3 mb-1.5">{s.emoji}</div>
-
                 {/* Sector name */}
-                <div className={`text-xs font-semibold truncate mb-2 ${style.text}`}>
+                <div className={`text-[10px] font-semibold leading-tight truncate ${style.text} opacity-80`}>
                   {s.nameJa}
                 </div>
 
-                {/* % change — large */}
-                <div className={`font-mono font-bold text-xl leading-none tabular-nums ${style.text}`}>
-                  {pct !== null
-                    ? `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`
-                    : loading ? "…" : "—"}
-                </div>
-
-                {/* Gainer / loser counts */}
+                {/* Gainer bar */}
                 {count > 0 && (
-                  <div className={`text-[10px] mt-2 font-medium flex items-center gap-1.5 ${style.sub}`}>
-                    <span>▲{gainers}</span>
-                    <span>▼{losers}</span>
-                    <span className="opacity-60">/ {count}</span>
-                  </div>
-                )}
-
-                {/* Proportion bar */}
-                {count > 0 && (
-                  <div className="mt-1.5 h-1 rounded-full overflow-hidden bg-black/10 dark:bg-white/10">
+                  <div className="mt-1.5 h-0.5 rounded-full overflow-hidden bg-black/10 dark:bg-white/10">
                     <div
                       className={`h-full ${style.bar} transition-all duration-500`}
                       style={{ width: `${gPct}%` }}
@@ -305,30 +286,27 @@ export default function SectorHeatmap() {
               <Link
                 key={rank.id}
                 href={`/sector/${rank.id}`}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group"
+                className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group"
               >
                 {/* Rank */}
-                <div className="w-5 shrink-0 text-center">
-                  <span className={`text-xs font-bold tabular-nums ${idx < 3 ? "text-amber-500" : "text-slate-400"}`}>
-                    {idx + 1}
-                  </span>
-                </div>
+                <span className={`w-4 shrink-0 text-[10px] font-bold tabular-nums text-center ${idx < 3 ? "text-amber-500" : "text-slate-300 dark:text-slate-600"}`}>
+                  {idx + 1}
+                </span>
 
                 {/* Emoji + Name */}
-                <div className="flex items-center gap-2 w-36 shrink-0">
-                  <span className="text-xl">{s.emoji}</span>
+                <div className="flex items-center gap-2 w-32 shrink-0">
+                  <span className="text-lg leading-none">{s.emoji}</span>
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{s.nameJa}</div>
-                    <div className="text-[10px] text-slate-400">
+                    <div className="text-xs font-semibold truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors text-slate-700 dark:text-slate-200">{s.nameJa}</div>
+                    <div className="text-[9px] text-slate-400 tabular-nums">
                       {count > 0 ? `${count}銘柄` : "—"}
                     </div>
                   </div>
                 </div>
 
-                {/* Bar + gainer strip */}
-                <div className="flex-1 min-w-0 hidden sm:block space-y-1">
-                  {/* Change bar (centered at 0) */}
-                  <div className="relative h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                {/* Bar */}
+                <div className="flex-1 min-w-0 hidden sm:block space-y-0.5">
+                  <div className="relative h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                     {pct !== null && (
                       <div
                         className={`absolute top-0 h-full rounded-full transition-all duration-500 ${
@@ -337,16 +315,11 @@ export default function SectorHeatmap() {
                         style={{ width: `${barWidth / 2}%` }}
                       />
                     )}
-                    {/* Center line */}
                     <div className="absolute left-1/2 top-0 h-full w-px bg-slate-300 dark:bg-slate-600" />
                   </div>
-                  {/* Gainer/loser proportion */}
                   {count > 0 && (
-                    <div className="flex h-1 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                      <div
-                        className="bg-emerald-400/60 transition-all duration-500"
-                        style={{ width: `${gPct}%` }}
-                      />
+                    <div className="flex h-0.5 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+                      <div className="bg-emerald-400/60 transition-all duration-500" style={{ width: `${gPct}%` }} />
                       <div className="bg-rose-400/60 flex-1" />
                     </div>
                   )}
@@ -354,42 +327,34 @@ export default function SectorHeatmap() {
 
                 {/* % badge */}
                 <div className="shrink-0">
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg font-mono font-bold text-sm tabular-nums ${text} ${bg}`}>
-                    <Icon className="w-3.5 h-3.5 shrink-0" />
+                  <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md font-mono font-bold text-xs tabular-nums ${text} ${bg}`}>
+                    <Icon className="w-2.5 h-2.5 shrink-0" />
                     {pct !== null ? `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%` : "—"}
                   </span>
                 </div>
 
-                {/* Gainers / Losers count */}
-                <div className="hidden md:flex flex-col items-end shrink-0 w-16 text-xs gap-0.5">
+                {/* Gainers / Losers */}
+                <div className="hidden md:flex flex-col items-end shrink-0 w-12 gap-px">
                   {count > 0 ? (
                     <>
-                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold">▲{gainers}</span>
-                      <span className="text-rose-600   dark:text-rose-400   font-semibold">▼{losers}</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-[10px] tabular-nums leading-none">▲{gainers}</span>
+                      <span className="text-rose-600   dark:text-rose-400   font-semibold text-[10px] tabular-nums leading-none">▼{losers}</span>
                     </>
                   ) : null}
                 </div>
 
                 {/* Top gainer / loser */}
-                <div className="hidden lg:block shrink-0 w-40 text-right space-y-0.5">
+                <div className="hidden lg:block shrink-0 w-36 text-right space-y-0.5">
                   {rank.topGainer && (
-                    <div className="text-xs">
-                      <span className="text-emerald-600 dark:text-emerald-400 font-mono font-semibold">
-                        ▲+{rank.topGainer.pct.toFixed(1)}%
-                      </span>
-                      <span className="text-slate-400 ml-1 font-mono text-[10px]">
-                        {rank.topGainer.symbol}
-                      </span>
+                    <div className="text-[10px]">
+                      <span className="text-emerald-600 dark:text-emerald-400 font-mono font-semibold">▲+{rank.topGainer.pct.toFixed(1)}%</span>
+                      <span className="text-slate-400 ml-1 font-mono">{rank.topGainer.symbol}</span>
                     </div>
                   )}
                   {rank.topLoser && (
-                    <div className="text-xs">
-                      <span className="text-rose-600 dark:text-rose-400 font-mono font-semibold">
-                        ▼{rank.topLoser.pct.toFixed(1)}%
-                      </span>
-                      <span className="text-slate-400 ml-1 font-mono text-[10px]">
-                        {rank.topLoser.symbol}
-                      </span>
+                    <div className="text-[10px]">
+                      <span className="text-rose-600 dark:text-rose-400 font-mono font-semibold">▼{rank.topLoser.pct.toFixed(1)}%</span>
+                      <span className="text-slate-400 ml-1 font-mono">{rank.topLoser.symbol}</span>
                     </div>
                   )}
                 </div>
@@ -401,12 +366,12 @@ export default function SectorHeatmap() {
 
       {/* ════ Footer ════ */}
       {asOf && (
-        <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
-          <span className="text-[10px] text-slate-400">
+        <div className="px-3.5 py-1.5 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
+          <span className="text-[9px] text-slate-400">
             {market === "all" ? "全銘柄平均" : market === "JP" ? "日本株のみ" : "米国株のみ"}
           </span>
-          <span className="text-[10px] text-slate-400">
-            {new Date(asOf).toLocaleString("ja-JP")} 時点
+          <span className="text-[9px] text-slate-400 tabular-nums">
+            {new Date(asOf).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })} 時点
           </span>
         </div>
       )}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Globe, RefreshCw, BookOpen, ChevronUp } from "lucide-react";
 import ArticleBody from "./ArticleBody";
+import AINewsSummary from "./AINewsSummary";
 
 type GeoNewsItem = {
   uuid: string;
@@ -178,8 +179,8 @@ export default function GeopoliticalNews({ sector }: { sector?: string | null })
                   </div>
                 </button>
 
-                {n.link && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
+                <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                  {n.link && (
                     <button
                       onClick={() => toggle(n.uuid)}
                       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors"
@@ -190,8 +191,13 @@ export default function GeopoliticalNews({ sector }: { sector?: string | null })
                         <><BookOpen className="w-3 h-3" />記事を読む</>
                       )}
                     </button>
-                  </div>
-                )}
+                  )}
+                  <AINewsSummary
+                    title={title}
+                    symbol={n.relatedTickers?.[0]}
+                    context={n.tag}
+                  />
+                </div>
                 {isExpanded && n.link && <ArticleBody link={n.link} />}
               </div>
             );
