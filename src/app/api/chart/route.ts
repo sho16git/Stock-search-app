@@ -57,15 +57,11 @@ export async function GET(req: NextRequest) {
   // (~60 bars) can never produce a 200-day average. The warmup bars are returned
   // too, with `warmup` telling the client how many to trim before display.
   const DAY = 24 * 60 * 60 * 1000;
-  // Generous margins so the longest MA (200 bars) is fully covered across the
-  // whole displayed range for EVERY stock — not just barely (a thin buffer can
-  // dip under 200 on holiday-heavy spans and leave MA200 partially blank).
-  const warmupDays =
-    cfg.intraday          ? 0    :   // intraday MAs are bar-based; no calendar buffer
-    cfg.interval === "1d" ? 460  :   // ~315 trading days  (need ≥200)
-    cfg.interval === "1wk"? 1825 :   // ~260 weeks         (need ≥200)
-    cfg.interval === "1mo"? 8000 :   // ~263 months        (need ≥200) — 10y / MAX
-    0;
+  // Warmup (lead-in) bars so moving averages are computed with prior history and
+  // render across the whole displayed range. The client scales MA periods to the
+  // bar interval (a "200-day" MA = ~40 weekly or ~10 monthly bars), so a single
+  // ~460-day buffer covers the longest MA on daily / weekly / monthly charts.
+  const warmupDays = cfg.intraday ? 0 : 460;
   const period1     = new Date(Date.now() - (cfg.period + warmupDays) * DAY);
   const displayFrom = new Date(Date.now() - cfg.period * DAY).toISOString().slice(0, 10);
 

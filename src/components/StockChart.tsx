@@ -136,6 +136,18 @@ const RANGES: { key: RangeKey; label: string; apiRange: string; group: "intraday
   { key: "max",   label: "MAX",   apiRange: "max",   group: "period" },
 ];
 
+/** Approx. trading days per displayed bar, by range. Used to convert a
+ *  day-based MA period (MA5/25/75/200 = days) into bars for the current
+ *  interval, so "MA200" always means ~200 trading days — whether the chart
+ *  shows daily, weekly (5年) or monthly (10年/MAX) bars. */
+const RANGE_BAR_DAYS: Record<RangeKey, number> = {
+  "1min": 1, "5min": 1, "10min": 1, "1h": 1,   // intraday: bar-based, no scaling
+  "1d": 1, "1wk": 1,                            // intraday-derived, bar-based
+  "1mo": 1, "3mo": 1, "6mo": 1, "1y": 1,        // daily bars → 1 day/bar
+  "5y": 5,                                       // weekly bars  → ~5 trading days/bar
+  "10y": 21, "max": 21,                          // monthly bars → ~21 trading days/bar
+};
+
 /* ─── Helpers ─── */
 function fmtDate(date: string, range: RangeKey): string {
   const d = new Date(date);
@@ -976,11 +988,22 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
   const viewData = useMemo(() => warmup > 0 ? displayData.slice(warmup) : displayData, [displayData, warmup]);
   const rsiData  = useMemo(() => showRSI  ? calcRSI(displayData).slice(warmup)  : [], [displayData, warmup, showRSI]);
   const macdData = useMemo(() => showMACD ? calcMACD(displayData).slice(warmup) : [], [displayData, warmup, showMACD]);
+  // MA periods are expressed in DAYS; convert to bars for the current interval so
+  // e.g. "MA200" = ~200 trading days on daily, ~40 bars on weekly, ~10 on monthly.
+  // This keeps every MA computable across the whole range (instead of a 200-month
+  // line that only starts ~17 years in on a MAX monthly chart). MAs that would be
+  // shorter than 3 bars at this resolution are skipped (meaningless / overlapping).
+  const barDays  = RANGE_BAR_DAYS[range] ?? 1;
   const maLines  = useMemo((): MALine[] =>
     MA_CONFIGS
       .filter(c => activeMA.has(c.period))
-      .map(c => ({ ...c, values: calcSMA(displayData, c.period).slice(warmup) })),
-  [displayData, warmup, activeMA]);
+      .map(c => {
+        const bars = Math.round(c.period / barDays);
+        if (bars < 3) return null;
+        return { ...c, values: calcSMA(displayData, bars).slice(warmup) };
+      })
+      .filter((m): m is MALine => m !== null),
+  [displayData, warmup, activeMA, barDays]);
 
   // ── Pan / Zoom (default interaction — drag to pan, wheel/pinch/dbl-click to zoom) ──
   const chartAreaRef = useRef<HTMLDivElement>(null);
@@ -1012,7 +1035,8 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
 
     const allMA: Record<string, number | null> = {};
     for (const cfg of MA_CONFIGS) {
-      const vals = calcSMA(displayData, cfg.period);
+      const bars = Math.round(cfg.period / barDays);
+      const vals = bars >= 3 ? calcSMA(displayData, bars) : [];
       allMA[`ma${cfg.period}`] = vals[vals.length - 1] ?? null;
     }
     const rsiVals  = calcRSI(displayData);
@@ -1043,7 +1067,7 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
     } catch {
       setAiTechStatus("error");
     }
-  }, [displayData, symbol, range, pct]);
+  }, [displayData, symbol, range, pct, barDays]);
 
   return (
     <>
@@ -1085,16 +1109,22 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
               <IndicatorToggle label="BB"   active={showBB}   onClick={() => toggleIndicator("BB")} />
               <IndicatorToggle label="RSI"  active={showRSI}  onClick={() => toggleIndicator("RSI")} />
               <IndicatorToggle label="MACD" active={showMACD} onClick={() => toggleIndicator("MACD")} />
-              {/* MA toggles */}
+              {/* MA toggles — disabled when the period is too short to draw at
+                  this interval (e.g. MA5/MA25 on a monthly MAX chart) */}
               {MA_CONFIGS.map(ma => {
                 const isOn = activeMA.has(ma.period);
+                const applicable = Math.round(ma.period / barDays) >= 3;
                 return (
                   <button
                     key={ma.period}
-                    onClick={() => toggleMA(ma.period)}
-                    style={isOn ? { borderColor: ma.color, color: ma.color, backgroundColor: `${ma.color}18` } : undefined}
+                    onClick={() => applicable && toggleMA(ma.period)}
+                    disabled={!applicable}
+                    title={applicable ? undefined : "この期間では足が長すぎて表示できません"}
+                    style={isOn && applicable ? { borderColor: ma.color, color: ma.color, backgroundColor: `${ma.color}18` } : undefined}
                     className={`px-2 py-0.5 text-[10px] rounded border font-semibold transition-all ${
-                      isOn
+                      !applicable
+                        ? "border-slate-100 dark:border-slate-800 text-slate-300 dark:text-slate-600 cursor-not-allowed"
+                        : isOn
                         ? "border-current"
                         : "border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-400"
                     }`}
