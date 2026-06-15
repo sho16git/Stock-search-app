@@ -49,6 +49,7 @@ export async function GET(req: NextRequest) {
       shortName: string | null;
       nameJa: string | null;
       price: number | null;
+      change: number | null;
       changePercent: number | null;
       marketCap: number | null;
       trailingPE: number | null;
@@ -66,6 +67,7 @@ export async function GET(req: NextRequest) {
         ? (getJpName(String(q.symbol ?? "")) ?? null)
         : (getUsKatakana(String(q.symbol ?? "")) ?? null),
       price: typeof q.regularMarketPrice === "number" ? q.regularMarketPrice : null,
+      change: typeof q.regularMarketChange === "number" ? q.regularMarketChange : null,
       changePercent: typeof q.regularMarketChangePercent === "number" ? q.regularMarketChangePercent : null,
       marketCap: typeof q.marketCap === "number" ? q.marketCap : null,
       trailingPE: typeof q.trailingPE === "number" ? q.trailingPE : null,

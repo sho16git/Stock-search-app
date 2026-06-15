@@ -12,6 +12,7 @@ type RankItem = {
   shortName: string | null;
   nameJa: string | null;
   price: number | null;
+  change: number | null;
   changePercent: number | null;
   marketCap: number | null;
   trailingPE: number | null;
@@ -28,17 +29,25 @@ const RANK_TABS: { key: RankingType; label: string; desc: string }[] = [
   { key: "52w-high",  label: "52週高値更新",   desc: "52週高値に近い銘柄" },
 ];
 
-function fmtCap(v: number | null): string {
-  if (v == null) return "—";
-  if (v >= 1e12) return `${(v / 1e12).toFixed(1)}兆`;
-  if (v >= 1e8)  return `${(v / 1e8).toFixed(0)}億`;
-  if (v >= 1e6)  return `${(v / 1e6).toFixed(0)}百万`;
-  return v.toLocaleString();
-}
-
 function fmtPrice(v: number | null): string {
   if (v == null) return "—";
   return v.toLocaleString("ja-JP", { maximumFractionDigits: 2 });
+}
+
+/** 前日比(変化額)。API値が無い場合は価格と騰落率から算出。 */
+function changeAmount(item: RankItem): number | null {
+  if (item.change != null) return item.change;
+  if (item.price != null && item.changePercent != null) {
+    const r = item.changePercent / 100;
+    return item.price - item.price / (1 + r);
+  }
+  return null;
+}
+
+function fmtChange(v: number | null): string {
+  if (v == null) return "—";
+  const a = Math.abs(v);
+  return a.toLocaleString("ja-JP", { maximumFractionDigits: a < 10 ? 2 : a < 100 ? 1 : 0 });
 }
 
 export default function RankingPage() {
@@ -130,75 +139,47 @@ export default function RankingPage() {
         ) : items.length === 0 ? (
           <div className="p-8 text-center text-sm text-slate-400">データが取得できませんでした</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800">
-                  <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-slate-500 dark:text-slate-400 w-8">#</th>
-                  <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-slate-500 dark:text-slate-400 min-w-[120px]">銘柄</th>
-                  <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-slate-500 dark:text-slate-400 min-w-[70px]">株価</th>
-                  <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-slate-500 dark:text-slate-400 min-w-[60px]">騰落率</th>
-                  {tab === "dividend"  && <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-slate-500 dark:text-slate-400 min-w-[70px]">配当利回り</th>}
-                  {tab === "low-per"   && <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-slate-500 dark:text-slate-400 min-w-[50px]">PER</th>}
-                  {tab === "high-roe"  && <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-slate-500 dark:text-slate-400 min-w-[60px]">ROE</th>}
-                  {tab === "52w-high"  && <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-slate-500 dark:text-slate-400 min-w-[70px]">52週高値比</th>}
-                  <th className="px-3 py-2.5 text-right text-[10px] font-semibold text-slate-500 dark:text-slate-400 min-w-[70px]">時価総額</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item, idx) => {
-                  const up = (item.changePercent ?? 0) >= 0;
-                  const ratio52w = item.fiftyTwoWeekHigh
-                    ? ((item.regularMarketPrice ?? 0) / item.fiftyTwoWeekHigh) * 100
-                    : null;
-                  return (
-                    <tr
-                      key={item.symbol}
-                      className="border-b last:border-0 border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
-                    >
-                      <td className="px-3 py-2.5 text-slate-400 font-mono tabular-nums">{idx + 1}</td>
-                      <td className="px-3 py-2.5">
-                        <Link href={`/stock/${encodeURIComponent(item.symbol)}`} className="hover:underline block">
-                          <div className="font-mono font-semibold text-blue-600 dark:text-blue-400">{item.symbol}</div>
-                          {(item.nameJa ?? item.shortName) && (
-                            <div className="text-[10px] text-slate-400 truncate max-w-[140px]">{item.nameJa ?? item.shortName}</div>
-                          )}
-                        </Link>
-                      </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums font-mono text-slate-700 dark:text-slate-200">
-                        {fmtPrice(item.price)}
-                      </td>
-                      <td className={`px-3 py-2.5 text-right tabular-nums font-mono ${up ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-                        {item.changePercent != null ? `${up ? "+" : ""}${item.changePercent.toFixed(2)}%` : "—"}
-                      </td>
-                      {tab === "dividend" && (
-                        <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-emerald-600 dark:text-emerald-400">
-                          {item.dividendYield != null ? `${item.dividendYield.toFixed(2)}%` : "—"}
-                        </td>
-                      )}
-                      {tab === "low-per" && (
-                        <td className="px-3 py-2.5 text-right tabular-nums">
-                          {item.trailingPE != null ? item.trailingPE.toFixed(1) : "—"}
-                        </td>
-                      )}
-                      {tab === "high-roe" && (
-                        <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-emerald-600 dark:text-emerald-400">
-                          {item.roe != null ? `${(item.roe * 100).toFixed(1)}%` : "—"}
-                        </td>
-                      )}
-                      {tab === "52w-high" && (
-                        <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-blue-600 dark:text-blue-400">
-                          {ratio52w != null ? `${ratio52w.toFixed(1)}%` : "—"}
-                        </td>
-                      )}
-                      <td className="px-3 py-2.5 text-right tabular-nums text-slate-500 dark:text-slate-400">
-                        {fmtCap(item.marketCap)}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="divide-y divide-slate-50 dark:divide-slate-800/50">
+            {items.map((item, idx) => {
+              const up = (item.changePercent ?? 0) >= 0;
+              const chg = changeAmount(item);
+              const ratio52w = item.fiftyTwoWeekHigh
+                ? ((item.regularMarketPrice ?? 0) / item.fiftyTwoWeekHigh) * 100
+                : null;
+              const metric =
+                tab === "dividend" ? { label: "配当", value: item.dividendYield != null ? `${item.dividendYield.toFixed(2)}%` : "—", cls: "text-emerald-600 dark:text-emerald-400" }
+                : tab === "low-per" ? { label: "PER", value: item.trailingPE != null ? item.trailingPE.toFixed(1) : "—", cls: "text-slate-700 dark:text-slate-200" }
+                : tab === "high-roe" ? { label: "ROE", value: item.roe != null ? `${(item.roe * 100).toFixed(1)}%` : "—", cls: "text-emerald-600 dark:text-emerald-400" }
+                : { label: "52W比", value: ratio52w != null ? `${ratio52w.toFixed(1)}%` : "—", cls: "text-blue-600 dark:text-blue-400" };
+              return (
+                <Link
+                  key={item.symbol}
+                  href={`/stock/${encodeURIComponent(item.symbol)}`}
+                  className="flex items-center gap-2 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors"
+                >
+                  {/* rank */}
+                  <span className="w-5 shrink-0 text-center text-[11px] font-mono tabular-nums text-slate-400">{idx + 1}</span>
+                  {/* 銘柄 */}
+                  <div className="min-w-0 flex-1">
+                    <div className="font-mono text-[11px] font-semibold text-blue-600 dark:text-blue-400 leading-tight">{item.symbol}</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate leading-tight">{item.nameJa ?? item.shortName ?? ""}</div>
+                  </div>
+                  {/* ランキング指標 */}
+                  <div className="shrink-0 w-12 text-right">
+                    <div className="text-[8px] text-slate-400 leading-none">{metric.label}</div>
+                    <div className={`text-[11px] font-bold tabular-nums leading-tight ${metric.cls}`}>{metric.value}</div>
+                  </div>
+                  {/* 価格 + 前日比 */}
+                  <div className="shrink-0 w-[88px] text-right font-mono tabular-nums">
+                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-100 leading-tight">{fmtPrice(item.price)}</div>
+                    <div className={`text-[10px] leading-tight ${up ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                      {up ? "+" : "−"}{fmtChange(chg)}
+                      <span className="ml-0.5">({up ? "+" : ""}{item.changePercent != null ? item.changePercent.toFixed(2) : "—"}%)</span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>

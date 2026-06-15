@@ -5,7 +5,7 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, ReferenceLine, Area,
 } from "recharts";
-import { Maximize2, X, TrendingUp, TrendingDown, RefreshCw, Sparkles, ChevronDown } from "lucide-react";
+import { TrendingUp, TrendingDown, RefreshCw, Sparkles, ChevronDown } from "lucide-react";
 import { formatJpy } from "@/lib/format";
 import { useCurrency } from "@/lib/currency-context";
 import { recordAiCall } from "@/lib/ai-usage-client";
@@ -594,41 +594,21 @@ function LineVolumeChart({
   );
 }
 
-/* ─── Expanded modal ─── */
-function ExpandedModal({
-  symbol, currency, data, loading, range, setRange, chartType, setChartType, first, fmt, maLines, onClose,
-}: {
-  symbol: string;
-  currency?: string | null;
-  data: Point[];
-  loading: boolean;
-  range: RangeKey;
-  setRange: (r: RangeKey) => void;
-  chartType: ChartType;
-  setChartType: (t: ChartType) => void;
-  first: number;
-  fmt: (v: number) => string;
-  maLines?: MALine[];
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", handler);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", handler);
-      document.body.style.overflow = "";
-    };
-  }, [onClose]);
-
-  /* ── Pan / Zoom state ──
-   * visStart: how many bars from the RIGHT end are hidden (0 = showing latest)
-   * visCount: how many bars are shown (null = show all)
-   */
+/* ─── Pan / Zoom hook ───
+ * Wires wheel-zoom (at cursor) · drag-pan · pinch · double-click gestures onto
+ * a chart-area element and returns the currently visible window [visBeg, visEnd).
+ *   visStart: how many bars from the RIGHT end are hidden (0 = showing latest)
+ *   visCount: how many bars are shown (null = show all)
+ * Zooming is the default interaction on the inline chart — no expand button.
+ */
+function usePanZoom(
+  chartAreaRef: { current: HTMLDivElement | null },
+  total: number,
+  loading: boolean,
+  range: RangeKey,
+) {
   const [visStart, setVisStart] = useState(0);
   const [visCount, setVisCount] = useState<number | null>(null);
-  const chartAreaRef = useRef<HTMLDivElement>(null);
-  const [areaH, setAreaH] = useState(500);
 
   // Mirror the latest pan/zoom state into refs so gesture handlers can stay
   // attached across renders and accumulate rapid wheel/drag events smoothly.
@@ -636,25 +616,11 @@ function ExpandedModal({
   const visCountRef = useRef<number | null>(null);
   useEffect(() => { visStartRef.current = visStart; visCountRef.current = visCount; });
 
-  // Track chart area height so the chart never overflows the modal
-  useEffect(() => {
-    const el = chartAreaRef.current;
-    if (!el) return;
-    const obs = new ResizeObserver(([e]) => setAreaH(e.contentRect.height));
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  const total        = data.length;
   const effCount     = visCount ?? total;
   const maxStart     = Math.max(0, total - effCount);
   const clampedStart = Math.min(visStart, maxStart);
   const visEnd       = total - clampedStart;
   const visBeg       = Math.max(0, visEnd - effCount);
-  const visibleData    = total > 0 ? data.slice(visBeg, visEnd) : data;
-  const visibleMALines = maLines?.map(ma => ({
-    ...ma, values: ma.values.slice(visBeg, visEnd),
-  }));
 
   // Reset view when data length or range changes
   useEffect(() => {
@@ -757,9 +723,13 @@ function ExpandedModal({
         applyZoom(focalOf(pinchMid(e)), (pinchCount ?? (visCountRef.current ?? total)) * (pinchStart / d));
         pinchStart = d; pinchCount = visCountRef.current ?? total;   // re-baseline → incremental
       } else if (e.touches.length === 1 && dragX !== null) {
+        const baseCount = visCountRef.current ?? total;
+        const zoomed = baseCount < total;
+        // While zoomed, horizontal drag pans the chart — claim the gesture so it
+        // doesn't bubble up to the browser's edge swipe-back navigation.
+        if (zoomed) e.preventDefault();
         const dx = e.touches[0].clientX - dragX;
         dragX = e.touches[0].clientX;
-        const baseCount = visCountRef.current ?? total;
         panBy(Math.round((-dx) * baseCount / (el.clientWidth || 360)));
       }
     };
@@ -789,107 +759,7 @@ function ExpandedModal({
     };
   }, [total, loading]);
 
-  const visFirst  = visibleData[0]?.close ?? first;
-  const visLast   = visibleData[visibleData.length - 1]?.close ?? 0;
-  const pct       = visFirst ? ((visLast - visFirst) / visFirst) * 100 : 0;
-  const up        = pct >= 0;
-  const chartH    = Math.max(100, areaH - 32);
-
-  return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-white dark:bg-slate-950">
-      {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 shrink-0">
-        <div className="flex-1 flex flex-wrap items-center gap-2 min-w-0">
-          <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{symbol}</span>
-          {!loading && data.length > 0 && (
-            <span className={`text-sm font-bold font-mono tabular-nums ${up ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-              {up ? "▲" : "▼"} {Math.abs(pct).toFixed(2)}%
-            </span>
-          )}
-          {visLast > 0 && (
-            <span className="text-sm font-mono text-slate-500 dark:text-slate-400 tabular-nums">
-              {fmt(visLast)}{currency && ` ${currency}`}
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* Chart type */}
-          <div className="flex gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs">
-            <button onClick={() => setChartType("line")}   className={`px-2 py-1 rounded-md font-semibold transition-all ${chartType === "line"   ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white" : "text-slate-500"}`}>折れ線</button>
-            <button onClick={() => setChartType("candle")} className={`px-2 py-1 rounded-md font-semibold transition-all ${chartType === "candle" ? "bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white" : "text-slate-500"}`}>ローソク</button>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" aria-label="閉じる">
-            <X className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-          </button>
-        </div>
-      </div>
-
-      {/* Range tabs */}
-      <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800/70 shrink-0 overflow-x-auto">
-        <RangeTabs range={range} onChange={setRange} />
-      </div>
-
-      {/* Chart area — touch/wheel to pan */}
-      <div
-        ref={chartAreaRef}
-        className="flex-1 px-2 pt-2 pb-6 min-h-0 relative select-none cursor-grab active:cursor-grabbing overflow-hidden"
-      >
-        {loading ? (
-          <div className="w-full h-full rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
-        ) : data.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-slate-400 text-sm">データなし</div>
-        ) : chartType === "candle" ? (
-          <div className="w-full h-full">
-            <CandleChart data={visibleData} height={chartH} range={range} fmt={fmt} maLines={visibleMALines} />
-          </div>
-        ) : (
-          <LineVolumeChart data={visibleData} range={range} first={visFirst} height={chartH} fmt={fmt} maLines={visibleMALines} />
-        )}
-
-        {/* Scroll position bar */}
-        {!loading && total > 0 && visCount !== null && (
-          <div className="absolute bottom-2 left-6 right-6 h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-blue-400/80 rounded-full transition-all duration-75"
-              style={{
-                width:      `${(effCount / total) * 100}%`,
-                marginLeft: `${((total - clampedStart - effCount) / total) * 100}%`,
-              }}
-            />
-          </div>
-        )}
-
-        {/* Pan hint (shown when not zoomed) */}
-        {!loading && total > 0 && visCount === null && (
-          <div className="absolute bottom-2 left-0 right-0 flex justify-center pointer-events-none">
-            <span className="text-[10px] text-slate-400/80 dark:text-slate-500 select-none">
-              スクロールでズーム ／ ドラッグで移動 ／ ダブルクリック・ピンチで拡大
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* OHLC footer */}
-      {visibleData.length > 0 && (() => {
-        const d = visibleData[visibleData.length - 1];
-        return (
-          <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-800/70 shrink-0 flex gap-4 text-xs font-mono text-slate-500 dark:text-slate-400 overflow-x-auto scrollbar-none">
-            {d.open  != null && <span>始値 <strong className="text-slate-700 dark:text-slate-200">{fmt(d.open)}</strong></span>}
-            {d.high  != null && <span>高値 <strong className="text-emerald-600 dark:text-emerald-400">{fmt(d.high)}</strong></span>}
-            {d.low   != null && <span>安値 <strong className="text-rose-600 dark:text-rose-400">{fmt(d.low)}</strong></span>}
-            <span>終値 <strong className="text-slate-700 dark:text-slate-200">{fmt(d.close)}</strong></span>
-            {d.volume != null && <span>出来高 <strong>{fmtVol(d.volume)}</strong></span>}
-            {visCount !== null && (
-              <span className="ml-auto text-slate-400">
-                {visBeg + 1}–{visEnd} / {total}本
-              </span>
-            )}
-          </div>
-        );
-      })()}
-    </div>
-  );
+  return { visBeg, visEnd, visCount, effCount, clampedStart };
 }
 
 /* ─── Auto-refresh intervals for intraday ranges (ms) ─── */
@@ -942,8 +812,8 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
   const [range, setRange]           = useState<RangeKey>("3mo");
   const [chartType, setChartType]   = useState<ChartType>("line");
   const [data, setData]             = useState<Point[]>([]);
+  const [warmup, setWarmup]         = useState(0);
   const [loading, setLoading]       = useState(true);
-  const [expanded, setExpanded]     = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
   const [updatedAt, setUpdatedAt]   = useState<Date | null>(null);
   const [spinning, setSpinning]     = useState(false);
@@ -991,6 +861,7 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
   const jpyMode = showJpy && jpyRate != null;
 
   const isIntraday = useMemo(() => RANGES.find(r => r.key === range)?.group === "intraday", [range]);
+  const rangeLabel = useMemo(() => RANGES.find(r => r.key === range)?.label ?? "", [range]);
 
   useEffect(() => {
     const r = RANGES.find(r => r.key === range)!;
@@ -1006,6 +877,7 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
       .then(res => res.json())
       .then(j => {
         setData((j.data ?? []) as Point[]);
+        setWarmup(typeof j.warmup === "number" ? j.warmup : 0);
         setTradingDate(j.tradingDate ?? null);
         setUpdatedAt(new Date());
       })
@@ -1096,14 +968,28 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
     }));
   }, [dataWithLive, jpyMode, jpyRate]);
 
-  // RSI / MACD / MA calculations (computed from displayData)
-  const rsiData  = useMemo(() => showRSI  ? calcRSI(displayData)  : [], [displayData, showRSI]);
-  const macdData = useMemo(() => showMACD ? calcMACD(displayData) : [], [displayData, showMACD]);
+  // Indicators are computed over the FULL series (incl. warmup history) for accuracy,
+  // then the warmup lead-in is trimmed so only the requested range is displayed.
+  // This lets MA75 / MA200 render even on short ranges (e.g. 3 months).
+  const viewData = useMemo(() => warmup > 0 ? displayData.slice(warmup) : displayData, [displayData, warmup]);
+  const rsiData  = useMemo(() => showRSI  ? calcRSI(displayData).slice(warmup)  : [], [displayData, warmup, showRSI]);
+  const macdData = useMemo(() => showMACD ? calcMACD(displayData).slice(warmup) : [], [displayData, warmup, showMACD]);
   const maLines  = useMemo((): MALine[] =>
     MA_CONFIGS
       .filter(c => activeMA.has(c.period))
-      .map(c => ({ ...c, values: calcSMA(displayData, c.period) })),
-  [displayData, activeMA]);
+      .map(c => ({ ...c, values: calcSMA(displayData, c.period).slice(warmup) })),
+  [displayData, warmup, activeMA]);
+
+  // ── Pan / Zoom (default interaction — drag to pan, wheel/pinch/dbl-click to zoom) ──
+  const chartAreaRef = useRef<HTMLDivElement>(null);
+  const { visBeg, visEnd, visCount, effCount, clampedStart } =
+    usePanZoom(chartAreaRef, viewData.length, loading, range);
+  const total        = viewData.length;
+  const visibleData  = total > 0 ? viewData.slice(visBeg, visEnd) : viewData;
+  const visibleMA    = maLines.map(ma => ({ ...ma, values: ma.values.slice(visBeg, visEnd) }));
+  const visibleRsi   = rsiData.slice(visBeg, visEnd);
+  const visibleMacd  = macdData.slice(visBeg, visEnd);
+  const visFirst     = visibleData[0]?.close ?? viewData[0]?.close ?? 0;
 
   /** True when a live price bar is actively tracking the current minute */
   const isLive = livePoint != null && range === "1min" &&
@@ -1112,8 +998,8 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
   /** 価格フォーマット — JPY モードは円単位 */
   const fmtDisplay = (v: number) => jpyMode ? formatJpy(v) : fmtPrice(v);
 
-  const first = displayData[0]?.close ?? 0;
-  const last  = displayData[displayData.length - 1]?.close ?? 0;
+  const first = viewData[0]?.close ?? 0;
+  const last  = viewData[viewData.length - 1]?.close ?? 0;
   const pct   = first ? ((last - first) / first) * 100 : 0;
   const up    = pct >= 0;
 
@@ -1162,13 +1048,14 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
       <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-hidden">
         {/* Header */}
         <div className="px-4 pt-4 pb-3 border-b border-slate-100 dark:border-slate-800/60 space-y-2">
-          {/* Top row: period return + chart type + refresh + expand */}
-          <div className="flex items-center justify-between gap-2">
+          {/* Top row: period return + chart type + refresh (stacks on mobile) */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             {/* Period return + last-updated */}
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-2 min-w-0 flex-wrap">
               {!loading && data.length > 0 && (
-                <div className={`flex items-center gap-1 text-xs font-bold font-mono tabular-nums ${up ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
-                  {up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                <div className={`inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-1 rounded-lg text-sm font-bold font-mono tabular-nums ${up ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400" : "bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400"}`}>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${up ? "bg-emerald-500/15" : "bg-rose-500/15"}`}>{rangeLabel}</span>
+                  {up ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
                   {up ? "+" : ""}{pct.toFixed(2)}%
                 </div>
               )}
@@ -1262,15 +1149,6 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
                 {aiTechStatus === "loading" ? "解析中" : aiTechStatus === "done" ? "AI分析" : "AI分析"}
               </button>
             )}
-
-            {/* Expand */}
-            <button
-              onClick={() => setExpanded(true)}
-              title="全画面表示"
-              className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-all"
-            >
-              <Maximize2 className="w-3.5 h-3.5" />
-            </button>
           </div>
           </div>
 
@@ -1278,19 +1156,43 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
           <RangeTabs range={range} onChange={setRange} />
         </div>
 
-        {/* Chart */}
+        {/* Chart — drag to pan · wheel/pinch/double-click to zoom (default) */}
         <div className="px-2 pt-2 pb-1">
           {loading ? (
             <div className="h-64 w-full rounded-xl bg-slate-100 dark:bg-slate-800/60 animate-pulse" />
           ) : data.length === 0 ? (
             <div className="flex items-center justify-center h-64 text-sm text-slate-400">データなし</div>
-          ) : chartType === "candle" ? (
-            <div className="touch-pan-y select-none" style={{ height: 264 }}>
-              <CandleChart data={displayData} height={264} range={range} fmt={fmtDisplay} maLines={maLines} />
-            </div>
           ) : (
-            <div className="touch-pan-y select-none">
-              <LineVolumeChart data={displayData} range={range} first={first} height={264} fmt={fmtDisplay} showBB={showBB} maLines={maLines} />
+            <div
+              ref={chartAreaRef}
+              className="relative select-none cursor-grab active:cursor-grabbing"
+              style={{
+                height: chartType === "candle" ? 264 : undefined,
+                // When zoomed in we own the gesture entirely (so horizontal panning
+                // never triggers the browser's swipe-back); otherwise allow vertical
+                // page scroll to pass through.
+                touchAction: visCount !== null ? "none" : "pan-y",
+                overscrollBehaviorX: "contain",
+              }}
+            >
+              {chartType === "candle" ? (
+                <CandleChart data={visibleData} height={264} range={range} fmt={fmtDisplay} maLines={visibleMA} />
+              ) : (
+                <LineVolumeChart data={visibleData} range={range} first={visFirst} height={264} fmt={fmtDisplay} showBB={showBB} maLines={visibleMA} />
+              )}
+
+              {/* Scroll position bar (only when zoomed in) */}
+              {total > 0 && visCount !== null && (
+                <div className="absolute bottom-1 left-4 right-4 h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden pointer-events-none">
+                  <div
+                    className="h-full bg-blue-400/80 rounded-full transition-all duration-75"
+                    style={{
+                      width:      `${(effCount / total) * 100}%`,
+                      marginLeft: `${((total - clampedStart - effCount) / total) * 100}%`,
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1301,7 +1203,7 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
             <div className="flex items-center gap-1.5 px-1 pt-1 pb-0.5">
               <span className="text-[9px] font-bold text-violet-500 uppercase tracking-wider">RSI (14)</span>
             </div>
-            <RSIPanel data={rsiData} range={range} />
+            <RSIPanel data={visibleRsi} range={range} />
           </div>
         )}
 
@@ -1315,7 +1217,7 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
                 <span className="w-3 h-0.5 bg-red-400 inline-block" />赤=シグナル
               </span>
             </div>
-            <MACDPanel macdData={macdData} />
+            <MACDPanel macdData={visibleMacd} />
           </div>
         )}
 
@@ -1346,24 +1248,6 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
           </div>
         )}
       </div>
-
-      {/* Expanded modal */}
-      {expanded && (
-        <ExpandedModal
-          symbol={symbol}
-          currency={currency}
-          data={displayData}
-          loading={loading}
-          range={range}
-          setRange={setRange}
-          chartType={chartType}
-          setChartType={setChartType}
-          first={first}
-          fmt={fmtDisplay}
-          maLines={maLines}
-          onClose={() => setExpanded(false)}
-        />
-      )}
     </>
   );
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import yahooFinance from "@/lib/yfinance";
 import { getCompanyNameJa } from "@/lib/translate-name";
+import { cached } from "@/lib/cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -12,10 +13,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const q = (await (yahooFinance.quote as Function)(
-      symbol,
-      {},
-      { validateResult: false },
+    const q = (await cached(`quote:${symbol}`, 15_000, () =>
+      (yahooFinance.quote as Function)(symbol, {}, { validateResult: false }),
     )) as Record<string, unknown>;
     const englishName =
       (q?.longName as string | undefined) ??

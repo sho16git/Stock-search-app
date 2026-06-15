@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import yahooFinance from "@/lib/yfinance";
+import { cached } from "@/lib/cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,14 +52,28 @@ export async function GET(req: NextRequest) {
   }
 
   const cfg     = RANGES[range] ?? RANGES["1y"];
-  const period1 = new Date(Date.now() - cfg.period * 24 * 60 * 60 * 1000);
+  // Fetch extra leading history ("warmup") so long moving averages (MA75 / MA200)
+  // can be computed across the whole *displayed* range — otherwise a 3-month chart
+  // (~60 bars) can never produce a 200-day average. The warmup bars are returned
+  // too, with `warmup` telling the client how many to trim before display.
+  const DAY = 24 * 60 * 60 * 1000;
+  const warmupDays =
+    cfg.intraday          ? 0    :   // intraday MAs are bar-based; no calendar buffer
+    cfg.interval === "1d" ? 300  :   // ~200 trading days
+    cfg.interval === "1wk"? 1400 :   // ~200 weeks
+    cfg.interval === "1mo"? 6300 :   // ~200 months — so MA75/MA200 render on 10y / MAX
+    0;
+  const period1     = new Date(Date.now() - (cfg.period + warmupDays) * DAY);
+  const displayFrom = new Date(Date.now() - cfg.period * DAY).toISOString().slice(0, 10);
 
   try {
+    // Cache chart series: intraday refreshes often (10s), daily/weekly are stable (5min).
+    const chartTtl = cfg.intraday ? 10_000 : 300_000;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const chart = await (yahooFinance as any).chart(symbol, {
-      period1,
-      interval: cfg.interval,
-    });
+    const chart = await cached<any>(`chart:${symbol}:${range}`, chartTtl, () =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (yahooFinance as any).chart(symbol, { period1, interval: cfg.interval }),
+    );
 
     let allData = ((chart.quotes ?? []) as Record<string, unknown>[])
       .filter((q) => q.close !== null && q.close !== undefined)
@@ -88,10 +103,20 @@ export async function GET(req: NextRequest) {
       allData = allData.filter(p => utcDate(p.date) === tradingDate);
     }
 
+    // Count leading warmup bars (those before the requested range start). These are
+    // included in `data` so the client can compute indicators, then trimmed for display.
+    let warmup = 0;
+    if (warmupDays > 0 && allData.length > 0) {
+      warmup = allData.filter(p => p.date.slice(0, 10) < displayFrom).length;
+      // Always keep at least one displayed bar
+      if (warmup >= allData.length) warmup = Math.max(0, allData.length - 1);
+    }
+
     return NextResponse.json({
       data:        allData,
       meta:        chart.meta,
       intraday:    cfg.intraday ?? false,
+      warmup,      // number of leading bars to trim before display (indicator context)
       tradingDate, // e.g. "2026-06-06" — populated only for singleDay ranges
     });
   } catch (err) {

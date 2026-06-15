@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ChevronDown, ChevronUp, ArrowUpDown, Search, X } from "lucide-react";
 import { formatNumber } from "@/lib/format";
 import { getJpName } from "@/lib/jp-stocks";
@@ -39,6 +40,56 @@ export default function SectorStockTable({
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [search, setSearch] = useState("");
 
+  // ── Persist view state (sort / expanded count / scroll) so returning to this
+  //    list via browser-back restores exactly what the user was looking at. ──
+  const pathname = usePathname();
+  const storageKey = `sst:${pathname}:${compact ? "c" : "f"}`;
+  const restoredRef = useRef(false);
+
+  // Read the saved snapshot exactly once during the first render, *before* any
+  // effect can overwrite it. (The persist effect below can momentarily save the
+  // initial state on remount; reading here keeps the true snapshot intact —
+  // important under React StrictMode's double-invoked effects in dev.)
+  type Saved = { visible?: number; sortKey?: SortKey; sortDir?: SortDir; scrollY?: number };
+  const savedRef = useRef<Saved | null | undefined>(undefined);
+  if (savedRef.current === undefined) {
+    try {
+      savedRef.current = typeof window !== "undefined"
+        ? (JSON.parse(sessionStorage.getItem(storageKey) || "null") as Saved | null)
+        : null;
+    } catch { savedRef.current = null; }
+  }
+
+  useEffect(() => {
+    const s = savedRef.current;
+    if (s) {
+      if (typeof s.visible === "number") setVisible(s.visible);
+      if (s.sortKey) setSortKey(s.sortKey);
+      if (s.sortDir) setSortDir(s.sortDir);
+      if (typeof s.scrollY === "number") {
+        const y = s.scrollY;
+        // Restore scroll after the rows have painted
+        requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, y)));
+      }
+    }
+    restoredRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!restoredRef.current) return;
+    const save = () => {
+      try {
+        sessionStorage.setItem(storageKey, JSON.stringify({ visible, sortKey, sortDir, scrollY: window.scrollY }));
+      } catch { /* ignore */ }
+    };
+    save();
+    let raf = 0;
+    const onScroll = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(save); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(raf); };
+  }, [storageKey, visible, sortKey, sortDir]);
+
   // ── Client-side search filter ──────────────────────────────────────
   const filtered = useMemo(() => {
     if (!search.trim()) return stocks;
@@ -51,8 +102,14 @@ export default function SectorStockTable({
     );
   }, [stocks, search]);
 
-  // When search changes, reset pagination
+  // When search changes, reset pagination — but only on a *real* change, not on
+  // mount (so a restored "visible" count from browser-back isn't clobbered, and
+  // StrictMode's double-invoked effects in dev don't reset it either).
+  const prevSearchRef = useRef<string | null>(null);
   useEffect(() => {
+    if (prevSearchRef.current === null) { prevSearchRef.current = search; return; }
+    if (prevSearchRef.current === search) return;
+    prevSearchRef.current = search;
     setVisible(compact ? COMPACT_LIMIT : INITIAL_LIMIT);
   }, [search, compact]);
 
@@ -94,39 +151,45 @@ export default function SectorStockTable({
     [sorted, visible, search],
   );
 
-  // Fetch quotes for newly visible stocks (batch by chunks of 20)
+  // Fetch quotes for newly visible stocks via the BATCH endpoint — one request
+  // per ~50 symbols instead of one HTTP round-trip + Yahoo call per symbol.
   useEffect(() => {
     let cancelled = false;
     const toFetch = shown.filter((s) => !quotes[s.symbol]);
     if (toFetch.length === 0) return;
     setLoading(true);
 
-    // Batch into groups of 20 concurrent requests
-    const BATCH = 20;
-    const batches: StockEntry[][] = [];
+    const BATCH = 50;
+    const batches: string[][] = [];
     for (let i = 0; i < toFetch.length; i += BATCH) {
-      batches.push(toFetch.slice(i, i + BATCH));
+      batches.push(toFetch.slice(i, i + BATCH).map((s) => s.symbol));
     }
 
-    const fetchBatch = async (batch: StockEntry[]) =>
-      Promise.all(
-        batch.map((s) =>
-          fetch(`/api/quote?symbol=${encodeURIComponent(s.symbol)}`)
-            .then((r) => r.json())
-            .then((j) => [s.symbol, j.quote as Quote] as const)
-            .catch(() => [s.symbol, null] as const),
-        ),
-      );
+    type SlimQuote = {
+      price: number | null; change: number | null;
+      changePercent: number | null; currency: string | null;
+    };
 
     (async () => {
-      for (const batch of batches) {
+      for (const syms of batches) {
         if (cancelled) return;
-        const results = await fetchBatch(batch);
+        const map = await fetch(`/api/quotes?symbols=${encodeURIComponent(syms.join(","))}`)
+          .then((r) => r.json())
+          .then((j) => (j.quotes ?? {}) as Record<string, SlimQuote>)
+          .catch(() => ({} as Record<string, SlimQuote>));
         if (cancelled) return;
         setQuotes((prev) => {
           const next = { ...prev };
-          for (const [sym, q] of results) {
-            if (q) next[sym] = q;
+          for (const sym of syms) {
+            const b = map[sym];
+            if (b) {
+              next[sym] = {
+                regularMarketPrice: b.price ?? undefined,
+                regularMarketChange: b.change ?? undefined,
+                regularMarketChangePercent: b.changePercent ?? undefined,
+                currency: b.currency ?? undefined,
+              };
+            }
           }
           return next;
         });

@@ -34,166 +34,233 @@ export const MARKET_INDICES: MarketIndex[] = [
     emoji: "🇯🇵",
     description: "東京証券取引所プライム市場を代表する225銘柄で構成される日本の主要株価指数",
     market: "JP",
-    note: "主要構成銘柄（代表的な銘柄を掲載）",
+    note: "日経平均株価 全225構成銘柄（2025年構成・四半期定期見直し反映）",
     components: [
-      // 電気機器・精密機器
-      "6758.T",  // ソニーグループ
-      "8035.T",  // 東京エレクトロン
-      "6861.T",  // キーエンス
-      "6857.T",  // アドバンテスト
-      "6920.T",  // レーザーテック
-      "6981.T",  // 村田製作所
-      "6762.T",  // TDK
-      "6971.T",  // 京セラ
-      "6702.T",  // 富士通
-      "6701.T",  // NEC
-      "6752.T",  // パナソニックHD
-      "6501.T",  // 日立製作所
-      "7751.T",  // キヤノン
-      "7741.T",  // HOYA
-      "7731.T",  // ニコン
-      "6841.T",  // 横河電機
-      "6645.T",  // オムロン
-      "6724.T",  // セイコーエプソン
-      "6723.T",  // ルネサスエレクトロニクス
-      "6506.T",  // 安川電機
-      "6954.T",  // ファナック
-      "7735.T",  // SCREENホールディングス
-      "6988.T",  // 日東電工
-      "6479.T",  // ミネベアミツミ
-      "6503.T",  // 三菱電機
-      "6383.T",  // ダイフク
-      "6674.T",  // ジーエス・ユアサコーポレーション
-      "6718.T",  // アズビル
-      "6594.T",  // ニデック
-      "6526.T",  // ソシオネクスト
-      // 半導体素材
-      "4063.T",  // 信越化学工業
-      // 輸送用機器
-      "7203.T",  // トヨタ自動車
-      "7267.T",  // 本田技研工業
-      "7201.T",  // 日産自動車
-      "7270.T",  // SUBARU
-      "7269.T",  // スズキ
-      "7272.T",  // ヤマハ発動機
-      "6902.T",  // デンソー
-      "5108.T",  // ブリヂストン
-      "6201.T",  // トヨタ紡織(トヨタ自動車工業)
-      "7011.T",  // 三菱重工業
-      // 医薬品・医療機器
-      "4502.T",  // 武田薬品工業
-      "4519.T",  // 中外製薬
-      "4568.T",  // 第一三共
-      "4503.T",  // アステラス製薬
-      "4523.T",  // エーザイ
-      "4528.T",  // 小野薬品工業
-      "4507.T",  // 塩野義製薬
-      "4151.T",  // 協和キリン
-      "4543.T",  // テルモ
-      "7733.T",  // オリンパス
-      // 銀行・金融
-      "8306.T",  // 三菱UFJフィナンシャル・グループ
-      "8316.T",  // 三井住友フィナンシャルグループ
-      "8411.T",  // みずほフィナンシャルグループ
-      "8604.T",  // 野村ホールディングス
-      "8766.T",  // 東京海上ホールディングス
-      "8750.T",  // 第一生命ホールディングス
-      "8630.T",  // MS&ADインシュアランスグループHD
-      "8795.T",  // T&Dホールディングス
-      "8308.T",  // りそなホールディングス
-      // 小売・消費財
-      "9983.T",  // ファーストリテイリング
-      "3382.T",  // セブン&アイ・ホールディングス
-      "8267.T",  // イオン
-      "3099.T",  // 三越伊勢丹ホールディングス
-      "3086.T",  // Jフロントリテイリング
-      "4661.T",  // オリエンタルランド
-      "4452.T",  // 花王
-      "2914.T",  // 日本たばこ産業
-      "2802.T",  // 味の素
-      "2502.T",  // アサヒグループホールディングス
-      "2503.T",  // キリンホールディングス
-      "2269.T",  // 明治ホールディングス
-      "2282.T",  // 日本ハム
-      "2801.T",  // キッコーマン
-      // 商社
-      "8058.T",  // 三菱商事
-      "8053.T",  // 住友商事
-      "8001.T",  // 伊藤忠商事
-      "8031.T",  // 三井物産
-      "8002.T",  // 丸紅
-      "8015.T",  // 豊田通商
-      // 不動産
-      "8801.T",  // 三井不動産
-      "8802.T",  // 三菱地所
-      "8830.T",  // 住友不動産
-      "1925.T",  // 大和ハウス工業
-      "1928.T",  // 積水ハウス
-      // 通信・情報
-      "9432.T",  // 日本電信電話
-      "9433.T",  // KDDI
-      "9984.T",  // ソフトバンクグループ
-      "9613.T",  // NTTデータグループ
-      "4307.T",  // 野村総合研究所
-      "6098.T",  // リクルートホールディングス
-      "4385.T",  // メルカリ
-      "4704.T",  // トレンドマイクロ
-      "2413.T",  // エムスリー
-      // 鉄道・交通
-      "9020.T",  // 東日本旅客鉄道
-      "9022.T",  // 東海旅客鉄道
-      "9201.T",  // 日本航空
-      "9202.T",  // ANAホールディングス
-      "9101.T",  // 日本郵船
-      "9104.T",  // 商船三井
-      "9001.T",  // 東武鉄道
-      "9005.T",  // 東急
-      "9735.T",  // セコム
-      // 化学・素材
-      "3402.T",  // 東レ
-      "4901.T",  // 富士フイルムホールディングス
-      "4188.T",  // 三菱ケミカルグループ
-      "3407.T",  // 旭化成
-      "4183.T",  // 三井化学
-      "4005.T",  // 住友化学
-      "5401.T",  // 日本製鉄
-      "5713.T",  // 住友金属鉱山
-      "5201.T",  // AGC
-      "5802.T",  // 住友電気工業
-      "5233.T",  // 太平洋セメント
-      "5332.T",  // TOTO
-      "4004.T",  // レゾナック・ホールディングス
-      // 機械・建設
-      "6326.T",  // クボタ
-      "6301.T",  // コマツ
-      "6367.T",  // ダイキン工業
-      "6113.T",  // アマダ
-      // エネルギー・電力
-      "9531.T",  // 東京ガス
-      "9503.T",  // 関西電力
-      "9502.T",  // 中部電力
-      "9501.T",  // 東京電力ホールディングス
-      "1605.T",  // INPEX
-      // エンターテインメント・メディア
-      "7974.T",  // 任天堂
-      "7832.T",  // バンダイナムコホールディングス
-      "9684.T",  // スクウェア・エニックス・ホールディングス
-      "6460.T",  // セガサミーホールディングス
-      "4324.T",  // 電通グループ
-      "9766.T",  // コナミグループ
-      // 印刷・紙
-      "7912.T",  // 大日本印刷
-      "3861.T",  // 王子ホールディングス
-      // 建設
-      "1801.T",  // 大成建設
-      "1802.T",  // 大林組
-      "1803.T",  // 清水建設
-      "1808.T",  // 長谷工コーポレーション
-      // 精密機器
-      "6471.T",  // 日本精工
-      "6472.T",  // NTN
-      "4021.T",  // 日産化学
-      "6370.T",  // 栗田工業
+      "9202.T",   // ANAホールディングス
+      "9201.T",   // 日本航空
+      "543A.T",   // ARCHION（日野・三菱ふそう持株会社）
+      "7267.T",   // 本田技研工業
+      "7202.T",   // いすゞ自動車
+      "7261.T",   // マツダ
+      "7211.T",   // 三菱自動車工業
+      "7201.T",   // 日産自動車
+      "7270.T",   // SUBARU
+      "7269.T",   // スズキ
+      "7203.T",   // トヨタ自動車
+      "7272.T",   // ヤマハ発動機
+      "8304.T",   // あおぞら銀行
+      "8331.T",   // 千葉銀行
+      "8354.T",   // ふくおかフィナンシャルグループ
+      "8306.T",   // 三菱UFJフィナンシャル・グループ
+      "8411.T",   // みずほフィナンシャルグループ
+      "8308.T",   // りそなホールディングス
+      "5831.T",   // しずおかフィナンシャルグループ
+      "8316.T",   // 三井住友フィナンシャルグループ
+      "8309.T",   // 三井住友トラスト・ホールディングス
+      "7186.T",   // コンコルディア・フィナンシャルグループ
+      "3407.T",   // 旭化成
+      "4061.T",   // デンカ
+      "4901.T",   // 富士フイルムホールディングス
+      "4452.T",   // 花王
+      "3405.T",   // クラレ
+      "4188.T",   // 三菱ケミカルグループ
+      "4183.T",   // 三井化学
+      "4021.T",   // 日産化学
+      "6988.T",   // 日東電工
+      "4004.T",   // レゾナック・ホールディングス
+      "4063.T",   // 信越化学工業
+      "4911.T",   // 資生堂
+      "4005.T",   // 住友化学
+      "4043.T",   // トクヤマ
+      "4042.T",   // 東ソー
+      "4208.T",   // UBE
+      "9433.T",   // KDDI
+      "9432.T",   // 日本電信電話
+      "9434.T",   // ソフトバンク
+      "9984.T",   // ソフトバンクグループ
+      "1721.T",   // コムシスホールディングス
+      "1925.T",   // 大和ハウス工業
+      "1808.T",   // 長谷工コーポレーション
+      "1963.T",   // 日揮ホールディングス
+      "1812.T",   // 鹿島建設
+      "1802.T",   // 大林組
+      "1928.T",   // 積水ハウス
+      "1803.T",   // 清水建設
+      "1801.T",   // 大成建設
+      "6857.T",   // アドバンテスト
+      "6770.T",   // アルプスアルパイン
+      "7751.T",   // キヤノン
+      "6902.T",   // デンソー
+      "6954.T",   // ファナック
+      "6504.T",   // 富士電機
+      "6702.T",   // 富士通
+      "6501.T",   // 日立製作所
+      "6861.T",   // キーエンス
+      "285A.T",   // キオクシアホールディングス
+      "6971.T",   // 京セラ
+      "6920.T",   // レーザーテック
+      "6479.T",   // ミネベアミツミ
+      "6503.T",   // 三菱電機
+      "6981.T",   // 村田製作所
+      "6701.T",   // NEC
+      "6594.T",   // ニデック
+      "6645.T",   // オムロン
+      "6752.T",   // パナソニックホールディングス
+      "6723.T",   // ルネサスエレクトロニクス
+      "7752.T",   // リコー
+      "6963.T",   // ローム
+      "7735.T",   // SCREENホールディングス
+      "6724.T",   // セイコーエプソン
+      "6753.T",   // シャープ
+      "6758.T",   // ソニーグループ
+      "6526.T",   // ソシオネクスト
+      "6976.T",   // 太陽誘電
+      "6762.T",   // TDK
+      "8035.T",   // 東京エレクトロン
+      "6506.T",   // 安川電機
+      "6841.T",   // 横河電機
+      "9502.T",   // 中部電力
+      "9503.T",   // 関西電力
+      "9501.T",   // 東京電力ホールディングス
+      "1332.T",   // ニッスイ
+      "2802.T",   // 味の素
+      "2502.T",   // アサヒグループホールディングス
+      "2914.T",   // 日本たばこ産業
+      "2801.T",   // キッコーマン
+      "2503.T",   // キリンホールディングス
+      "2269.T",   // 明治ホールディングス
+      "2282.T",   // 日本ハム
+      "2871.T",   // ニチレイ
+      "2002.T",   // 日清製粉グループ本社
+      "2501.T",   // サッポロホールディングス
+      "9532.T",   // 大阪ガス
+      "9531.T",   // 東京ガス
+      "5201.T",   // AGC
+      "5333.T",   // 日本ガイシ
+      "5214.T",   // 日本電気硝子
+      "5233.T",   // 太平洋セメント
+      "5301.T",   // 東海カーボン
+      "5332.T",   // TOTO
+      "8750.T",   // 第一生命ホールディングス
+      "8725.T",   // MS&ADインシュアランスグループHD
+      "8630.T",   // SOMPOホールディングス
+      "8795.T",   // T&Dホールディングス
+      "8766.T",   // 東京海上ホールディングス
+      "9147.T",   // NIPPON EXPRESSホールディングス
+      "9064.T",   // ヤマトホールディングス
+      "6113.T",   // アマダ
+      "6367.T",   // ダイキン工業
+      "6361.T",   // 荏原製作所
+      "6305.T",   // 日立建機
+      "7004.T",   // カナデビア
+      "7013.T",   // IHI
+      "5631.T",   // 日本製鋼所
+      "6473.T",   // ジェイテクト
+      "6301.T",   // コマツ
+      "6326.T",   // クボタ
+      "7011.T",   // 三菱重工業
+      "6471.T",   // 日本精工
+      "6472.T",   // NTN
+      "6103.T",   // オークマ
+      "6302.T",   // 住友重機械工業
+      "6273.T",   // SMC
+      "9107.T",   // 川崎汽船
+      "9104.T",   // 商船三井
+      "9101.T",   // 日本郵船
+      "1605.T",   // INPEX
+      "5714.T",   // DOWAホールディングス
+      "5803.T",   // フジクラ
+      "5801.T",   // 古河電気工業
+      "5711.T",   // 三菱マテリアル
+      "5706.T",   // 三井金属鉱業
+      "3436.T",   // SUMCO
+      "5802.T",   // 住友電気工業
+      "5713.T",   // 住友金属鉱山
+      "8253.T",   // クレディセゾン
+      "8697.T",   // 日本取引所グループ
+      "8591.T",   // オリックス
+      "7832.T",   // バンダイナムコホールディングス
+      "7912.T",   // 大日本印刷
+      "7911.T",   // TOPPANホールディングス
+      "7951.T",   // ヤマハ
+      "5020.T",   // ENEOSホールディングス
+      "5019.T",   // 出光興産
+      "4503.T",   // アステラス製薬
+      "4519.T",   // 中外製薬
+      "4568.T",   // 第一三共
+      "4523.T",   // エーザイ
+      "4151.T",   // 協和キリン
+      "4578.T",   // 大塚ホールディングス
+      "4506.T",   // 住友ファーマ
+      "4507.T",   // 塩野義製薬
+      "4502.T",   // 武田薬品工業
+      "6146.T",   // ディスコ
+      "7741.T",   // HOYA
+      "4902.T",   // コニカミノルタ
+      "7731.T",   // ニコン
+      "7733.T",   // オリンパス
+      "4543.T",   // テルモ
+      "3861.T",   // 王子ホールディングス
+      "9022.T",   // 東海旅客鉄道
+      "9020.T",   // 東日本旅客鉄道
+      "9008.T",   // 京王電鉄
+      "9009.T",   // 京成電鉄
+      "9007.T",   // 小田急電鉄
+      "9001.T",   // 東武鉄道
+      "9005.T",   // 東急
+      "9021.T",   // 西日本旅客鉄道
+      "8802.T",   // 三菱地所
+      "8801.T",   // 三井不動産
+      "8830.T",   // 住友不動産
+      "8804.T",   // 東京建物
+      "3289.T",   // 東急不動産ホールディングス
+      "8267.T",   // イオン
+      "9983.T",   // ファーストリテイリング
+      "3099.T",   // 三越伊勢丹ホールディングス
+      "3086.T",   // Jフロントリテイリング
+      "8252.T",   // 丸井グループ
+      "7453.T",   // 良品計画
+      "9843.T",   // ニトリホールディングス
+      "7532.T",   // パン・パシフィック・インターナショナルHD
+      "3382.T",   // セブン&アイ・ホールディングス
+      "8233.T",   // 髙島屋
+      "3092.T",   // ZOZO
+      "5108.T",   // ブリヂストン
+      "5101.T",   // 横浜ゴム
+      "8601.T",   // 大和証券グループ本社
+      "8604.T",   // 野村ホールディングス
+      "6532.T",   // ベイカレント
+      "4751.T",   // サイバーエージェント
+      "2432.T",   // ディー・エヌ・エー
+      "4324.T",   // 電通グループ
+      "6178.T",   // 日本郵政
+      "9766.T",   // コナミグループ
+      "4689.T",   // LINEヤフー
+      "4385.T",   // メルカリ
+      "2413.T",   // エムスリー
+      "3659.T",   // ネクソン
+      "7974.T",   // 任天堂
+      "4307.T",   // 野村総合研究所
+      "4661.T",   // オリエンタルランド
+      "4755.T",   // 楽天グループ
+      "6098.T",   // リクルートホールディングス
+      "9735.T",   // セコム
+      "3697.T",   // SHIFT
+      "9602.T",   // 東宝
+      "4704.T",   // トレンドマイクロ
+      "7012.T",   // 川崎重工業
+      "5411.T",   // JFEホールディングス
+      "5406.T",   // 神戸製鋼所
+      "5401.T",   // 日本製鉄
+      "3401.T",   // 帝人
+      "3402.T",   // 東レ
+      "8001.T",   // 伊藤忠商事
+      "8002.T",   // 丸紅
+      "8058.T",   // 三菱商事
+      "8031.T",   // 三井物産
+      "2768.T",   // 双日
+      "8053.T",   // 住友商事
+      "8015.T",   // 豊田通商
     ],
   },
 
@@ -406,322 +473,59 @@ export const MARKET_INDICES: MarketIndex[] = [
     emoji: "🇺🇸",
     description: "米国の主要取引所に上場する時価総額上位500銘柄で構成。米国市場全体の指標として最も広く使われる",
     market: "US",
-    note: "主要構成銘柄（代表的な銘柄を掲載）",
+    note: "S&P 500 全構成銘柄（503ティッカー・複数株式クラス含む）",
     components: [
-      // Mega cap / 超大型株
-      "AAPL",   // Apple
-      "MSFT",   // Microsoft
-      "NVDA",   // NVIDIA
-      "AMZN",   // Amazon
-      "GOOGL",  // Alphabet Class A
-      "GOOG",   // Alphabet Class C
-      "META",   // Meta Platforms
-      "TSLA",   // Tesla
-      "BRK-B",  // Berkshire Hathaway B
-      "AVGO",   // Broadcom
-      "JPM",    // JPMorgan Chase
-      "LLY",    // Eli Lilly
-      "V",      // Visa
-      "UNH",    // UnitedHealth Group
-      "XOM",    // ExxonMobil
-      "MA",     // Mastercard
-      "COST",   // Costco
-      "JNJ",    // Johnson & Johnson
-      "ORCL",   // Oracle
-      "HD",     // Home Depot
-      "NFLX",   // Netflix
-      "BAC",    // Bank of America
-      "ABBV",   // AbbVie
-      "KO",     // Coca-Cola
-      "PLTR",   // Palantir
-      "CRM",    // Salesforce
-      "CVX",    // Chevron
-      "AMD",    // Advanced Micro Devices
-      "TMO",    // Thermo Fisher Scientific
-      "WMT",    // Walmart
-      "MRK",    // Merck
-      "AMGN",   // Amgen
-      "CSCO",   // Cisco Systems
-      "PEP",    // PepsiCo
-      "ABT",    // Abbott Laboratories
-      "IBM",    // IBM
-      "ACN",    // Accenture
-      "ISRG",   // Intuitive Surgical
-      "GS",     // Goldman Sachs
-      "CAT",    // Caterpillar
-      "T",      // AT&T
-      "NOW",    // ServiceNow
-      "QCOM",   // Qualcomm
-      "ADBE",   // Adobe
-      "TXN",    // Texas Instruments
-      "AMAT",   // Applied Materials
-      // Information Technology
-      "INTC",   // Intel
-      "INTU",   // Intuit
-      "LRCX",   // Lam Research
-      "KLAC",   // KLA Corp
-      "SNPS",   // Synopsys
-      "CDNS",   // Cadence Design Systems
-      "ADI",    // Analog Devices
-      "MU",     // Micron Technology
-      "PANW",   // Palo Alto Networks
-      "FTNT",   // Fortinet
-      "NXPI",   // NXP Semiconductors
-      "MCHP",   // Microchip Technology
-      "HPQ",    // HP Inc
-      "HPE",    // Hewlett Packard Enterprise
-      "WDC",    // Western Digital
-      "STX",    // Seagate Technology
-      "NTAP",   // NetApp
-      "KEYS",   // Keysight Technologies
-      "TEL",    // TE Connectivity
-      "TDY",    // Teledyne Technologies
-      "ZBRA",   // Zebra Technologies
-      "VRSN",   // VeriSign
-      "PTC",    // PTC Inc
-      "CTSH",   // Cognizant
-      "CDW",    // CDW Corp
-      "ANSS",   // Ansys
-      "ROP",    // Roper Technologies
-      "ADSK",   // Autodesk
-      "CRWD",   // CrowdStrike
-      "ZS",     // Zscaler
-      "DDOG",   // Datadog
-      "MDB",    // MongoDB
-      "OKTA",   // Okta
-      // Consumer Discretionary / 一般消費財
-      "TSLA",   // Tesla (already above, kept for sector clarity)
-      "AMZN",   // Amazon (already above)
-      "HD",     // Home Depot (already above)
-      "MCD",    // McDonald's
-      "NKE",    // Nike
-      "SBUX",   // Starbucks
-      "LOW",    // Lowe's
-      "TJX",    // TJX Companies
-      "BKNG",   // Booking Holdings
-      "HLT",    // Hilton Worldwide
-      "MAR",    // Marriott International
-      "ROST",   // Ross Stores
-      "CMG",    // Chipotle
-      "DPZ",    // Domino's Pizza
-      "YUM",    // Yum! Brands
-      "EXPE",   // Expedia
-      "ABNB",   // Airbnb
-      "F",      // Ford Motor
-      "GM",     // General Motors
-      "LULU",   // Lululemon
-      "EBAY",   // eBay
-      "PYPL",   // PayPal
-      // Consumer Staples / 生活必需品
-      "PG",     // Procter & Gamble
-      "WMT",    // Walmart (already above)
-      "PM",     // Philip Morris International
-      "MO",     // Altria Group
-      "CL",     // Colgate-Palmolive
-      "MDLZ",   // Mondelez International
-      "KHC",    // Kraft Heinz
-      "STZ",    // Constellation Brands
-      "GIS",    // General Mills
-      "HSY",    // Hershey
-      "HRL",    // Hormel Foods
-      "KMB",    // Kimberly-Clark
-      "SJM",    // JM Smucker
-      "SYY",    // Sysco
-      "MNST",   // Monster Beverage
-      "KDP",    // Keurig Dr Pepper
-      "ADM",    // Archer-Daniels-Midland
-      // Health Care / ヘルスケア
-      "UNH",    // UnitedHealth (already above)
-      "LLY",    // Eli Lilly (already above)
-      "JNJ",    // J&J (already above)
-      "ABBV",   // AbbVie (already above)
-      "MRK",    // Merck (already above)
-      "TMO",    // Thermo Fisher (already above)
-      "ABT",    // Abbott (already above)
-      "DHR",    // Danaher
-      "BMY",    // Bristol-Myers Squibb
-      "PFE",    // Pfizer
-      "AMGN",   // Amgen (already above)
-      "GILD",   // Gilead Sciences
-      "ISRG",   // Intuitive Surgical (already above)
-      "MDT",    // Medtronic
-      "ELV",    // Elevance Health
-      "CI",     // Cigna Group
-      "CVS",    // CVS Health
-      "HUM",    // Humana
-      "SYK",    // Stryker
-      "BSX",    // Boston Scientific
-      "REGN",   // Regeneron
-      "VRTX",   // Vertex Pharmaceuticals
-      "BIIB",   // Biogen
-      "IDXX",   // IDEXX Laboratories
-      "DXCM",   // DexCom
-      "MOH",    // Molina Healthcare
-      "ZBH",    // Zimmer Biomet
-      "ZTS",    // Zoetis
-      "MRNA",   // Moderna
-      // Financials / 金融
-      "JPM",    // JPMorgan (already above)
-      "BAC",    // Bank of America (already above)
-      "WFC",    // Wells Fargo
-      "GS",     // Goldman Sachs (already above)
-      "MS",     // Morgan Stanley
-      "BLK",    // BlackRock
-      "C",      // Citigroup
-      "AXP",    // American Express
-      "SCHW",   // Charles Schwab
-      "MCO",    // Moody's
-      "SPGI",   // S&P Global
-      "CME",    // CME Group
-      "ICE",    // Intercontinental Exchange
-      "USB",    // U.S. Bancorp
-      "PNC",    // PNC Financial
-      "TRV",    // Travelers Companies
-      "AIG",    // American International Group
-      "MET",    // MetLife
-      "PRU",    // Prudential Financial
-      "AFL",    // Aflac
-      "ALL",    // Allstate
-      "PGR",    // Progressive
-      "CB",     // Chubb
-      "MMC",    // Marsh & McLennan
-      "AON",    // Aon
-      "TROW",   // T. Rowe Price
-      "BK",     // Bank of New York Mellon
-      "STT",    // State Street
-      "COF",    // Capital One
-      "DFS",    // Discover Financial
-      "SYF",    // Synchrony Financial
-      "FITB",   // Fifth Third Bancorp
-      "KEY",    // KeyCorp
-      "HBAN",   // Huntington Bancshares
-      "CFG",    // Citizens Financial
-      // Energy / エネルギー
-      "XOM",    // ExxonMobil (already above)
-      "CVX",    // Chevron (already above)
-      "COP",    // ConocoPhillips
-      "EOG",    // EOG Resources
-      "PSX",    // Phillips 66
-      "VLO",    // Valero Energy
-      "SLB",    // Schlumberger
-      "MPC",    // Marathon Petroleum
-      "OXY",    // Occidental Petroleum
-      "HAL",    // Halliburton
-      "DVN",    // Devon Energy
-      "BKR",    // Baker Hughes
-      "FANG",   // Diamondback Energy
-      "KMI",    // Kinder Morgan
-      "OKE",    // ONEOK
-      "WMB",    // Williams Companies
-      // Materials / 素材
-      "LIN",    // Linde
-      "APD",    // Air Products
-      "ECL",    // Ecolab
-      "SHW",    // Sherwin-Williams
-      "PPG",    // PPG Industries
-      "NEM",    // Newmont
-      "FCX",    // Freeport-McMoRan
-      "NUE",    // Nucor
-      "VMC",    // Vulcan Materials
-      "MLM",    // Martin Marietta Materials
-      "ALB",    // Albemarle
-      "CE",     // Celanese
-      "LYB",    // LyondellBasell
-      "IP",     // International Paper
-      "PKG",    // Packaging Corp of America
-      "CF",     // CF Industries
-      "MOS",    // Mosaic
-      // Industrials / 資本財
-      "CAT",    // Caterpillar (already above)
-      "DE",     // Deere & Company
-      "HON",    // Honeywell
-      "GE",     // GE Aerospace
-      "RTX",    // RTX Corp (Raytheon)
-      "LMT",    // Lockheed Martin
-      "BA",     // Boeing
-      "NOC",    // Northrop Grumman
-      "ETN",    // Eaton
-      "EMR",    // Emerson Electric
-      "PH",     // Parker Hannifin
-      "AME",    // AMETEK
-      "ROK",    // Rockwell Automation
-      "XYL",    // Xylem
-      "ITW",    // Illinois Tool Works
-      "WM",     // Waste Management
-      "RSG",    // Republic Services
-      "CTAS",   // Cintas
-      "FAST",   // Fastenal
-      "GWW",    // W.W. Grainger
-      "PCAR",   // PACCAR
-      "ODFL",   // Old Dominion Freight
-      "VRSK",   // Verisk Analytics
-      "HII",    // Huntington Ingalls Industries
-      "FTV",    // Fortive
-      "CARR",   // Carrier Global
-      "OTIS",   // Otis Worldwide
-      "IR",     // Ingersoll Rand
-      "TT",     // Trane Technologies
-      "SWK",    // Stanley Black & Decker
-      "PNR",    // Pentair
-      // Communication Services / コミュニケーション
-      "GOOGL",  // Alphabet (already above)
-      "META",   // Meta (already above)
-      "NFLX",   // Netflix (already above)
-      "DIS",    // Walt Disney
-      "CMCSA",  // Comcast
-      "VZ",     // Verizon
-      "T",      // AT&T (already above)
-      "TMUS",   // T-Mobile US
-      "EA",     // Electronic Arts
-      "TTWO",   // Take-Two Interactive
-      "ATVI",   // Activision Blizzard (acquired by MSFT)
-      "WBD",    // Warner Bros. Discovery
-      "PARA",   // Paramount Global
-      "OMC",    // Omnicom Group
-      "IPG",    // Interpublic Group
-      "LYV",    // Live Nation
-      // Utilities / 公益事業
-      "NEE",    // NextEra Energy
-      "DUK",    // Duke Energy
-      "SO",     // Southern Company
-      "D",      // Dominion Energy
-      "EXC",    // Exelon
-      "PCG",    // Pacific Gas & Electric
-      "XEL",    // Xcel Energy
-      "AEP",    // American Electric Power
-      "ED",     // Consolidated Edison
-      "SRE",    // Sempra Energy
-      "CEG",    // Constellation Energy
-      "ETR",    // Entergy
-      "PPL",    // PPL Corp
-      "EIX",    // Edison International
-      "FE",     // FirstEnergy
-      "AES",    // AES Corp
-      "AWK",    // American Water Works
-      "WEC",    // WEC Energy Group
-      "NI",     // NiSource
-      "CMS",    // CMS Energy
-      // Real Estate / 不動産
-      "AMT",    // American Tower
-      "PLD",    // Prologis
-      "EQIX",   // Equinix
-      "CCI",    // Crown Castle
-      "PSA",    // Public Storage
-      "SPG",    // Simon Property Group
-      "O",      // Realty Income
-      "WELL",   // Welltower
-      "AVB",    // AvalonBay Communities
-      "EQR",    // Equity Residential
-      "DLR",    // Digital Realty
-      "IRM",    // Iron Mountain
-      "VICI",   // VICI Properties
-      "WY",     // Weyerhaeuser
-      "ARE",    // Alexandria Real Estate
-      "BXP",    // BXP (Boston Properties)
-      "KIM",    // Kimco Realty
-      "NNN",    // NNN REIT
-      "VTR",    // Ventas
-      "HST",    // Host Hotels
+      "MMM", "AOS", "ABT", "ABBV", "ACN", "ADBE", "AMD", "AES", "AFL", "A",
+      "APD", "ABNB", "AKAM", "ALB", "ARE", "ALGN", "ALLE", "LNT", "ALL", "GOOGL",
+      "GOOG", "MO", "AMZN", "AMCR", "AEE", "AEP", "AXP", "AIG", "AMT", "AWK",
+      "AMP", "AME", "AMGN", "APH", "ADI", "AON", "APA", "APO", "AAPL", "AMAT",
+      "APP", "APTV", "ACGL", "ADM", "ARES", "ANET", "AJG", "AIZ", "T", "ATO",
+      "ADSK", "ADP", "AZO", "AVB", "AVY", "AXON", "BKR", "BALL", "BAC", "BAX",
+      "BDX", "BRK-B", "BBY", "TECH", "BIIB", "BLK", "BX", "XYZ", "BNY", "BA",
+      "BKNG", "BSX", "BMY", "AVGO", "BR", "BRO", "BF-B", "BLDR", "BG", "BXP",
+      "CHRW", "CDNS", "CPT", "CPB", "COF", "CAH", "CCL", "CARR", "CVNA", "CASY",
+      "CAT", "CBOE", "CBRE", "CDW", "COR", "CNC", "CNP", "CF", "CRL", "SCHW",
+      "CHTR", "CVX", "CMG", "CB", "CHD", "CIEN", "CI", "CINF", "CTAS", "CSCO",
+      "C", "CFG", "CLX", "CME", "CMS", "KO", "CTSH", "COHR", "COIN", "CL",
+      "CMCSA", "FIX", "CAG", "COP", "ED", "STZ", "CEG", "COO", "CPRT", "GLW",
+      "CPAY", "CTVA", "CSGP", "COST", "CRH", "CRWD", "CCI", "CSX", "CMI", "CVS",
+      "DHR", "DRI", "DDOG", "DVA", "DECK", "DE", "DELL", "DAL", "DVN", "DXCM",
+      "FANG", "DLR", "DG", "DLTR", "D", "DPZ", "DASH", "DOV", "DOW", "DHI",
+      "DTE", "DUK", "DD", "ETN", "EBAY", "SATS", "ECL", "EIX", "EW", "EA",
+      "ELV", "EME", "EMR", "ETR", "EOG", "EQT", "EFX", "EQIX", "EQR", "ERIE",
+      "ESS", "EL", "EG", "EVRG", "ES", "EXC", "EXE", "EXPE", "EXPD", "EXR",
+      "XOM", "FFIV", "FDS", "FICO", "FAST", "FRT", "FDX", "FIS", "FITB",
+      "FSLR", "FE", "FI", "F", "FTNT", "FTV", "FOXA", "FOX", "BEN", "FCX",
+      "GRMN", "IT", "GE", "GEHC", "GEV", "GEN", "GNRC", "GD", "GIS", "GM",
+      "GPC", "GILD", "GPN", "GL", "GDDY", "GS", "HAL", "HIG", "HAS", "HCA",
+      "DOC", "HSIC", "HSY", "HPE", "HLT", "HD", "HON", "HRL", "HST", "HWM",
+      "HPQ", "HUBB", "HUM", "HBAN", "HII", "IBM", "IEX", "IDXX", "ITW", "INCY",
+      "IR", "PODD", "INTC", "IBKR", "ICE", "IFF", "IP", "INTU", "ISRG", "IVZ",
+      "INVH", "IQV", "IRM", "JBHT", "JBL", "JKHY", "J", "JNJ", "JCI", "JPM",
+      "KVUE", "KDP", "KEY", "KEYS", "KMB", "KIM", "KMI", "KKR", "KLAC", "KHC",
+      "KR", "LHX", "LH", "LRCX", "LVS", "LDOS", "LEN", "LII", "LLY", "LIN",
+      "LYV", "LMT", "L", "LOW", "LULU", "LITE", "LYB", "MTB", "MPC", "MAR",
+      "MRSH", "MLM", "MAS", "MA", "MKC", "MCD", "MCK", "MDT", "MRK", "META",
+      "MET", "MTD", "MGM", "MCHP", "MU", "MSFT", "MAA", "MRNA", "TAP", "MDLZ",
+      "MPWR", "MNST", "MCO", "MS", "MOS", "MSI", "MSCI", "NDAQ", "NTAP", "NFLX",
+      "NEM", "NWSA", "NWS", "NEE", "NKE", "NI", "NDSN", "NSC", "NTRS", "NOC",
+      "NCLH", "NRG", "NUE", "NVDA", "NVR", "NXPI", "ORLY", "OXY", "ODFL", "OMC",
+      "ON", "OKE", "ORCL", "OTIS", "PCAR", "PKG", "PLTR", "PANW", "PSKY", "PH",
+      "PAYX", "PYPL", "PNR", "PEP", "PFE", "PCG", "PM", "PSX", "PNW", "PNC",
+      "POOL", "PPG", "PPL", "PFG", "PG", "PGR", "PLD", "PRU", "PEG", "PTC",
+      "PSA", "PHM", "PWR", "QCOM", "DGX", "Q", "RL", "RJF", "RTX", "O",
+      "REG", "REGN", "RF", "RSG", "RMD", "RVTY", "HOOD", "ROK", "ROL", "ROP",
+      "ROST", "RCL", "SPGI", "CRM", "SNDK", "SBAC", "SLB", "STX", "SRE", "NOW",
+      "SHW", "SPG", "SWKS", "SJM", "SW", "SNA", "SOLV", "SO", "LUV", "SWK",
+      "SBUX", "STT", "STLD", "STE", "SYK", "SMCI", "SYF", "SNPS", "SYY", "TMUS",
+      "TROW", "TTWO", "TPR", "TRGP", "TGT", "TEL", "TDY", "TER", "TSLA", "TXN",
+      "TPL", "TXT", "TMO", "TJX", "TKO", "TTD", "TSCO", "TT", "TDG", "TRV",
+      "TRMB", "TFC", "TYL", "TSN", "USB", "UBER", "UDR", "ULTA", "UNP", "UAL",
+      "UPS", "URI", "UNH", "UHS", "VLO", "VEEV", "VTR", "VLTO", "VRSN", "VRSK",
+      "VZ", "VRTX", "VRT", "VTRS", "VICI", "V", "VST", "VMC", "WRB", "GWW",
+      "WAB", "WMT", "DIS", "WBD", "WM", "WAT", "WEC", "WFC", "WELL", "WST",
+      "WDC", "WY", "WSM", "WMB", "WTW", "WDAY", "WYNN", "XEL", "XYL", "YUM",
+      "ZBRA", "ZBH", "ZTS",
     ],
   },
 ];

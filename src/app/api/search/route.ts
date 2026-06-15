@@ -219,6 +219,15 @@ export async function GET(req: NextRequest) {
       pushUnique({ symbol, longname: katakana, jpName: katakana, exchange: "US", quoteType: "EQUITY", typeDisp: "Equity" }),
     );
 
+    // An exact ticker match should outrank Yahoo's fuzzy results
+    // (e.g. "TTD" → The Trade Desk, not "NTT データ").
+    const upper = q.toUpperCase();
+    const isExact = (sym: string) => {
+      const u = sym.toUpperCase();
+      return u === upper || u === `${upper}.T`;
+    };
+    merged.sort((a, b) => Number(isExact(b.symbol)) - Number(isExact(a.symbol)));
+
     return NextResponse.json({ results: merged.slice(0, 16) });
   } catch (err) {
     console.error("search error", err);

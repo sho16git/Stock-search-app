@@ -9,9 +9,22 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import yahooFinance from "@/lib/yfinance";
+import { cacheGet, cacheSet } from "@/lib/cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+type SlimQuote = {
+  price: number | null;
+  change: number | null;
+  changePercent: number | null;
+  marketCap: number | null;
+  currency: string | null;
+  high52w: number | null;
+  low52w: number | null;
+};
+
+const QUOTE_TTL = 20_000; // 20s — fresh enough for list views, big load reduction
 
 export async function GET(req: NextRequest) {
   const raw = req.nextUrl.searchParams.get("symbols")?.trim();
@@ -29,35 +42,41 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ quotes: {} });
   }
 
+  const quotes: Record<string, SlimQuote> = {};
+
+  // Serve cached symbols immediately; only fetch the misses from Yahoo.
+  const misses: string[] = [];
+  for (const s of symbols) {
+    const c = cacheGet<SlimQuote>(`sq:${s}`);
+    if (c) quotes[s] = c;
+    else misses.push(s);
+  }
+
   try {
-    const rawQuotes = await (yahooFinance.quote as Function)(
-      symbols,
-      {},
-      { validateResult: false },
-    ).catch(() => []);
-    const list = Array.isArray(rawQuotes) ? rawQuotes : [rawQuotes];
+    if (misses.length > 0) {
+      const rawQuotes = await (yahooFinance.quote as Function)(
+        misses,
+        {},
+        { validateResult: false },
+      ).catch(() => []);
+      const list = Array.isArray(rawQuotes) ? rawQuotes : [rawQuotes];
 
-    const quotes: Record<string, {
-      price: number | null;
-      changePercent: number | null;
-      marketCap: number | null;
-      currency: string | null;
-      high52w: number | null;
-      low52w: number | null;
-    }> = {};
-
-    for (const q of list) {
-      const o = q as Record<string, unknown>;
-      const sym = String(o.symbol ?? "");
-      if (!sym) continue;
-      quotes[sym] = {
-        price:         typeof o.regularMarketPrice === "number"         ? o.regularMarketPrice         : null,
-        changePercent: typeof o.regularMarketChangePercent === "number" ? o.regularMarketChangePercent : null,
-        marketCap:     typeof o.marketCap === "number"                  ? o.marketCap                  : null,
-        currency:      typeof o.currency === "string"                   ? o.currency                   : null,
-        high52w:       typeof o.fiftyTwoWeekHigh === "number"           ? o.fiftyTwoWeekHigh           : null,
-        low52w:        typeof o.fiftyTwoWeekLow === "number"            ? o.fiftyTwoWeekLow            : null,
-      };
+      for (const q of list) {
+        const o = q as Record<string, unknown>;
+        const sym = String(o.symbol ?? "");
+        if (!sym) continue;
+        const slim: SlimQuote = {
+          price:         typeof o.regularMarketPrice === "number"         ? o.regularMarketPrice         : null,
+          change:        typeof o.regularMarketChange === "number"        ? o.regularMarketChange        : null,
+          changePercent: typeof o.regularMarketChangePercent === "number" ? o.regularMarketChangePercent : null,
+          marketCap:     typeof o.marketCap === "number"                  ? o.marketCap                  : null,
+          currency:      typeof o.currency === "string"                   ? o.currency                   : null,
+          high52w:       typeof o.fiftyTwoWeekHigh === "number"           ? o.fiftyTwoWeekHigh           : null,
+          low52w:        typeof o.fiftyTwoWeekLow === "number"            ? o.fiftyTwoWeekLow            : null,
+        };
+        quotes[sym] = slim;
+        cacheSet(`sq:${sym}`, slim, QUOTE_TTL);
+      }
     }
 
     return NextResponse.json({ quotes });

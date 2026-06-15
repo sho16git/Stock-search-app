@@ -447,7 +447,7 @@ export const STOCKS_CATALOG: CatalogStock[] = [
   { symbol: "6841.T", market: "JP", name: "横河電機", aliases: ["Yokogawa Electric", "横河"], sector: "industrials" },
   { symbol: "7731.T", market: "JP", name: "ニコン", aliases: ["Nikon"], sector: "industrials" },
   { symbol: "6305.T", market: "JP", name: "日立建機", aliases: ["Hitachi Construction Machinery", "日立建機"], sector: "industrials" },
-  { symbol: "7004.T", market: "JP", name: "日立造船", aliases: ["Hitachi Zosen"], sector: "industrials" },
+  { symbol: "7004.T", market: "JP", name: "カナデビア", aliases: ["Hitachi Zosen", "日立造船", "Kanadevia"], sector: "industrials" },
   { symbol: "6472.T", market: "JP", name: "NTN", sector: "industrials" },
   { symbol: "9064.T", market: "JP", name: "ヤマトホールディングス", aliases: ["Yamato Holdings", "クロネコヤマト"], sector: "industrials" },
   { symbol: "9062.T", market: "JP", name: "日本通運", aliases: ["Nippon Express", "日通"], sector: "industrials" },
@@ -679,6 +679,41 @@ export const STOCKS_CATALOG: CatalogStock[] = [
   { symbol: "1489.T", market: "JP", name: "NEXT FUNDS 日経平均高配当株50指数 連動型上場投信", aliases: ["日経高配当50"], sector: "financials", type: "etf", etfCategory: "dividend" },
   { symbol: "1577.T", market: "JP", name: "NEXT FUNDS 野村日本株高配当70 連動型上場投信", sector: "financials", type: "etf", etfCategory: "dividend" },
   { symbol: "1326.T", market: "JP", name: "SPDR ゴールド・シェア (東証)", sector: "materials", type: "etf", etfCategory: "commodity" },
+
+  // ===== グロース市場・新興/中小型株（追加） =====
+  { symbol: "3994.T", market: "JP", name: "マネーフォワード", aliases: ["Money Forward"], sector: "information-technology" },
+  { symbol: "3923.T", market: "JP", name: "ラクス", aliases: ["RAKUS", "楽楽精算"], sector: "information-technology" },
+  { symbol: "5253.T", market: "JP", name: "カバー", aliases: ["COVER", "ホロライブ", "hololive"], sector: "communication-services" },
+  { symbol: "5032.T", market: "JP", name: "ANYCOLOR", aliases: ["エニーカラー", "にじさんじ"], sector: "communication-services" },
+  { symbol: "7342.T", market: "JP", name: "ウェルスナビ", aliases: ["WealthNavi"], sector: "financials" },
+  { symbol: "3990.T", market: "JP", name: "UUUM", aliases: ["ウーム"], sector: "communication-services" },
+  { symbol: "6027.T", market: "JP", name: "弁護士ドットコム", aliases: ["Bengo4", "クラウドサイン"], sector: "information-technology" },
+  { symbol: "2160.T", market: "JP", name: "ジーエヌアイグループ", aliases: ["GNI Group"], sector: "health-care" },
+  { symbol: "4934.T", market: "JP", name: "プレミアアンチエイジング", aliases: ["DUO"], sector: "consumer-staples" },
+  { symbol: "7351.T", market: "JP", name: "グッドパッチ", aliases: ["Goodpatch"], sector: "information-technology" },
+  { symbol: "4880.T", market: "JP", name: "セルソース", aliases: ["CellSource"], sector: "health-care" },
+  { symbol: "9552.T", market: "JP", name: "M&A総研ホールディングス", aliases: ["M&A総合研究所"], sector: "financials" },
+
+  // ===== J-REIT（追加） =====
+  { symbol: "3279.T", market: "JP", name: "アクティビア・プロパティーズ投資法人", aliases: ["Activia Properties"], sector: "real-estate" },
+  { symbol: "3287.T", market: "JP", name: "星野リゾート・リート投資法人", aliases: ["Hoshino Resorts REIT"], sector: "real-estate" },
+  { symbol: "3309.T", market: "JP", name: "積水ハウス・リート投資法人", aliases: ["Sekisui House REIT"], sector: "real-estate" },
+  { symbol: "2971.T", market: "JP", name: "エスコンジャパンリート投資法人", aliases: ["ESCON JAPAN REIT"], sector: "real-estate" },
+
+  // ===== 国内ETF（追加） =====
+  { symbol: "1348.T", market: "JP", name: "MAXIS トピックス上場投信", aliases: ["MAXIS TOPIX"], sector: "financials", type: "etf", etfCategory: "broad" },
+  { symbol: "1475.T", market: "JP", name: "iシェアーズ・コア TOPIX ETF", aliases: ["iShares TOPIX"], sector: "financials", type: "etf", etfCategory: "broad" },
+  { symbol: "1557.T", market: "JP", name: "SPDR S&P500 ETF (東証)", aliases: ["SPDR S&P500 JDR"], sector: "information-technology", type: "etf", etfCategory: "broad" },
+  { symbol: "1678.T", market: "JP", name: "NEXT FUNDS インド株式指数・Nifty 50連動型上場投信", aliases: ["インドNifty50"], sector: "financials", type: "etf", etfCategory: "international" },
+  { symbol: "1488.T", market: "JP", name: "ダイワ上場投信-東証REIT指数", aliases: ["東証REIT ETF"], sector: "real-estate", type: "etf", etfCategory: "sector" },
+
+  // ===== 米国株（追加） =====
+  { symbol: "TTD", market: "US", name: "トレード・デスク", aliases: ["The Trade Desk"], sector: "communication-services" },
+  { symbol: "CART", market: "US", name: "インスタカート", aliases: ["Instacart", "Maplebear"], sector: "consumer-discretionary" },
+  { symbol: "CAVA", market: "US", name: "カバ・グループ", aliases: ["CAVA Group"], sector: "consumer-discretionary" },
+  { symbol: "ONON", market: "US", name: "オン・ホールディング", aliases: ["On Holding", "On Running"], sector: "consumer-discretionary" },
+  { symbol: "GEHC", market: "US", name: "GEヘルスケア", aliases: ["GE HealthCare"], sector: "health-care" },
+  { symbol: "KVUE", market: "US", name: "ケンビュー", aliases: ["Kenvue"], sector: "consumer-staples" },
 ];
 
 const SYMBOL_INDEX = new Map(STOCKS_CATALOG.map((s) => [s.symbol, s]));
