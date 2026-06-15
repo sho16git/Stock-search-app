@@ -86,11 +86,13 @@ function calcSMA(data: Point[], period: number): (number | null)[] {
 
 type MALine = { period: number; color: string; label: string; values: (number | null)[] };
 
+// MA colors must stay distinct from the price line (green #10b981 up / red #ef4444 down)
+// and from each other — otherwise a down-trending stock hides a red MA line.
 const MA_CONFIGS: { period: number; color: string; label: string }[] = [
-  { period: 5,   color: "#f59e0b", label: "MA5"  },
-  { period: 25,  color: "#06b6d4", label: "MA25" },
-  { period: 75,  color: "#8b5cf6", label: "MA75" },
-  { period: 200, color: "#ef4444", label: "MA200" },
+  { period: 5,   color: "#f59e0b", label: "MA5"  }, // amber
+  { period: 25,  color: "#06b6d4", label: "MA25" }, // cyan
+  { period: 75,  color: "#8b5cf6", label: "MA75" }, // violet
+  { period: 200, color: "#ec4899", label: "MA200" }, // pink (was red — clashed with the down price line)
 ];
 
 /** MACD (12, 26, 9) */

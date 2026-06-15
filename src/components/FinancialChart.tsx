@@ -17,11 +17,13 @@ type Tab = "annual" | "quarterly";
 
 function fmtRevenue(v: number): string {
   const abs = Math.abs(v);
-  if (abs >= 1_000_000_000_000) return `${(v / 1_000_000_000_000).toFixed(1)}兆`;
-  if (abs >= 100_000_000_000)   return `${(v / 100_000_000_000).toFixed(0)}千億`;
-  if (abs >= 1_000_000_000)     return `${(v / 1_000_000_000).toFixed(1)}十億`;
-  if (abs >= 100_000_000)       return `${(v / 100_000_000).toFixed(0)}億`;
-  if (abs >= 1_000_000)         return `${(v / 1_000_000).toFixed(1)}百万`;
+  const sign = v < 0 ? "−" : "";
+  if (abs >= 1e12) return `${sign}${(abs / 1e12).toLocaleString("ja-JP", { maximumFractionDigits: 1 })}兆`;
+  if (abs >= 1e8) {
+    const oku = abs / 1e8;
+    return `${sign}${oku >= 100 ? Math.round(oku).toLocaleString("ja-JP") : oku.toFixed(1)}億`;
+  }
+  if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(1)}百万`;
   return v.toLocaleString();
 }
 

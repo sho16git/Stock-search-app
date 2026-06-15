@@ -15,25 +15,23 @@ function fmtAmt(v: number | null, compact = false): string {
   if (v == null) return "—";
   const abs = Math.abs(v);
   const sign = v < 0 ? "−" : "";
-  if (compact) {
-    if (abs >= 1e12)  return `${sign}${(abs / 1e12).toFixed(1)}兆`;
-    if (abs >= 1e11)  return `${sign}${(abs / 1e8).toFixed(0)}億`;
-    if (abs >= 1e8)   return `${sign}${(abs / 1e8).toFixed(1)}億`;
-    if (abs >= 1e6)   return `${sign}${(abs / 1e6).toFixed(1)}百万`;
-    return `${sign}${abs.toLocaleString()}`;
+  // 兆／億 を基本単位に。十億は使わず、億はカンマ区切りで見やすく。
+  if (abs >= 1e12) {
+    return `${sign}${(abs / 1e12).toLocaleString("ja-JP", { maximumFractionDigits: compact ? 1 : 2 })}兆`;
   }
-  // table format (no compact)
-  if (abs >= 1e12)  return `${sign}${(abs / 1e12).toFixed(2)}兆`;
-  if (abs >= 1e9)   return `${sign}${(abs / 1e9).toFixed(1)}十億`;
-  if (abs >= 1e8)   return `${sign}${(abs / 1e8).toFixed(1)}億`;
-  if (abs >= 1e6)   return `${sign}${(abs / 1e6).toFixed(1)}百万`;
+  if (abs >= 1e8) {
+    const oku = abs / 1e8;
+    // 100億以上は整数＋カンマ、それ未満は小数1桁
+    const s = oku >= 100 ? Math.round(oku).toLocaleString("ja-JP") : oku.toFixed(1);
+    return `${sign}${s}億`;
+  }
+  if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(1)}百万`;
   return `${sign}${abs.toLocaleString()}`;
 }
 
 function chartUnit(values: (number | null)[]): { divisor: number; label: string } {
   const max = Math.max(...values.filter((v): v is number => v != null).map(Math.abs));
   if (max >= 1e12) return { divisor: 1e12, label: "兆" };
-  if (max >= 1e9)  return { divisor: 1e9,  label: "十億" };
   if (max >= 1e8)  return { divisor: 1e8,  label: "億" };
   if (max >= 1e6)  return { divisor: 1e6,  label: "百万" };
   return { divisor: 1, label: "" };

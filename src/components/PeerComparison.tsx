@@ -16,9 +16,11 @@ function Metric({ label, value, cls }: { label: string; value: string; cls: stri
 
 function fmtCap(v: number | null): string {
   if (v == null) return "—";
-  if (v >= 1e12) return `${(v / 1e12).toFixed(1)}兆`;
-  if (v >= 1e9)  return `${(v / 1e9).toFixed(0)}十億`;
-  if (v >= 1e8)  return `${(v / 1e8).toFixed(0)}億`;
+  if (v >= 1e12) return `${(v / 1e12).toLocaleString("ja-JP", { maximumFractionDigits: 1 })}兆`;
+  if (v >= 1e8) {
+    const oku = v / 1e8;
+    return `${oku >= 100 ? Math.round(oku).toLocaleString("ja-JP") : oku.toFixed(1)}億`;
+  }
   if (v >= 1e6)  return `${(v / 1e6).toFixed(0)}百万`;
   return v.toLocaleString();
 }
