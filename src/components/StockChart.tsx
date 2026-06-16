@@ -827,6 +827,7 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
   const [chartType, setChartType]   = useState<ChartType>("line");
   const [data, setData]             = useState<Point[]>([]);
   const [warmup, setWarmup]         = useState(0);
+  const [maOverlay, setMaOverlay]   = useState<Record<string, (number | null)[]> | null>(null);
   const [loading, setLoading]       = useState(true);
   const [refreshTick, setRefreshTick] = useState(0);
   const [updatedAt, setUpdatedAt]   = useState<Date | null>(null);
@@ -892,6 +893,7 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
       .then(j => {
         setData((j.data ?? []) as Point[]);
         setWarmup(typeof j.warmup === "number" ? j.warmup : 0);
+        setMaOverlay(j.maOverlay ?? null);
         setTradingDate(j.tradingDate ?? null);
         setUpdatedAt(new Date());
       })
@@ -998,12 +1000,22 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
     MA_CONFIGS
       .filter(c => activeMA.has(c.period))
       .map(c => {
+        // Weekly/monthly charts: use the true day-based MA computed server-side
+        // from daily data (lets MA5/MA25 render even though they're sub-bar).
+        const ov = maOverlay?.[String(c.period)];
+        if (ov && ov.length === displayData.length) {
+          const conv = jpyMode && jpyRate
+            ? ov.map(v => (v == null ? null : v * jpyRate))
+            : ov;
+          return { ...c, values: conv.slice(warmup) };
+        }
+        // Daily / intraday charts: compute locally (bars = day period at 1 day/bar).
         const bars = Math.round(c.period / barDays);
         if (bars < 3) return null;
         return { ...c, values: calcSMA(displayData, bars).slice(warmup) };
       })
       .filter((m): m is MALine => m !== null),
-  [displayData, warmup, activeMA, barDays]);
+  [displayData, warmup, activeMA, barDays, maOverlay, jpyMode, jpyRate]);
 
   // ── Pan / Zoom (default interaction — drag to pan, wheel/pinch/dbl-click to zoom) ──
   const chartAreaRef = useRef<HTMLDivElement>(null);
@@ -1113,7 +1125,7 @@ export default function StockChart({ symbol, currency }: { symbol: string; curre
                   this interval (e.g. MA5/MA25 on a monthly MAX chart) */}
               {MA_CONFIGS.map(ma => {
                 const isOn = activeMA.has(ma.period);
-                const applicable = Math.round(ma.period / barDays) >= 3;
+                const applicable = !!maOverlay?.[String(ma.period)] || Math.round(ma.period / barDays) >= 3;
                 return (
                   <button
                     key={ma.period}

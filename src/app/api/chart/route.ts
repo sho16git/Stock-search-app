@@ -111,11 +111,57 @@ export async function GET(req: NextRequest) {
       if (warmup >= allData.length) warmup = Math.max(0, allData.length - 1);
     }
 
+    // ── Day-based MA overlay for weekly / monthly charts ──
+    // On a weekly (5年) or monthly (10年/MAX) chart, a short MA like MA5 (5 days) or
+    // MA25 (25 days) is shorter than one bar and can't be drawn from the display bars.
+    // So we compute the TRUE day-based MAs from a daily series and sample them onto
+    // each display bar's date — letting MA5/MA25/MA75/MA200 all render on long charts.
+    let maOverlay: Record<string, (number | null)[]> | undefined;
+    if (!cfg.intraday && cfg.interval !== "1d" && allData.length > 0) {
+      try {
+        const dailyP1 = new Date(Date.now() - (cfg.period + 320) * DAY);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const daily = await cached<any>(`chartdaily:${symbol}:${range}`, 300_000, () =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (yahooFinance as any).chart(symbol, { period1: dailyP1, interval: "1d" }),
+        );
+        const dq = ((daily.quotes ?? []) as Record<string, unknown>[])
+          .filter((q) => q.close !== null && q.close !== undefined);
+        const dDates  = dq.map((q) => (q.date instanceof Date ? q.date : new Date(String(q.date))).toISOString().slice(0, 10));
+        const dCloses = dq.map((q) => q.close as number);
+        if (dCloses.length > 0) {
+          const periods = [5, 25, 75, 200];
+          const sma = (p: number) =>
+            dCloses.map((_, i) => {
+              if (i < p - 1) return null;
+              let s = 0;
+              for (let k = i - p + 1; k <= i; k++) s += dCloses[k];
+              return s / p;
+            });
+          const smaByP: Record<number, (number | null)[]> = {};
+          for (const p of periods) smaByP[p] = sma(p);
+
+          maOverlay = {};
+          for (const p of periods) maOverlay[String(p)] = [];
+          let di = 0;
+          for (const bar of allData) {
+            const bd = bar.date.slice(0, 10);
+            while (di + 1 < dDates.length && dDates[di + 1] <= bd) di++;
+            const ok = dDates.length > 0 && dDates[di] <= bd;
+            for (const p of periods) maOverlay[String(p)].push(ok ? smaByP[p][di] : null);
+          }
+        }
+      } catch {
+        maOverlay = undefined; // fall back to client-side bar-based MA
+      }
+    }
+
     return NextResponse.json({
       data:        allData,
       meta:        chart.meta,
       intraday:    cfg.intraday ?? false,
       warmup,      // number of leading bars to trim before display (indicator context)
+      maOverlay,   // day-based MA values sampled to display bars (weekly/monthly only)
       tradingDate, // e.g. "2026-06-06" — populated only for singleDay ranges
     });
   } catch (err) {
