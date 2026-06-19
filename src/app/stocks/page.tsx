@@ -385,6 +385,54 @@ export default function AllStocksPage() {
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── 絞り込み/並び替え/ページ/スクロールを保持し、進む・戻るで復元 ──
+  type SavedBrowse = {
+    page?: number; market?: "" | "JP" | "US"; segment?: Segment;
+    query?: string; sortKey?: SortKey | null; sortDir?: SortDir;
+    viewMode?: ViewMode; scrollY?: number;
+  };
+  const savedRef = useRef<SavedBrowse | null | undefined>(undefined);
+  if (savedRef.current === undefined) {
+    try {
+      savedRef.current = typeof window !== "undefined"
+        ? (JSON.parse(sessionStorage.getItem("browse:v1") || "null") as SavedBrowse | null)
+        : null;
+    } catch { savedRef.current = null; }
+  }
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    const s = savedRef.current;
+    if (s) {
+      if (typeof s.page === "number") setPage(s.page);
+      if (s.market !== undefined) setMarket(s.market);
+      if (s.segment !== undefined) setSegment(s.segment);
+      if (s.query !== undefined) { setQuery(s.query); setInputVal(s.query); }
+      if (s.sortKey !== undefined) setSortKey(s.sortKey);
+      if (s.sortDir) setSortDir(s.sortDir);
+      if (s.viewMode) setViewMode(s.viewMode);
+      if (typeof s.scrollY === "number") {
+        const y = s.scrollY;
+        requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, y)));
+      }
+    }
+    restoredRef.current = true;
+  }, []);
+  useEffect(() => {
+    if (!restoredRef.current) return;
+    const save = () => {
+      try {
+        sessionStorage.setItem("browse:v1", JSON.stringify({
+          page, market, segment, query, sortKey, sortDir, viewMode, scrollY: window.scrollY,
+        }));
+      } catch { /* ignore */ }
+    };
+    save();
+    let raf = 0;
+    const onScroll = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(save); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(raf); };
+  }, [page, market, segment, query, sortKey, sortDir, viewMode]);
+
   // リスト用データ取得
   const fetchData = useCallback(async (p: number, mkt: string, seg: string, q: string) => {
     setLoading(true);
