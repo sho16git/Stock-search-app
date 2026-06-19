@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, TrendingUp } from "lucide-react";
 
@@ -55,6 +55,54 @@ export default function RankingPage() {
   const [market, setMarket]   = useState<Market>("JP");
   const [items, setItems]     = useState<RankItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // ── Restore tab / market / scroll so browser-back returns to the same view ──
+  // Capture the saved snapshot once during render (before any effect can overwrite
+  // it), so the restore is immune to the persist effect + React StrictMode replays.
+  const savedRef = useRef<{ tab?: RankingType; market?: Market; scrollY?: number } | undefined>(undefined);
+  if (savedRef.current === undefined) {
+    try {
+      if (typeof window !== "undefined") {
+        const t = sessionStorage.getItem("ranking:tab");
+        const m = sessionStorage.getItem("ranking:market");
+        const y = sessionStorage.getItem("ranking:scrollY");
+        savedRef.current = {
+          tab: t ? (t as RankingType) : undefined,
+          market: m ? (m as Market) : undefined,
+          scrollY: y ? Number(y) : undefined,
+        };
+      } else savedRef.current = {};
+    } catch { savedRef.current = {}; }
+  }
+  const restored = useRef(false);
+  useEffect(() => {
+    const s = savedRef.current;
+    if (s) {
+      if (s.tab) setTab(s.tab);
+      if (s.market) setMarket(s.market);
+      if (typeof s.scrollY === "number") {
+        const y = s.scrollY;
+        requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, y)));
+      }
+    }
+    restored.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!restored.current) return;
+    const save = () => {
+      try {
+        sessionStorage.setItem("ranking:tab", tab);
+        sessionStorage.setItem("ranking:market", market);
+        sessionStorage.setItem("ranking:scrollY", String(window.scrollY));
+      } catch { /* ignore */ }
+    };
+    save();
+    let raf = 0;
+    const onScroll = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(save); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => { window.removeEventListener("scroll", onScroll); cancelAnimationFrame(raf); };
+  }, [tab, market]);
 
   useEffect(() => {
     setLoading(true);
