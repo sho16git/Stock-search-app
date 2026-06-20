@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, Briefcase, SlidersHorizontal, Library,
-  BarChart2, Star, Sparkles, BookOpen, Calendar, Rocket, Bell,
+  BarChart2, Star, Sparkles, BookOpen, Calendar, Rocket, Bell, CalendarClock,
 } from "lucide-react";
 
 type NavItem = {
@@ -76,6 +76,12 @@ const MARKET_ITEMS: NavItem[] = [
     fg: "text-rose-600 dark:text-rose-400",
     bg: "bg-rose-50 dark:bg-rose-500/10",
     dot: "bg-rose-500",
+  },
+  {
+    href: "/economic-calendar", label: "経済指標カレンダー", Icon: CalendarClock,
+    fg: "text-indigo-600 dark:text-indigo-400",
+    bg: "bg-indigo-50 dark:bg-indigo-500/10",
+    dot: "bg-indigo-500",
   },
 ];
 

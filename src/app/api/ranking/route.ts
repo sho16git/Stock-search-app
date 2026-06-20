@@ -7,7 +7,7 @@ import { getUsKatakana } from "@/lib/us-katakana";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type RankingType = "dividend" | "low-per" | "high-roe" | "52w-high";
+type RankingType = "dividend" | "low-per" | "high-roe" | "52w-high" | "volume";
 type Market = "JP" | "US";
 
 export async function GET(req: NextRequest) {
@@ -58,6 +58,8 @@ export async function GET(req: NextRequest) {
       fiftyTwoWeekLow: number | null;
       regularMarketPrice: number | null;
       roe: number | null;
+      volume: number | null;
+      turnover: number | null;
     };
 
     const items: QuoteItem[] = allQuotes.map(q => ({
@@ -76,6 +78,9 @@ export async function GET(req: NextRequest) {
       fiftyTwoWeekLow: typeof q.fiftyTwoWeekLow === "number" ? q.fiftyTwoWeekLow : null,
       regularMarketPrice: typeof q.regularMarketPrice === "number" ? q.regularMarketPrice : null,
       roe: null, // filled in for high-roe type below
+      volume: typeof q.regularMarketVolume === "number" ? q.regularMarketVolume : null,
+      turnover: (typeof q.regularMarketVolume === "number" && typeof q.regularMarketPrice === "number")
+        ? q.regularMarketVolume * q.regularMarketPrice : null,
     })).filter(q => q.symbol && q.price != null);
 
     let sorted: QuoteItem[] = [];
@@ -127,6 +132,11 @@ export async function GET(req: NextRequest) {
       sorted = items
         .filter(q => q.roe != null && q.roe > 0)
         .sort((a, b) => (b.roe ?? 0) - (a.roe ?? 0));
+
+    } else if (type === "volume") {
+      sorted = items
+        .filter(q => q.volume != null && q.volume > 0)
+        .sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0));
 
     } else if (type === "52w-high") {
       sorted = items

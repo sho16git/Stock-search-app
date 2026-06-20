@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, TrendingUp } from "lucide-react";
 
-type RankingType = "dividend" | "low-per" | "high-roe" | "52w-high";
+type RankingType = "dividend" | "low-per" | "high-roe" | "52w-high" | "volume";
 type Market = "JP" | "US";
 
 type RankItem = {
@@ -20,6 +20,8 @@ type RankItem = {
   fiftyTwoWeekHigh: number | null;
   regularMarketPrice: number | null;
   roe: number | null;
+  volume: number | null;
+  turnover: number | null;
 };
 
 const RANK_TABS: { key: RankingType; label: string; desc: string }[] = [
@@ -27,7 +29,15 @@ const RANK_TABS: { key: RankingType; label: string; desc: string }[] = [
   { key: "low-per",   label: "低PER",         desc: "PERが低い(割安)銘柄" },
   { key: "high-roe",  label: "高ROE",         desc: "収益性が高い銘柄" },
   { key: "52w-high",  label: "52週高値更新",   desc: "52週高値に近い銘柄" },
+  { key: "volume",    label: "出来高",         desc: "出来高(売買が活発な)銘柄" },
 ];
+
+function fmtVolume(v: number | null): string {
+  if (v == null) return "—";
+  if (v >= 1e8) return `${(v / 1e8).toFixed(1)}億`;
+  if (v >= 1e4) return `${Math.round(v / 1e4).toLocaleString("ja-JP")}万`;
+  return v.toLocaleString("ja-JP");
+}
 
 function fmtPrice(v: number | null): string {
   if (v == null) return "—";
@@ -198,6 +208,7 @@ export default function RankingPage() {
                 tab === "dividend" ? { label: "配当", value: item.dividendYield != null ? `${item.dividendYield.toFixed(2)}%` : "—", cls: "text-emerald-600 dark:text-emerald-400" }
                 : tab === "low-per" ? { label: "PER", value: item.trailingPE != null ? item.trailingPE.toFixed(1) : "—", cls: "text-slate-700 dark:text-slate-200" }
                 : tab === "high-roe" ? { label: "ROE", value: item.roe != null ? `${(item.roe * 100).toFixed(1)}%` : "—", cls: "text-emerald-600 dark:text-emerald-400" }
+                : tab === "volume" ? { label: "出来高", value: fmtVolume(item.volume), cls: "text-indigo-600 dark:text-indigo-400" }
                 : { label: "52W比", value: ratio52w != null ? `${ratio52w.toFixed(1)}%` : "—", cls: "text-blue-600 dark:text-blue-400" };
               return (
                 <Link
