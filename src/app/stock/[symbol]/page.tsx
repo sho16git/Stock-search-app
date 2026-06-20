@@ -6,6 +6,7 @@ import { CurrencyProvider } from "@/lib/currency-context";
 import StockChart from "@/components/StockChart";
 import FundamentalsTable from "@/components/FundamentalsTable";
 import AnalystRecommendations from "@/components/AnalystRecommendations";
+import AnalystEstimates from "@/components/AnalystEstimates";
 import EarningsCard from "@/components/EarningsCard";
 import YutaiCard from "@/components/YutaiCard";
 import HoldersCard from "@/components/HoldersCard";
@@ -62,6 +63,7 @@ export default async function StockPage({
       <div className="animate-slide-up delay-200"><AIAnalysis symbol={symbol} /></div>
       <div className="animate-slide-up delay-300"><AiScenarios symbol={symbol} /></div>
       <div className="animate-slide-up delay-300"><AnalystRecommendations symbol={symbol} /></div>
+      <div className="animate-slide-up delay-300"><AnalystEstimates symbol={symbol} /></div>
       <div className="animate-slide-up delay-400"><EarningsCard symbol={symbol} /></div>
       <div className="animate-slide-up delay-400"><YutaiCard symbol={symbol} /></div>
       <div className="animate-slide-up delay-500"><FundamentalsTable symbol={symbol} /></div>
