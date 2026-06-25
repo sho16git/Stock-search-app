@@ -352,7 +352,6 @@ export const STOCKS_CATALOG: CatalogStock[] = [
   { symbol: "CME", market: "US", name: "CME Group", sector: "financials" },
   { symbol: "COIN", market: "US", name: "Coinbase Global", sector: "financials" },
   { symbol: "PYPL", market: "US", name: "PayPal Holdings", sector: "financials" },
-  { symbol: "SQ", market: "US", name: "Block", aliases: ["Square"], sector: "financials" },
   { symbol: "HOOD", market: "US", name: "Robinhood Markets", sector: "financials" },
   { symbol: "SOFI", market: "US", name: "SoFi Technologies", sector: "financials" },
   { symbol: "NU", market: "US", name: "Nu Holdings", sector: "financials" },

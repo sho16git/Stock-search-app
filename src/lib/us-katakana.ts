@@ -177,7 +177,6 @@ export const US_KATAKANA: Record<string, string> = {
   CME:   "CMEグループ",
   COIN:  "コインベース・グローバル",
   PYPL:  "ペイパル・ホールディングス",
-  SQ:    "ブロック (旧スクエア)",
   XYZ:   "ブロック (旧スクエア)",
   SE:    "シー・リミテッド",
   NU:    "ニュー・ホールディングス",
@@ -362,7 +361,6 @@ export const US_KATAKANA: Record<string, string> = {
   ZBH:   "ジンマー・バイオメット",
   COO:   "クーパー・カンパニーズ",
   HSIC:  "ヘンリー・シャイン",
-  PKI:   "レビビコル（旧パーキンエルマー）",
   XRAY:  "デンツプライ・シロナ",
   PODD:  "インスリット",
   RMD:   "レスメド",
@@ -384,7 +382,6 @@ export const US_KATAKANA: Record<string, string> = {
   MTB:   "M&Tバンク",
   HBAN:  "ハンティントン・バンクシェアズ",
   NTRS:  "ノーザン・トラスト",
-  SIVB:  "SVBファイナンシャル（廃止）",
   WRB:   "W・R・バークレー",
   RJF:   "レイモンド・ジェームズ・ファイナンシャル",
 
@@ -490,7 +487,6 @@ export const US_KATAKANA: Record<string, string> = {
   RXRX:  "リカーション・ファーマシューティカルズ",
   EXEL:  "エクセリクシス",
   JAZZ:  "ジャズ・ファーマシューティカルズ",
-  PEAK:  "ヘルスピーク・プロパティーズ",
   OHI:   "オメガ・ヘルスケア・インベスターズ",
   LMND:  "レモネード",
 
@@ -709,7 +705,6 @@ export const US_KATAKANA: Record<string, string> = {
   APPN:  "アピアン",
   ARLO:  "アーロ・テクノロジーズ",
   BBAI:  "BigBear.ai",
-  BIGC:  "ビッグコマース",
   CALX:  "カリックス",
   ALRM:  "アラーム・ドット・コム",
   TOST:  "トースト",
@@ -817,7 +812,6 @@ export const US_KATAKANA: Record<string, string> = {
   FATE:  "フェイト・セラピューティクス",
   FOLD:  "アミカス・セラピューティクス",
   VERV:  "バーブ・セラピューティクス",
-  NVTA:  "インヴィテイ",
   SAVA:  "カッサバ・サイエンシズ",
   LAZR:  "ルミナー・テクノロジーズ",
   // Tech
