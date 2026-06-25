@@ -170,31 +170,55 @@ export default function SectorStockTable({
       changePercent: number | null; currency: string | null;
     };
 
+    const fetchMap = (syms: string[]) =>
+      fetch(`/api/quotes?symbols=${encodeURIComponent(syms.join(","))}`)
+        .then((r) => r.json())
+        .then((j) => (j.quotes ?? {}) as Record<string, SlimQuote>)
+        .catch(() => ({} as Record<string, SlimQuote>));
+
+    const applyMap = (syms: string[], map: Record<string, SlimQuote>): string[] => {
+      const got: string[] = [];
+      setQuotes((prev) => {
+        const next = { ...prev };
+        for (const sym of syms) {
+          const b = map[sym];
+          if (b && b.price != null) {
+            got.push(sym);
+            next[sym] = {
+              regularMarketPrice: b.price ?? undefined,
+              regularMarketChange: b.change ?? undefined,
+              regularMarketChangePercent: b.changePercent ?? undefined,
+              currency: b.currency ?? undefined,
+            };
+          }
+        }
+        return next;
+      });
+      return got;
+    };
+
     (async () => {
+      const fetched = new Set<string>();
       for (const syms of batches) {
         if (cancelled) return;
-        const map = await fetch(`/api/quotes?symbols=${encodeURIComponent(syms.join(","))}`)
-          .then((r) => r.json())
-          .then((j) => (j.quotes ?? {}) as Record<string, SlimQuote>)
-          .catch(() => ({} as Record<string, SlimQuote>));
+        const map = await fetchMap(syms);
         if (cancelled) return;
-        setQuotes((prev) => {
-          const next = { ...prev };
-          for (const sym of syms) {
-            const b = map[sym];
-            if (b) {
-              next[sym] = {
-                regularMarketPrice: b.price ?? undefined,
-                regularMarketChange: b.change ?? undefined,
-                regularMarketChangePercent: b.changePercent ?? undefined,
-                currency: b.currency ?? undefined,
-              };
-            }
-          }
-          return next;
-        });
+        applyMap(syms, map).forEach((s) => fetched.add(s));
       }
       setLoading(false);
+
+      // Retry symbols that came back without a price (transient Yahoo gaps) once,
+      // so rows don't stay stuck showing "—".
+      const missing = toFetch.map((s) => s.symbol).filter((s) => !fetched.has(s));
+      if (missing.length > 0 && !cancelled) {
+        await new Promise((r) => setTimeout(r, 1800));
+        for (let i = 0; i < missing.length && !cancelled; i += BATCH) {
+          const chunk = missing.slice(i, i + BATCH);
+          const map = await fetchMap(chunk);
+          if (cancelled) return;
+          applyMap(chunk, map);
+        }
+      }
     })();
 
     return () => {
@@ -370,8 +394,7 @@ export default function SectorStockTable({
           </span>
           <button
             onClick={() => setVisible((v) => v + PAGE_SIZE)}
-            disabled={loading}
-            className="inline-flex items-center gap-1 px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-1 px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors"
           >
             <ChevronDown className="w-4 h-4" />
             さらに {Math.min(PAGE_SIZE, filtered.length - visible)} 件

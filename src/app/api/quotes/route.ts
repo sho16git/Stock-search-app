@@ -54,12 +54,17 @@ export async function GET(req: NextRequest) {
 
   try {
     if (misses.length > 0) {
-      const rawQuotes = await (yahooFinance.quote as Function)(
-        misses,
-        {},
-        { validateResult: false },
-      ).catch(() => []);
-      const list = Array.isArray(rawQuotes) ? rawQuotes : [rawQuotes];
+      // Fetch with one retry — a single transient Yahoo failure would otherwise
+      // blank out the whole batch (every row shows "—").
+      const fetchQuotes = () =>
+        (yahooFinance.quote as Function)(misses, {}, { validateResult: false })
+          .then((r: unknown) => (Array.isArray(r) ? r : [r]))
+          .catch(() => [] as unknown[]);
+      let list = await fetchQuotes();
+      if (list.length === 0) {
+        await new Promise((r) => setTimeout(r, 400));
+        list = await fetchQuotes();
+      }
 
       for (const q of list) {
         const o = q as Record<string, unknown>;
