@@ -47,7 +47,10 @@ export async function GET(req: NextRequest) {
       base.map((q) => getCompanyNameJa(q.symbol, q.longName ?? q.shortName)),
     );
     const quotes = base.map((q, i) => ({ ...q, nameJa: namesJa[i] }));
-    return NextResponse.json({ quotes });
+    return NextResponse.json(
+      { quotes },
+      { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } },
+    );
   } catch (err) {
     console.error("movers error", err);
     return NextResponse.json(

@@ -24,7 +24,7 @@ type SlimQuote = {
   low52w: number | null;
 };
 
-const QUOTE_TTL = 20_000; // 20s — fresh enough for list views, big load reduction
+const QUOTE_TTL = 45_000; // 45s — fresh enough for list views, fewer Yahoo round-trips
 
 export async function GET(req: NextRequest) {
   const raw = req.nextUrl.searchParams.get("symbols")?.trim();
@@ -84,7 +84,10 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ quotes });
+    return NextResponse.json(
+      { quotes },
+      { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120" } },
+    );
   } catch (err) {
     console.error("batch quotes error", err);
     return NextResponse.json({ error: "株価取得に失敗しました" }, { status: 500 });

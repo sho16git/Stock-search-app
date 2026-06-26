@@ -106,7 +106,10 @@ export async function GET(req: NextRequest) {
       volume: q.regularMarketVolume ?? null,
     }));
 
-    return NextResponse.json({ quotes: quotesResp });
+    return NextResponse.json(
+      { quotes: quotesResp },
+      { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } },
+    );
   } catch (err) {
     console.error("movers-jp error", err);
     return NextResponse.json(

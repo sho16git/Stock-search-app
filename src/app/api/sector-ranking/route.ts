@@ -141,7 +141,10 @@ export async function GET() {
       return b.changePercent - a.changePercent;
     });
 
-    return NextResponse.json({ ranks, asOf: new Date().toISOString() });
+    return NextResponse.json(
+      { ranks, asOf: new Date().toISOString() },
+      { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } },
+    );
   } catch (err) {
     console.error("sector-ranking error", err);
     return NextResponse.json(

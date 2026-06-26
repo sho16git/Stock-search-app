@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const q = (await cached(`quote:${symbol}`, 15_000, () =>
+    const q = (await cached(`quote:${symbol}`, 30_000, () =>
       (yahooFinance.quote as Function)(symbol, {}, { validateResult: false }),
     )) as Record<string, unknown>;
     const englishName =
@@ -21,7 +21,10 @@ export async function GET(req: NextRequest) {
       (q?.shortName as string | undefined) ??
       null;
     const nameJa = await getCompanyNameJa(symbol, englishName);
-    return NextResponse.json({ quote: { ...q, nameJa } });
+    return NextResponse.json(
+      { quote: { ...q, nameJa } },
+      { headers: { "Cache-Control": "public, s-maxage=20, stale-while-revalidate=60" } },
+    );
   } catch (err) {
     console.error("quote error", err);
     return NextResponse.json(

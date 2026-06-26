@@ -41,7 +41,10 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ indices: result });
+    return NextResponse.json(
+      { indices: result },
+      { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120" } },
+    );
   } catch (err) {
     console.error("indices error", err);
     return NextResponse.json(
