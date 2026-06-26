@@ -1,7 +1,7 @@
 import type { GicsSectorId } from "./gics";
 import { US_STOCKS_SUPPLEMENT } from "./us-stocks-list";
 import { US_SECTOR_MAP } from "./us-sector-supplement";
-import { TSE_NAMES } from "./tse-names";
+import { TSE_NAMES, DELISTED_JP } from "./tse-names";
 import { JP_SECTOR_MAP } from "./jp-sector-supplement";
 
 export type CatalogStock = {
@@ -735,13 +735,12 @@ export function getEtfs(): CatalogStock[] {
 }
 
 export function getAllStocks(includeEtf = false): CatalogStock[] {
-  return includeEtf
-    ? STOCKS_CATALOG
-    : STOCKS_CATALOG.filter((s) => s.type !== "etf");
+  const base = includeEtf ? STOCKS_CATALOG : STOCKS_CATALOG.filter((s) => s.type !== "etf");
+  return base.filter((s) => !DELISTED_JP.has(s.symbol));
 }
 
 export function getJpStocks(): CatalogStock[] {
-  return STOCKS_CATALOG.filter((s) => s.market === "JP");
+  return STOCKS_CATALOG.filter((s) => s.market === "JP" && !DELISTED_JP.has(s.symbol));
 }
 
 /**
@@ -752,9 +751,9 @@ export function getJpStocks(): CatalogStock[] {
 export function getStocksBySectorAll(
   sector: GicsSectorId,
 ): { symbol: string; name: string; market: "JP" | "US" }[] {
-  // Start with curated catalog (non-ETF)
+  // Start with curated catalog (non-ETF, excluding delisted/non-listed)
   const curated = STOCKS_CATALOG.filter(
-    (s) => s.sector === sector && s.type !== "etf",
+    (s) => s.sector === sector && s.type !== "etf" && !DELISTED_JP.has(s.symbol),
   ).map((s) => ({ symbol: s.symbol, name: s.name, market: s.market as "JP" | "US" }));
 
   const seen = new Set(curated.map((s) => s.symbol));
@@ -772,7 +771,8 @@ export function getStocksBySectorAll(
   const jpSymSeen = new Set<string>();
   for (const [sym, name] of TSE_NAMES) {
     if (seen.has(sym)) continue; // already in curated catalog or added above
-    if (name.includes("廃止") || name.includes("重複") || name === "?" || name.startsWith("?")) continue;
+    if (DELISTED_JP.has(sym)) continue; // 上場廃止/非上場/非公開
+    if (name.includes("重複") || name === "?" || name.startsWith("?")) continue;
     if ((JP_SECTOR_MAP[sym] as GicsSectorId) !== sector) continue;
     if (jpSymSeen.has(sym)) continue; // dedup: first occurrence per symbol wins
     jpSymSeen.add(sym);

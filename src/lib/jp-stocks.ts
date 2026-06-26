@@ -1,6 +1,6 @@
 import { STOCKS_CATALOG, type CatalogStock } from "./stocks-catalog";
 import { getUsKatakana, US_KATAKANA } from "./us-katakana";
-import { TSE_NAMES } from "./tse-names";
+import { TSE_NAMES, DELISTED_JP } from "./tse-names";
 
 export type JpStock = CatalogStock;
 
@@ -33,7 +33,7 @@ for (const [symbol, name] of TSE_NAMES) {
 /** Unique symbol set for TSE supplement (primary name only, no aliases) */
 const TSE_SUPPLEMENT_PRIMARY = new Map<string, string>();
 for (const { symbol, name } of TSE_SUPPLEMENT) {
-  if (!TSE_SUPPLEMENT_PRIMARY.has(symbol) && !name.includes("廃止") && !name.includes("重複")) {
+  if (!TSE_SUPPLEMENT_PRIMARY.has(symbol) && !DELISTED_JP.has(symbol) && !name.includes("重複")) {
     TSE_SUPPLEMENT_PRIMARY.set(symbol, name);
   }
 }
@@ -60,6 +60,7 @@ export function getFullJpBrowseList(): { symbol: string; name: string; sector?: 
   // Curated catalog first (have sector info)
   for (const s of JP_STOCKS_LIST) {
     if (s.type === "etf") continue; // ETFs handled separately
+    if (DELISTED_JP.has(s.symbol)) continue; // 上場廃止/非上場/非公開
     out.push({ symbol: s.symbol, name: s.name, sector: s.sector });
   }
   // TSE supplement (no sector info, no aliases, no defunct entries)
