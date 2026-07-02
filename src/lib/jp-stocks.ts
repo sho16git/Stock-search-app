@@ -64,7 +64,10 @@ export function getFullJpBrowseList(): { symbol: string; name: string; sector?: 
     out.push({ symbol: s.symbol, name: s.name, sector: s.sector });
   }
   // TSE supplement (no sector info, no aliases, no defunct entries)
+  const seen = new Set(out.map((s) => s.symbol));
   for (const [symbol, name] of TSE_SUPPLEMENT_PRIMARY) {
+    if (DELISTED_JP.has(symbol)) continue;         // 上場廃止/非上場/コード誤り
+    if (seen.has(symbol)) continue;                 // 重複除去
     out.push({ symbol, name });
   }
   return out;

@@ -3293,7 +3293,11 @@ export const TSE_NAMES: [string, string][] = [
 // 上場廃止・非上場・非公開（名前に明示マーカーがあるもの）＋ マーカー漏れの既知銘柄。
 // 一覧から除外して恒久的に株価「—」の行が出ないようにする。
 export const DELISTED_JP: Set<string> = new Set(
-  TSE_NAMES.filter(([, name]) => /廃止|非上場|非公開/.test(name)).map(([sym]) => sym),
+  TSE_NAMES
+    // 廃止/非上場/非公開/上場なし、または「（4704）」等のコード注記(=別コードへの
+    // リダイレクト＝誤り/重複エントリ)を持つものを除外
+    .filter(([, name]) => /廃止|非上場|非公開|上場なし|[（(]\d{4}[）)]/.test(name))
+    .map(([sym]) => sym),
 );
 // マーカーが無いが上場廃止/コード誤りの既知銘柄
 ["2651.T", "8176.T"].forEach((s) => DELISTED_JP.add(s));
